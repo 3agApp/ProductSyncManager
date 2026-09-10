@@ -2,6 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ShopRole;
+use App\Models\Product;
+use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -15,11 +18,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
+        $user = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        $products = Product::factory()->for($user->personalShop());
+
+        $products->count(16)->create();
+        $products->count(4)->draft()->create();
+        $products->count(3)->lowStock()->create();
+        $products->count(2)->outOfStock()->create();
+        $products->archived()->create();
+
+        $outlet = Shop::factory()->create(['name' => 'Acme Outlet']);
+        $outlet->members()->attach($user, ['role' => ShopRole::Owner->value]);
+
+        Product::factory()->count(6)->for($outlet)->create();
     }
 }

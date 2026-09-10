@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="{{ config('app.name') }} keeps products, pricing and inventory in sync across all of your shops.">
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>
@@ -39,7 +40,7 @@
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
+            <title>{{ config('app.name', 'ProductSync') }}</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

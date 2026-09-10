@@ -1,7 +1,7 @@
 import { Form, Head } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
-import TeamInvitationAlert from '@/components/team-invitation-alert';
+import ShopInvitationAlert from '@/components/shop-invitation-alert';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
-import type { TeamInvitationContext } from '@/types';
+import type { ShopInvitationContext } from '@/types';
 
 type Props = {
     passwordRules: string;
-    teamInvitation?: TeamInvitationContext | null;
+    shopInvitation?: ShopInvitationContext | null;
 };
 
-export default function Register({ passwordRules, teamInvitation }: Props) {
+export default function Register({ passwordRules, shopInvitation }: Props) {
     return (
         <>
             <Head title="Register" />
@@ -28,9 +28,9 @@ export default function Register({ passwordRules, teamInvitation }: Props) {
             >
                 {({ processing, errors }) => (
                     <>
-                        {teamInvitation && (
-                            <TeamInvitationAlert
-                                invitation={teamInvitation}
+                        {shopInvitation && (
+                            <ShopInvitationAlert
+                                invitation={shopInvitation}
                                 action="Register"
                             />
                         )}
@@ -115,16 +115,16 @@ export default function Register({ passwordRules, teamInvitation }: Props) {
                             Already have an account?{' '}
                             <TextLink
                                 href={
-                                    teamInvitation
+                                    shopInvitation
                                         ? login.url({
                                               query: {
                                                   invitation:
-                                                      teamInvitation.code,
+                                                      shopInvitation.code,
                                               },
                                           })
                                         : login()
                                 }
-                                data-test="team-invitation-login-link"
+                                data-test="shop-invitation-login-link"
                                 tabIndex={6}
                             >
                                 Log in

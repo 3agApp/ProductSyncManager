@@ -1,8 +1,8 @@
 <?php
 
-use App\Enums\TeamRole;
-use App\Models\Team;
-use App\Models\TeamInvitation;
+use App\Enums\ShopRole;
+use App\Models\Shop;
+use App\Models\ShopInvitation;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -16,13 +16,13 @@ test('login screen can be rendered', function () {
     $response->assertOk();
 });
 
-test('login screen includes team invitation context', function () {
+test('login screen includes shop invitation context', function () {
     $owner = User::factory()->create();
-    $team = Team::factory()->create(['name' => 'Laravel Team']);
-    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+    $shop = Shop::factory()->create(['name' => 'Laravel Shop']);
+    $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
 
-    $invitation = TeamInvitation::factory()->create([
-        'team_id' => $team->id,
+    $invitation = ShopInvitation::factory()->create([
+        'shop_id' => $shop->id,
         'email' => 'invited@example.com',
         'invited_by' => $owner->id,
     ]);
@@ -32,8 +32,8 @@ test('login screen includes team invitation context', function () {
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('auth/login')
-        ->where('teamInvitation.code', $invitation->code)
-        ->where('teamInvitation.teamName', 'Laravel Team'),
+        ->where('shopInvitation.code', $invitation->code)
+        ->where('shopInvitation.shopName', 'Laravel Shop'),
     );
 });
 
@@ -49,7 +49,7 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('dashboard'));
 });
 
-test('passkey login response redirects to the current team dashboard', function () {
+test('passkey login response redirects to the current shop dashboard', function () {
     $user = User::factory()->create();
 
     $request = Request::create(route('login', absolute: false), 'GET', server: [
@@ -60,7 +60,7 @@ test('passkey login response redirects to the current team dashboard', function 
 
     $jsonResponse = app(PasskeyLoginResponse::class)->toResponse($request);
 
-    expect($jsonResponse->getData()->redirect)->toBe(route('dashboard', ['current_team' => $user->personalTeam()->slug]));
+    expect($jsonResponse->getData()->redirect)->toBe(route('dashboard', ['current_shop' => $user->personalShop()->slug]));
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

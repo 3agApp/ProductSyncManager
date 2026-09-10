@@ -1,4 +1,6 @@
 export type * from './auth';
 export type * from './navigation';
-export type * from './teams';
+export type * from './pagination';
+export type * from './products';
+export type * from './shops';
 export type * from './ui';

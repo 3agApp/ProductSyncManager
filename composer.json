@@ -1,11 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "productsync/product-sync-manager",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "ProductSync keeps products, pricing and inventory in sync across all of your shops.",
     "keywords": [
         "laravel",
-        "framework"
+        "products",
+        "inventory"
     ],
     "license": "MIT",
     "require": {

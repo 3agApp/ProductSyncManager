@@ -1,14 +1,14 @@
 <?php
 
-use App\Enums\TeamRole;
-use App\Models\Team;
-use App\Models\TeamInvitation;
+use App\Enums\ShopRole;
+use App\Models\Shop;
+use App\Models\ShopInvitation;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('guests are redirected to the login page', function () {
     $user = User::factory()->create();
-    $team = $user->currentTeam;
+    $shop = $user->currentShop;
 
     $response = $this->get(route('dashboard'));
     $response->assertRedirect(route('login'));
@@ -16,7 +16,7 @@ test('guests are redirected to the login page', function () {
 
 test('authenticated users can visit the dashboard', function () {
     $user = User::factory()->create();
-    $team = $user->currentTeam;
+    $shop = $user->currentShop;
 
     $response = $this
         ->actingAs($user)
@@ -28,12 +28,12 @@ test('authenticated users can visit the dashboard', function () {
 test('dashboard includes pending invitations for the authenticated user', function () {
     $owner = User::factory()->create(['name' => 'Taylor Otwell']);
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
-    $team = Team::factory()->create(['name' => 'Laravel Team']);
+    $shop = Shop::factory()->create(['name' => 'Laravel Shop']);
 
-    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+    $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
 
-    $invitation = TeamInvitation::factory()->create([
-        'team_id' => $team->id,
+    $invitation = ShopInvitation::factory()->create([
+        'shop_id' => $shop->id,
         'email' => 'invited@example.com',
         'invited_by' => $owner->id,
     ]);
@@ -48,21 +48,21 @@ test('dashboard includes pending invitations for the authenticated user', functi
         ->has('pendingInvitations', 1)
         ->where('pendingInvitations.0.code', $invitation->code)
         ->where('pendingInvitations.0.inviterName', 'Taylor Otwell')
-        ->where('pendingInvitations.0.team.name', 'Laravel Team')
-        ->where('pendingInvitations.0.team.slug', $team->slug)
-        ->missing('pendingInvitations.0.teamName'),
+        ->where('pendingInvitations.0.shop.name', 'Laravel Shop')
+        ->where('pendingInvitations.0.shop.slug', $shop->slug)
+        ->missing('pendingInvitations.0.shopName'),
     );
 });
 
 test('dashboard does not include accepted invitations', function () {
     $owner = User::factory()->create();
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
-    $team = Team::factory()->create();
+    $shop = Shop::factory()->create();
 
-    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+    $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
 
-    TeamInvitation::factory()->accepted()->create([
-        'team_id' => $team->id,
+    ShopInvitation::factory()->accepted()->create([
+        'shop_id' => $shop->id,
         'email' => 'invited@example.com',
         'invited_by' => $owner->id,
     ]);
@@ -81,12 +81,12 @@ test('dashboard does not include accepted invitations', function () {
 test('dashboard excludes expired invitations without deleting them', function () {
     $owner = User::factory()->create();
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
-    $team = Team::factory()->create();
+    $shop = Shop::factory()->create();
 
-    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+    $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
 
-    $invitation = TeamInvitation::factory()->expired()->create([
-        'team_id' => $team->id,
+    $invitation = ShopInvitation::factory()->expired()->create([
+        'shop_id' => $shop->id,
         'email' => 'invited@example.com',
         'invited_by' => $owner->id,
     ]);
@@ -101,7 +101,7 @@ test('dashboard excludes expired invitations without deleting them', function ()
         ->has('pendingInvitations', 0),
     );
 
-    $this->assertDatabaseHas('team_invitations', [
+    $this->assertDatabaseHas('shop_invitations', [
         'id' => $invitation->id,
     ]);
 });
@@ -109,12 +109,12 @@ test('dashboard excludes expired invitations without deleting them', function ()
 test('dashboard does not include or delete other users invitations', function () {
     $owner = User::factory()->create();
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
-    $team = Team::factory()->create();
+    $shop = Shop::factory()->create();
 
-    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+    $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
 
-    $invitation = TeamInvitation::factory()->expired()->create([
-        'team_id' => $team->id,
+    $invitation = ShopInvitation::factory()->expired()->create([
+        'shop_id' => $shop->id,
         'email' => 'someone@example.com',
         'invited_by' => $owner->id,
     ]);
@@ -129,7 +129,7 @@ test('dashboard does not include or delete other users invitations', function ()
         ->has('pendingInvitations', 0),
     );
 
-    $this->assertDatabaseHas('team_invitations', [
+    $this->assertDatabaseHas('shop_invitations', [
         'id' => $invitation->id,
     ]);
 });
