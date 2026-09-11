@@ -26,6 +26,7 @@ class DashboardController extends Controller
         $status = ProductStatus::tryFrom($request->string('status')->toString());
 
         $products = $currentShop->products()
+            ->with('brand')
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('sku', 'like', "%{$search}%")))
@@ -48,7 +49,7 @@ class DashboardController extends Controller
                 'gtin' => $product->gtin,
                 'description' => $product->description,
                 'shortDescription' => $product->short_description,
-                'brands' => $product->brands ?? [],
+                'brand' => $product->brand?->name,
                 'categories' => $product->categories ?? [],
                 'imageUrl' => $product->image_url,
                 'galleryImageUrls' => $product->gallery_image_urls ?? [],

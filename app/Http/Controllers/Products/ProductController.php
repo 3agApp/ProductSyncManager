@@ -23,6 +23,7 @@ class ProductController extends Controller
 
         return Inertia::render('products/create', [
             'shop' => $this->shopProps($currentShop),
+            'brands' => $this->brandNames($currentShop),
             'statuses' => ProductStatus::options(),
         ]);
     }
@@ -36,8 +37,11 @@ class ProductController extends Controller
     {
         Gate::authorize('update', $product);
 
+        $product->loadMissing('brand');
+
         return Inertia::render('products/edit', [
             'shop' => $this->shopProps($currentShop),
+            'brands' => $this->brandNames($currentShop),
             'product' => [
                 'id' => $product->id,
                 'remoteId' => $product->remote_id,
@@ -46,7 +50,7 @@ class ProductController extends Controller
                 'gtin' => $product->gtin,
                 'description' => $product->description,
                 'shortDescription' => $product->short_description,
-                'brands' => $product->brands ?? [],
+                'brand' => $product->brand?->name,
                 'categories' => $product->categories ?? [],
                 'imageUrl' => $product->image_url,
                 'galleryImageUrls' => $product->gallery_image_urls ?? [],
@@ -64,7 +68,7 @@ class ProductController extends Controller
      */
     public function store(SaveProductRequest $request, Shop $currentShop): RedirectResponse
     {
-        $currentShop->products()->create($request->validated());
+        $currentShop->products()->create($request->productAttributes());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product created.')]);
 
@@ -78,7 +82,7 @@ class ProductController extends Controller
      */
     public function update(SaveProductRequest $request, Shop $currentShop, Product $product): RedirectResponse
     {
-        $product->update($request->validated());
+        $product->update($request->productAttributes());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product updated.')]);
 
@@ -99,6 +103,16 @@ class ProductController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product deleted.')]);
 
         return back();
+    }
+
+    /**
+     * Get the shop's brand names, for the form's suggestions.
+     *
+     * @return array<int, string>
+     */
+    private function brandNames(Shop $shop): array
+    {
+        return $shop->brands()->orderBy('name')->pluck('name')->all();
     }
 
     /**

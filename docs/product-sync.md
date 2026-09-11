@@ -44,7 +44,7 @@ Beyond name, SKU, price and stock, each synced product keeps:
 | Field             | From                                                                                                            |
 | ----------------- | --------------------------------------------------------------------------------------------------------------- |
 | GTIN / EAN / UPC  | `global_unique_id`, falling back to `_gtin`, `_ean` or `_upc` product meta on stores older than WooCommerce 9.2 |
-| Brands            | `brands[].name`                                                                                                 |
+| Brand             | the first of `brands[].name`, stored as a row on the shop's brand list                                          |
 | Categories        | `categories[].name`                                                                                             |
 | Short description | `short_description`, markup stripped                                                                            |
 | Description       | `description`, markup stripped                                                                                  |

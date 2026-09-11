@@ -13,13 +13,13 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $shop_id
+ * @property int|null $brand_id
  * @property int|null $remote_id
  * @property string $name
  * @property string $sku
  * @property string|null $gtin
  * @property string|null $description
  * @property string|null $short_description
- * @property array<int, string>|null $brands
  * @property array<int, string>|null $categories
  * @property string|null $image_url
  * @property array<int, string>|null $gallery_image_urls
@@ -31,15 +31,16 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Shop $shop
+ * @property-read Brand|null $brand
  */
 #[Fillable([
+    'brand_id',
     'remote_id',
     'name',
     'sku',
     'gtin',
     'description',
     'short_description',
-    'brands',
     'categories',
     'image_url',
     'gallery_image_urls',
@@ -70,6 +71,16 @@ class Product extends Model
     }
 
     /**
+     * Get the product's brand, if it has been given one.
+     *
+     * @return BelongsTo<Brand, $this>
+     */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -81,7 +92,6 @@ class Product extends Model
             'stock' => 'integer',
             'status' => ProductStatus::class,
             'remote_id' => 'integer',
-            'brands' => 'array',
             'categories' => 'array',
             'gallery_image_urls' => 'array',
             'last_synced_at' => 'datetime',

@@ -20,6 +20,7 @@ import type { Product, ProductStatusOption, Shop } from '@/types';
 type Props = {
     shop: Shop;
     product: Product | null;
+    brands: string[];
     statuses: ProductStatusOption[];
 };
 
@@ -41,7 +42,12 @@ function Section({ title, description, children }: SectionProps) {
     );
 }
 
-export default function ProductForm({ shop, product, statuses }: Props) {
+export default function ProductForm({
+    shop,
+    product,
+    brands,
+    statuses,
+}: Props) {
     const formRoute = product
         ? update.form([shop.slug, product.id])
         : store.form(shop.slug);
@@ -230,26 +236,30 @@ export default function ProductForm({ shop, product, statuses }: Props) {
 
                     <Section
                         title="Organization"
-                        description="Brands and categories, entered as comma separated lists."
+                        description="The brand it belongs to, and the categories it is listed under."
                     >
                         <div className="grid gap-6 sm:grid-cols-2">
                             <div className="grid gap-2">
-                                <Label htmlFor="product-brands">
-                                    Brands{' '}
+                                <Label htmlFor="product-brand">
+                                    Brand{' '}
                                     <span className="text-muted-foreground font-normal">
                                         (optional)
                                     </span>
                                 </Label>
                                 <Input
-                                    id="product-brands"
-                                    name="brands"
-                                    data-test="product-brands"
-                                    defaultValue={
-                                        product?.brands.join(', ') ?? ''
-                                    }
-                                    placeholder="Acme, Globex"
+                                    id="product-brand"
+                                    name="brand"
+                                    data-test="product-brand"
+                                    list="product-brand-options"
+                                    defaultValue={product?.brand ?? ''}
+                                    placeholder="Acme"
                                 />
-                                <InputError message={errors.brands} />
+                                <datalist id="product-brand-options">
+                                    {brands.map((brand) => (
+                                        <option key={brand} value={brand} />
+                                    ))}
+                                </datalist>
+                                <InputError message={errors.brand} />
                             </div>
 
                             <div className="grid gap-2">

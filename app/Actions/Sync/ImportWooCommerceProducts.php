@@ -3,6 +3,7 @@
 namespace App\Actions\Sync;
 
 use App\Enums\ProductStatus;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Shop;
 use Carbon\CarbonInterface;
@@ -28,6 +29,13 @@ class ImportWooCommerceProducts
     private const int DESCRIPTION_LENGTH = 65535;
 
     /**
+     * Brand ids already resolved during this page, keyed by name.
+     *
+     * @var array<string, int|null>
+     */
+    private array $brandIds = [];
+
+    /**
      * Import one page of remote products into the shop.
      *
      * The whole page runs in a single transaction, which keeps SQLite write
@@ -37,6 +45,8 @@ class ImportWooCommerceProducts
      */
     public function handle(Shop $shop, array $remoteProducts, CarbonInterface $runStartedAt): ImportResult
     {
+        $this->brandIds = [];
+
         return DB::transaction(function () use ($shop, $remoteProducts, $runStartedAt) {
             $created = 0;
             $updated = 0;
@@ -56,7 +66,7 @@ class ImportWooCommerceProducts
                 $saved = $this->save(
                     $shop,
                     $existing,
-                    $this->attributes($remoteProduct, $remoteId, $runStartedAt),
+                    $this->attributes($shop, $remoteProduct, $remoteId, $runStartedAt),
                     $remoteId,
                 );
 
@@ -129,7 +139,7 @@ class ImportWooCommerceProducts
      * @param  array<string, mixed>  $remoteProduct
      * @return array<string, mixed>
      */
-    private function attributes(array $remoteProduct, int $remoteId, CarbonInterface $runStartedAt): array
+    private function attributes(Shop $shop, array $remoteProduct, int $remoteId, CarbonInterface $runStartedAt): array
     {
         $images = $this->imageUrls($remoteProduct);
 
@@ -140,7 +150,7 @@ class ImportWooCommerceProducts
             'gtin' => $this->gtin($remoteProduct),
             'description' => $this->nullableText($remoteProduct['description'] ?? '', self::DESCRIPTION_LENGTH),
             'short_description' => $this->nullableText($remoteProduct['short_description'] ?? '', self::DESCRIPTION_LENGTH),
-            'brands' => $this->names($remoteProduct['brands'] ?? null),
+            'brand_id' => $this->brandId($shop, $remoteProduct),
             'categories' => $this->names($remoteProduct['categories'] ?? null),
             'image_url' => $images[0] ?? null,
             'gallery_image_urls' => array_slice($images, 1) ?: null,
@@ -213,6 +223,26 @@ class ImportWooCommerceProducts
         }
 
         return null;
+    }
+
+    /**
+     * Get the brand row a remote product belongs to.
+     *
+     * A local product carries one brand, so a store that puts several on a
+     * product contributes only the first. Resolved ids are remembered for
+     * the page, since a brand normally repeats across its products.
+     *
+     * @param  array<string, mixed>  $remoteProduct
+     */
+    private function brandId(Shop $shop, array $remoteProduct): ?int
+    {
+        $name = $this->names($remoteProduct['brands'] ?? null)[0] ?? null;
+
+        if ($name === null) {
+            return null;
+        }
+
+        return $this->brandIds[$name] ??= Brand::findOrCreateFor($shop, $name)?->id;
     }
 
     /**

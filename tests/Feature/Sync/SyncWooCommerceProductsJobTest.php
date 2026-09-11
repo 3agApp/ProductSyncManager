@@ -128,6 +128,22 @@ test('a sync creates products from the remote catalog', function () {
     ]);
 });
 
+test('an imported brand is stored once and shared by its products', function () {
+    fakeStore([
+        remoteProduct(101),
+        remoteProduct(102, ['brands' => [['id' => 7, 'name' => 'ACME', 'slug' => 'acme']]]),
+        remoteProduct(103, ['brands' => [['id' => 8, 'name' => 'Globex', 'slug' => 'globex']]]),
+    ]);
+
+    $run = queuedRun();
+    runSync($run);
+
+    $brands = $run->shop->brands()->orderBy('slug')->pluck('name', 'slug');
+
+    expect($brands->all())->toBe(['acme' => 'Acme', 'globex' => 'Globex'])
+        ->and($run->shop->products()->where('remote_id', 102)->sole()->brand->slug)->toBe('acme');
+});
+
 test('a sync imports the richer woocommerce fields', function () {
     fakeStore([remoteProduct(101)]);
 
@@ -137,7 +153,7 @@ test('a sync imports the richer woocommerce fields', function () {
     $product = $run->shop->products()->sole();
 
     expect($product->gtin)->toBe('0123456789101')
-        ->and($product->brands)->toBe(['Acme'])
+        ->and($product->brand->name)->toBe('Acme')
         ->and($product->categories)->toBe(['Bags', 'Accessories'])
         ->and($product->image_url)->toBe('https://store.test/img/101-main.jpg')
         ->and($product->gallery_image_urls)->toBe(['https://store.test/img/101-alt.jpg'])
@@ -162,7 +178,7 @@ test('a product with no images brands or categories stores nulls', function () {
 
     expect($product->image_url)->toBeNull()
         ->and($product->gallery_image_urls)->toBeNull()
-        ->and($product->brands)->toBeNull()
+        ->and($product->brand_id)->toBeNull()
         ->and($product->categories)->toBeNull()
         ->and($product->gtin)->toBeNull()
         ->and($product->permalink)->toBeNull();

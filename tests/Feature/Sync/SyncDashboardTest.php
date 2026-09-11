@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ProductStatus;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\SyncRun;
 use App\Models\User;
@@ -49,14 +50,16 @@ test('the dashboard does not report another shops sync', function () {
 test('the dashboard exposes the richer product fields', function () {
     $user = User::factory()->create();
 
+    $brand = Brand::factory()->for($user->currentShop)->create(['name' => 'Acme']);
+
     $user->currentShop->products()->create([
+        'brand_id' => $brand->id,
         'remote_id' => 500,
         'name' => 'Synced Tote',
         'sku' => 'TOTE-500',
         'gtin' => '5012345678900',
         'description' => 'The long description.',
         'short_description' => 'The short one.',
-        'brands' => ['Acme'],
         'categories' => ['Bags', 'Accessories'],
         'image_url' => 'https://store.test/img/main.jpg',
         'gallery_image_urls' => ['https://store.test/img/alt.jpg'],
@@ -73,7 +76,7 @@ test('the dashboard exposes the richer product fields', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->where('products.data.0.gtin', '5012345678900')
             ->where('products.data.0.shortDescription', 'The short one.')
-            ->where('products.data.0.brands', ['Acme'])
+            ->where('products.data.0.brand', 'Acme')
             ->where('products.data.0.categories', ['Bags', 'Accessories'])
             ->where('products.data.0.imageUrl', 'https://store.test/img/main.jpg')
             ->where('products.data.0.galleryImageUrls', ['https://store.test/img/alt.jpg'])
@@ -89,7 +92,7 @@ test('a hand made product reports empty collections rather than null', function 
         ->actingAs($user)
         ->get(route('dashboard', $user->currentShop))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('products.data.0.brands', [])
+            ->where('products.data.0.brand', null)
             ->where('products.data.0.categories', [])
             ->where('products.data.0.galleryImageUrls', [])
             ->where('products.data.0.imageUrl', null)

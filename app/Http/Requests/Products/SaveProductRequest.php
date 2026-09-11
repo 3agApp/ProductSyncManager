@@ -3,10 +3,12 @@
 namespace App\Http\Requests\Products;
 
 use App\Enums\ProductStatus;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Shop;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
@@ -30,7 +32,6 @@ class SaveProductRequest extends FormRequest
      * @var array<string, string>
      */
     private const array LIST_FIELDS = [
-        'brands' => ',',
         'categories' => ',',
         'gallery_image_urls' => "\n",
     ];
@@ -38,10 +39,10 @@ class SaveProductRequest extends FormRequest
     /**
      * Prepare the data for validation.
      *
-     * The form enters brands, categories and gallery links as separated
-     * text, so they are split before the array rules run. Fields that were
-     * not submitted at all are left alone, so a caller that omits them does
-     * not wipe what is stored.
+     * The form enters categories and gallery links as separated text, so
+     * they are split before the array rules run. Fields that were not
+     * submitted at all are left alone, so a caller that omits them does not
+     * wipe what is stored.
      */
     protected function prepareForValidation(): void
     {
@@ -98,8 +99,7 @@ class SaveProductRequest extends FormRequest
             'gtin' => ['sometimes', 'nullable', 'string', 'max:64'],
             'description' => ['nullable', 'string', 'max:65535'],
             'short_description' => ['sometimes', 'nullable', 'string', 'max:65535'],
-            'brands' => ['sometimes', 'nullable', 'array', 'max:20'],
-            'brands.*' => ['string', 'max:255'],
+            'brand' => ['sometimes', 'nullable', 'string', 'max:255'],
             'categories' => ['sometimes', 'nullable', 'array', 'max:50'],
             'categories.*' => ['string', 'max:255'],
             'image_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
@@ -109,6 +109,29 @@ class SaveProductRequest extends FormRequest
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
             'stock' => ['required', 'integer', 'min:0', 'max:1000000'],
             'status' => ['required', Rule::enum(ProductStatus::class)],
+        ];
+    }
+
+    /**
+     * Get the attributes to save, with the brand resolved to a row.
+     *
+     * The form takes the brand as typed text rather than a chosen id, so a
+     * name that is new to the shop becomes a brand here. A brand that was
+     * not submitted at all is left as it is on the product.
+     *
+     * @return array<string, mixed>
+     */
+    public function productAttributes(): array
+    {
+        $validated = $this->validated();
+
+        if (! array_key_exists('brand', $validated)) {
+            return $validated;
+        }
+
+        return [
+            ...Arr::except($validated, 'brand'),
+            'brand_id' => Brand::findOrCreateFor($this->shop(), $validated['brand'])?->id,
         ];
     }
 

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\ProductStatus;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Shop;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -28,6 +29,22 @@ class ProductFactory extends Factory
             'stock' => fake()->numberBetween(Product::LOW_STOCK_THRESHOLD + 1, 250),
             'status' => ProductStatus::Active,
         ];
+    }
+
+    /**
+     * Indicate that the product carries a brand.
+     *
+     * The brand is attached once the product exists, so it always lands on
+     * the product's own shop. Names are drawn from a small pool, which is
+     * what leaves several products sharing one brand row.
+     */
+    public function branded(?string $name = null): static
+    {
+        return $this->afterCreating(function (Product $product) use ($name) {
+            $product->brand()
+                ->associate(Brand::findOrCreateFor($product->shop, $name ?? $this->brandName()))
+                ->save();
+        });
     }
 
     /**
@@ -67,6 +84,16 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'stock' => 0,
+        ]);
+    }
+
+    /**
+     * Pick one of a small pool of brand names.
+     */
+    protected function brandName(): string
+    {
+        return fake()->randomElement([
+            'Acme', 'Globex', 'Initech', 'Northwind', 'Umbra Goods',
         ]);
     }
 

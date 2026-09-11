@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ShopRole;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
@@ -10,6 +11,9 @@ test('the create page renders with the statuses it needs', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
 
+    Brand::factory()->for($shop)->create(['name' => 'Globex']);
+    Brand::factory()->for($shop)->create(['name' => 'Acme']);
+
     $this
         ->actingAs($user)
         ->get(route('products.create', $shop))
@@ -17,6 +21,7 @@ test('the create page renders with the statuses it needs', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('products/create')
             ->where('shop.slug', $shop->slug)
+            ->where('brands', ['Acme', 'Globex'])
             ->has('statuses', 3));
 });
 
@@ -42,7 +47,7 @@ test('the edit page renders the product being edited', function () {
                 'gtin',
                 'description',
                 'shortDescription',
-                'brands',
+                'brand',
                 'categories',
                 'imageUrl',
                 'galleryImageUrls',
@@ -127,7 +132,6 @@ test('list fields are split, trimmed and de-duplicated', function () {
         ->post(route('products.store', $shop), validProductData([
             'gtin' => '5012345678900',
             'short_description' => 'A sturdy everyday tote.',
-            'brands' => ' Acme , Globex ,Acme ',
             'categories' => 'Bags,Accessories',
             'image_url' => 'https://example.com/tote.jpg',
             'gallery_image_urls' => "https://example.com/a.jpg\n\n https://example.com/b.jpg ",
@@ -139,7 +143,6 @@ test('list fields are split, trimmed and de-duplicated', function () {
 
     expect($product->gtin)->toBe('5012345678900')
         ->and($product->short_description)->toBe('A sturdy everyday tote.')
-        ->and($product->brands)->toBe(['Acme', 'Globex'])
         ->and($product->categories)->toBe(['Bags', 'Accessories'])
         ->and($product->image_url)->toBe('https://example.com/tote.jpg')
         ->and($product->gallery_image_urls)->toBe([
@@ -153,9 +156,8 @@ test('submitting the fields empty clears them', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
 
-    $product = Product::factory()->for($shop)->create([
+    $product = Product::factory()->for($shop)->for(Brand::factory()->for($shop))->create([
         'gtin' => '5012345678900',
-        'brands' => ['Acme'],
         'categories' => ['Bags'],
         'gallery_image_urls' => ['https://example.com/a.jpg'],
     ]);
@@ -164,7 +166,7 @@ test('submitting the fields empty clears them', function () {
         ->actingAs($user)
         ->patch(route('products.update', [$shop, $product]), validProductData([
             'gtin' => '',
-            'brands' => '',
+            'brand' => '',
             'categories' => '',
             'gallery_image_urls' => '',
         ]))
@@ -173,7 +175,7 @@ test('submitting the fields empty clears them', function () {
     $product->refresh();
 
     expect($product->gtin)->toBeNull()
-        ->and($product->brands)->toBeNull()
+        ->and($product->brand_id)->toBeNull()
         ->and($product->categories)->toBeNull()
         ->and($product->gallery_image_urls)->toBeNull();
 });
@@ -182,9 +184,10 @@ test('omitting the fields leaves what is stored alone', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
 
-    $product = Product::factory()->for($shop)->create([
+    $brand = Brand::factory()->for($shop)->create(['name' => 'Acme']);
+
+    $product = Product::factory()->for($shop)->for($brand)->create([
         'gtin' => '5012345678900',
-        'brands' => ['Acme'],
     ]);
 
     // validProductData() carries none of the newer fields.
@@ -196,7 +199,54 @@ test('omitting the fields leaves what is stored alone', function () {
     $product->refresh();
 
     expect($product->gtin)->toBe('5012345678900')
-        ->and($product->brands)->toBe(['Acme']);
+        ->and($product->brand_id)->toBe($brand->id);
+});
+
+test('a typed brand becomes a row on the shop', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', $shop), validProductData(['brand' => ' Acme ']))
+        ->assertSessionHasNoErrors();
+
+    $brand = $shop->brands()->sole();
+
+    expect($brand->name)->toBe('Acme')
+        ->and($brand->slug)->toBe('acme')
+        ->and($shop->products()->sole()->brand_id)->toBe($brand->id);
+});
+
+test('a brand spelled differently joins the row it already has', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $brand = Brand::factory()->for($shop)->create(['name' => 'Acme', 'slug' => 'acme']);
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', $shop), validProductData(['brand' => 'ACME']))
+        ->assertSessionHasNoErrors();
+
+    expect($shop->brands()->count())->toBe(1)
+        ->and($shop->products()->sole()->brand_id)->toBe($brand->id);
+});
+
+test('brands belong to the shop that made them', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $other = Shop::factory()->create();
+
+    Brand::factory()->for($other)->create(['name' => 'Acme', 'slug' => 'acme']);
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', $shop), validProductData(['brand' => 'Acme']))
+        ->assertSessionHasNoErrors();
+
+    expect($shop->brands()->count())->toBe(1)
+        ->and($other->brands()->count())->toBe(1)
+        ->and($shop->products()->sole()->brand->shop_id)->toBe($shop->id);
 });
 
 test('the newer fields are validated', function (array $overrides, string $field) {
@@ -214,4 +264,5 @@ test('the newer fields are validated', function (array $overrides, string $field
     'gallery holds a non url' => [['gallery_image_urls' => 'nope'], 'gallery_image_urls.0'],
     'store link is not a url' => [['permalink' => 'nope'], 'permalink'],
     'gtin too long' => [['gtin' => str_repeat('9', 65)], 'gtin'],
+    'brand too long' => [['brand' => str_repeat('a', 256)], 'brand'],
 ]);

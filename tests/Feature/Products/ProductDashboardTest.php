@@ -30,7 +30,7 @@ test('the dashboard lists products for the current shop only', function () {
                 'gtin',
                 'description',
                 'shortDescription',
-                'brands',
+                'brand',
                 'categories',
                 'imageUrl',
                 'galleryImageUrls',

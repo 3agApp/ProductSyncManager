@@ -8,7 +8,7 @@ export type Product = {
     gtin: string | null;
     description: string | null;
     shortDescription: string | null;
-    brands: string[];
+    brand: string | null;
     categories: string[];
     imageUrl: string | null;
     galleryImageUrls: string[];

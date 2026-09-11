@@ -6,10 +6,16 @@ import type { Product, ProductStatusOption, Shop } from '@/types';
 type Props = {
     shop: Shop;
     product: Product;
+    brands: string[];
     statuses: ProductStatusOption[];
 };
 
-export default function ProductEdit({ shop, product, statuses }: Props) {
+export default function ProductEdit({
+    shop,
+    product,
+    brands,
+    statuses,
+}: Props) {
     return (
         <>
             <Head title={`Edit ${product.name}`} />
@@ -28,6 +34,7 @@ export default function ProductEdit({ shop, product, statuses }: Props) {
                     <ProductForm
                         shop={shop}
                         product={product}
+                        brands={brands}
                         statuses={statuses}
                     />
                 </div>

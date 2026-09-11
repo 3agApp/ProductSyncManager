@@ -97,15 +97,9 @@ export default function ProductDetailModal({
                         </Field>
                     </div>
 
-                    {product.brands.length > 0 ? (
-                        <Field label="Brands">
-                            <div className="flex flex-wrap gap-1">
-                                {product.brands.map((brand) => (
-                                    <Badge key={brand} variant="secondary">
-                                        {brand}
-                                    </Badge>
-                                ))}
-                            </div>
+                    {product.brand ? (
+                        <Field label="Brand">
+                            <Badge variant="secondary">{product.brand}</Badge>
                         </Field>
                     ) : null}
 
