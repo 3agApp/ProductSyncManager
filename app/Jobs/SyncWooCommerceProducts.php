@@ -1,0 +1,212 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Actions\Sync\ImportWooCommerceProducts;
+use App\Enums\ProductStatus;
+use App\Models\Shop;
+use App\Models\SyncRun;
+use App\Services\WooCommerce\Exceptions\WooCommerceAuthenticationException;
+use App\Services\WooCommerce\Exceptions\WooCommerceException;
+use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
+use App\Services\WooCommerce\WooCommerceClient;
+use Carbon\CarbonInterface;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Throwable;
+
+class SyncWooCommerceProducts implements ShouldQueue
+{
+    use Queueable;
+
+    /**
+     * The number of times the job may be attempted.
+     */
+    public int $tries = 3;
+
+    /**
+     * The number of seconds the job may run before timing out.
+     */
+    public int $timeout = 900;
+
+    /**
+     * The number of unhandled exceptions to allow before failing.
+     */
+    public int $maxExceptions = 2;
+
+    /**
+     * Counters accumulated across every page of the run.
+     *
+     * @var array<string, int>
+     */
+    private array $counters = [
+        'processed' => 0,
+        'created' => 0,
+        'updated' => 0,
+        'archived' => 0,
+        'skipped' => 0,
+    ];
+
+    private ?int $totalProducts = null;
+
+    public function __construct(public SyncRun $syncRun)
+    {
+        //
+    }
+
+    /**
+     * Get the middleware the job should pass through.
+     *
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('shop-sync:'.$this->syncRun->shop_id))
+                ->dontRelease()
+                ->expireAfter(3600),
+        ];
+    }
+
+    /**
+     * Get the number of seconds to wait before retrying.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [30, 120];
+    }
+
+    /**
+     * Pull the shop's catalog from WooCommerce.
+     */
+    public function handle(ImportWooCommerceProducts $import): void
+    {
+        $shop = $this->syncRun->shop;
+        $connection = $shop->wooCommerceConnection;
+
+        if ($connection === null || ! $connection->hasUsableCredentials()) {
+            $this->fail(new WooCommerceAuthenticationException('The shop has no usable WooCommerce credentials.'));
+
+            return;
+        }
+
+        $this->syncRun->markRunning();
+
+        $runStartedAt = $this->syncRun->started_at ?? now();
+        $client = new WooCommerceClient($connection);
+
+        try {
+            // Variable products cannot be represented as single local products,
+            // so they are reported as skipped rather than silently ignored.
+            $this->counters['skipped'] = $client->variableProductCount();
+            $this->persistProgress();
+
+            $this->importAllPages($client, $import, $shop, $runStartedAt);
+
+            // Only archive once every page succeeded. Archiving after a partial
+            // failure would wipe the catalog the store still has.
+            $this->counters['archived'] = $this->archiveMissing($shop, $runStartedAt);
+            $this->persistProgress();
+
+            $this->syncRun->markCompleted();
+            $shop->syncSettings?->update(['last_run_at' => now()]);
+        } catch (WooCommerceRateLimitException $exception) {
+            $this->persistProgress();
+            $this->release($exception->retryAfter);
+        } catch (WooCommerceAuthenticationException $exception) {
+            // Bad credentials will not fix themselves; do not burn the retries.
+            $this->persistProgress();
+            $this->fail($exception);
+        }
+    }
+
+    /**
+     * Walk every page of remote products.
+     */
+    private function importAllPages(
+        WooCommerceClient $client,
+        ImportWooCommerceProducts $import,
+        Shop $shop,
+        CarbonInterface $runStartedAt,
+    ): void {
+        $maxPages = max(1, (int) config('services.woocommerce.max_pages'));
+
+        for ($page = 1; $page <= $maxPages; $page++) {
+            $remotePage = $client->productPage($page);
+
+            if ($page === 1) {
+                $this->totalProducts = $remotePage->total;
+            }
+
+            if ($remotePage->isEmpty()) {
+                return;
+            }
+
+            $result = $import->handle($shop, $remotePage->products, $runStartedAt);
+
+            $this->counters['created'] += $result->created;
+            $this->counters['updated'] += $result->updated;
+            $this->counters['skipped'] += $result->skipped;
+            $this->counters['processed'] += count($remotePage->products);
+
+            $this->persistProgress();
+
+            if ($remotePage->totalPages !== null && $page >= $remotePage->totalPages) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Archive products the store no longer has.
+     *
+     * Only previously synced products are touched, so anything created by
+     * hand in this app is left alone.
+     */
+    private function archiveMissing(Shop $shop, CarbonInterface $runStartedAt): int
+    {
+        return $shop->products()
+            ->whereNotNull('remote_id')
+            ->where('status', '!=', ProductStatus::Archived->value)
+            ->where(fn ($query) => $query
+                ->whereNull('last_synced_at')
+                ->orWhere('last_synced_at', '<', $runStartedAt))
+            ->update([
+                'status' => ProductStatus::Archived->value,
+                'updated_at' => now(),
+            ]);
+    }
+
+    /**
+     * Write the counters to the run.
+     *
+     * This is called once per page rather than once per product, which keeps
+     * write pressure off the database while the browser polls the run.
+     */
+    private function persistProgress(): void
+    {
+        $this->syncRun->update([
+            'total_products' => $this->totalProducts,
+            'processed_products' => $this->counters['processed'],
+            'created_products' => $this->counters['created'],
+            'updated_products' => $this->counters['updated'],
+            'archived_products' => $this->counters['archived'],
+            'skipped_products' => $this->counters['skipped'],
+        ]);
+    }
+
+    /**
+     * Record the failure against the run so the user can see what happened.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $message = $exception instanceof WooCommerceException
+            ? $exception->userMessage()
+            : __('The sync failed unexpectedly. Please try again.');
+
+        $this->syncRun->refresh()->markFailed($message);
+    }
+}

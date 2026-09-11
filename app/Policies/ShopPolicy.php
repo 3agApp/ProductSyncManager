@@ -91,6 +91,22 @@ class ShopPolicy
     }
 
     /**
+     * Determine whether the user can configure the shop's sync connection and schedule.
+     */
+    public function manageSync(User $user, Shop $shop): bool
+    {
+        return $user->hasShopPermission($shop, ShopPermission::ManageSync);
+    }
+
+    /**
+     * Determine whether the user can start a sync for the shop.
+     */
+    public function runSync(User $user, Shop $shop): bool
+    {
+        return $user->hasShopPermission($shop, ShopPermission::RunSync);
+    }
+
+    /**
      * Determine whether the user can delete the model.
      */
     public function delete(User $user, Shop $shop): bool

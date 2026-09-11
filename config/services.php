@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'woocommerce' => [
+        'per_page' => (int) env('WOOCOMMERCE_PER_PAGE', 100),
+        'retries' => (int) env('WOOCOMMERCE_RETRIES', 3),
+        'max_pages' => (int) env('WOOCOMMERCE_MAX_PAGES', 500),
+    ],
+
 ];

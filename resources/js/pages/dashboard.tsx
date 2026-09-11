@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     AlertTriangle,
@@ -9,8 +9,10 @@ import {
     Package,
     PackageOpen,
     PackageX,
+    Eye,
     Pencil,
     Plus,
+    RefreshCw,
     Search,
     Trash2,
     X,
@@ -18,9 +20,11 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import DeleteProductModal from '@/components/delete-product-modal';
 import PendingInvitationsModal from '@/components/pending-invitations-modal';
+import ProductDetailModal from '@/components/product-detail-modal';
 import ProductFormModal from '@/components/product-form-modal';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { ProductStockLevel } from '@/components/product-stock-level';
+import { SyncProgressBar } from '@/components/sync-progress';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -48,6 +52,7 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
+    ActiveSyncRun,
     DashboardInvitation,
     Paginated,
     Product,
@@ -66,6 +71,7 @@ type Props = {
     lowStockThreshold: number;
     permissions: ShopPermissions;
     pendingInvitations?: DashboardInvitation[];
+    activeSyncRun?: ActiveSyncRun | null;
 };
 
 type StatCard = {
@@ -86,6 +92,7 @@ export default function Dashboard({
     lowStockThreshold,
     permissions,
     pendingInvitations = [],
+    activeSyncRun = null,
 }: Props) {
     const { currentShop } = usePage().props;
     const [showInvitations, setShowInvitations] = useState(
@@ -98,6 +105,8 @@ export default function Dashboard({
     const [productToDelete, setProductToDelete] = useState<Product | null>(
         null,
     );
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [productToView, setProductToView] = useState<Product | null>(null);
     const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
     useEffect(() => {
@@ -105,6 +114,24 @@ export default function Dashboard({
 
         return () => clearTimeout(timeout.current);
     }, []);
+
+    // While a sync is running, refresh the table so imported products appear
+    // as they land. The poll only starts once there is something to watch.
+    const isSyncing = activeSyncRun !== null;
+
+    const { start: startSyncPoll, stop: stopSyncPoll } = usePoll(
+        3000,
+        { only: ['activeSyncRun', 'products', 'stats'] },
+        { autoStart: isSyncing, keepAlive: false, mode: 'cancel' },
+    );
+
+    useEffect(() => {
+        if (isSyncing) {
+            startSyncPoll();
+        } else {
+            stopSyncPoll();
+        }
+    }, [isSyncing, startSyncPoll, stopSyncPoll]);
 
     if (!currentShop) {
         return null;
@@ -150,6 +177,11 @@ export default function Dashboard({
     const openEditForm = (product: Product) => {
         setEditingProduct(product);
         setFormOpen(true);
+    };
+
+    const openDetail = (product: Product) => {
+        setProductToView(product);
+        setDetailOpen(true);
     };
 
     const confirmDelete = (product: Product) => {
@@ -221,6 +253,26 @@ export default function Dashboard({
                         </Button>
                     ) : null}
                 </div>
+
+                {activeSyncRun ? (
+                    <div
+                        data-test="sync-banner"
+                        className="border-sidebar-border/70 dark:border-sidebar-border space-y-3 rounded-xl border p-4"
+                    >
+                        <div className="flex items-center gap-2 text-sm">
+                            <RefreshCw className="size-4 animate-spin" />
+                            <span>
+                                {activeSyncRun.status === 'queued'
+                                    ? 'Sync queued…'
+                                    : activeSyncRun.totalProducts === null
+                                      ? `Syncing ${activeSyncRun.processedProducts.toLocaleString()} products…`
+                                      : `Syncing ${activeSyncRun.processedProducts.toLocaleString()} of ${activeSyncRun.totalProducts.toLocaleString()} products…`}
+                            </span>
+                        </div>
+
+                        <SyncProgressBar percent={activeSyncRun.progress} />
+                    </div>
+                ) : null}
 
                 <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {statCards.map((card) => (
@@ -338,13 +390,30 @@ export default function Dashboard({
                                     >
                                         <TableCell className="pl-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
-                                                    <Package className="size-4" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="max-w-64 truncate font-medium">
-                                                        {product.name}
+                                                {product.imageUrl ? (
+                                                    <img
+                                                        src={product.imageUrl}
+                                                        alt=""
+                                                        loading="lazy"
+                                                        data-test="product-thumbnail"
+                                                        className="bg-muted size-9 shrink-0 rounded-md object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
+                                                        <Package className="size-4" />
                                                     </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <button
+                                                        type="button"
+                                                        data-test="product-detail-open"
+                                                        onClick={() =>
+                                                            openDetail(product)
+                                                        }
+                                                        className="hover:text-primary max-w-64 truncate font-medium underline-offset-4 hover:underline"
+                                                    >
+                                                        {product.name}
+                                                    </button>
                                                     <div className="text-muted-foreground font-mono text-xs">
                                                         {product.sku}
                                                     </div>
@@ -403,6 +472,17 @@ export default function Dashboard({
                                                         align="end"
                                                         className="w-40"
                                                     >
+                                                        <DropdownMenuItem
+                                                            data-test="product-view"
+                                                            onSelect={() =>
+                                                                openDetail(
+                                                                    product,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Eye /> View details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
                                                         {permissions.canUpdateProduct ? (
                                                             <DropdownMenuItem
                                                                 data-test="product-edit"
@@ -576,6 +656,12 @@ export default function Dashboard({
                 product={productToDelete}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
+            />
+
+            <ProductDetailModal
+                product={productToView}
+                open={detailOpen}
+                onOpenChange={setDetailOpen}
             />
         </>
     );

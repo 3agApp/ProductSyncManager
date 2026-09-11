@@ -1,5 +1,5 @@
-import { Form, Head, router } from '@inertiajs/react';
-import { ChevronDown, Mail, UserPlus, X } from 'lucide-react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { ChevronDown, Mail, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import CancelInvitationModal from '@/components/cancel-invitation-modal';
 import DeleteShopModal from '@/components/delete-shop-modal';
@@ -19,6 +19,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
@@ -27,6 +34,7 @@ import {
 import { useInitials } from '@/hooks/use-initials';
 import { edit, index, update } from '@/routes/shops';
 import { update as updateMember } from '@/routes/shops/members';
+import { edit as editSync } from '@/routes/shops/sync';
 import type {
     RoleOption,
     Shop,
@@ -51,6 +59,7 @@ export default function ShopEdit({
     availableRoles,
 }: Props) {
     const getInitials = useInitials();
+    const { shopTypes } = usePage().props;
 
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -124,6 +133,37 @@ export default function ShopEdit({
                                             <InputError message={errors.name} />
                                         </div>
 
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="type">
+                                                Shop type
+                                            </Label>
+                                            <Select
+                                                name="type"
+                                                defaultValue={
+                                                    shop.type ?? 'wordpress'
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    id="type"
+                                                    data-test="shop-type-input"
+                                                    className="w-full"
+                                                >
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {shopTypes.map((option) => (
+                                                        <SelectItem
+                                                            key={option.value}
+                                                            value={option.value}
+                                                        >
+                                                            {option.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <InputError message={errors.type} />
+                                        </div>
+
                                         <div className="flex items-center gap-4">
                                             <Button
                                                 type="submit"
@@ -143,6 +183,27 @@ export default function ShopEdit({
                         </>
                     )}
                 </div>
+
+                {permissions.canRunSync ? (
+                    <div className="space-y-6">
+                        <div className="flex items-start justify-between gap-4">
+                            <Heading
+                                variant="small"
+                                title="Product sync"
+                                description="Connect this shop to a WooCommerce store and pull its catalog."
+                            />
+
+                            <Button variant="secondary" asChild>
+                                <Link
+                                    href={editSync(shop.slug)}
+                                    data-test="shop-sync-link"
+                                >
+                                    <RefreshCw /> Sync settings
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
 
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">

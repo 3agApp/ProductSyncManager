@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Shops;
 
+use App\Enums\ShopType;
 use App\Rules\ShopName;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SaveShopRequest extends FormRequest
 {
@@ -17,6 +19,7 @@ class SaveShopRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255', new ShopName],
+            'type' => ['sometimes', 'required', Rule::enum(ShopType::class)],
         ];
     }
 }

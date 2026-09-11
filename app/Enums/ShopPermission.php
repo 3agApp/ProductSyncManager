@@ -17,4 +17,7 @@ enum ShopPermission: string
     case CreateProduct = 'product:create';
     case UpdateProduct = 'product:update';
     case DeleteProduct = 'product:delete';
+
+    case ManageSync = 'sync:manage';
+    case RunSync = 'sync:run';
 }

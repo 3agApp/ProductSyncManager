@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\GeneratesUniqueShopSlugs;
 use App\Enums\ShopRole;
+use App\Enums\ShopType;
 use Database\Factories\ShopFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -19,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $slug
  * @property bool $is_personal
+ * @property ShopType $type
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -26,8 +29,11 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, User> $members
  * @property-read Collection<int, Product> $products
+ * @property-read Collection<int, SyncRun> $syncRuns
+ * @property-read WooCommerceConnection|null $wooCommerceConnection
+ * @property-read ShopSyncSetting|null $syncSettings
  */
-#[Fillable(['name', 'slug', 'is_personal'])]
+#[Fillable(['name', 'slug', 'is_personal', 'type'])]
 class Shop extends Model
 {
     /** @use HasFactory<ShopFactory> */
@@ -107,6 +113,36 @@ class Shop extends Model
     }
 
     /**
+     * Get the WooCommerce connection for the shop.
+     *
+     * @return HasOne<WooCommerceConnection, $this>
+     */
+    public function wooCommerceConnection(): HasOne
+    {
+        return $this->hasOne(WooCommerceConnection::class);
+    }
+
+    /**
+     * Get the sync schedule settings for the shop.
+     *
+     * @return HasOne<ShopSyncSetting, $this>
+     */
+    public function syncSettings(): HasOne
+    {
+        return $this->hasOne(ShopSyncSetting::class);
+    }
+
+    /**
+     * Get the sync runs for the shop.
+     *
+     * @return HasMany<SyncRun, $this>
+     */
+    public function syncRuns(): HasMany
+    {
+        return $this->hasMany(SyncRun::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -115,6 +151,7 @@ class Shop extends Model
     {
         return [
             'is_personal' => 'boolean',
+            'type' => ShopType::class,
         ];
     }
 

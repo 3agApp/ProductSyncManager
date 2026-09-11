@@ -13,17 +13,42 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $shop_id
+ * @property int|null $remote_id
  * @property string $name
  * @property string $sku
+ * @property string|null $gtin
  * @property string|null $description
+ * @property string|null $short_description
+ * @property array<int, string>|null $brands
+ * @property array<int, string>|null $categories
+ * @property string|null $image_url
+ * @property array<int, string>|null $gallery_image_urls
+ * @property string|null $permalink
  * @property string $price
  * @property int $stock
  * @property ProductStatus $status
+ * @property Carbon|null $last_synced_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Shop $shop
  */
-#[Fillable(['name', 'sku', 'description', 'price', 'stock', 'status'])]
+#[Fillable([
+    'remote_id',
+    'name',
+    'sku',
+    'gtin',
+    'description',
+    'short_description',
+    'brands',
+    'categories',
+    'image_url',
+    'gallery_image_urls',
+    'permalink',
+    'price',
+    'stock',
+    'status',
+    'last_synced_at',
+])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -55,6 +80,11 @@ class Product extends Model
             'price' => 'decimal:2',
             'stock' => 'integer',
             'status' => ProductStatus::class,
+            'remote_id' => 'integer',
+            'brands' => 'array',
+            'categories' => 'array',
+            'gallery_image_urls' => 'array',
+            'last_synced_at' => 'datetime',
         ];
     }
 }

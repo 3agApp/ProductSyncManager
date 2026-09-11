@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Shops;
 
 use App\Actions\Shops\CreateShop;
 use App\Enums\ShopRole;
+use App\Enums\ShopType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Shops\DeleteShopRequest;
 use App\Http\Requests\Shops\SaveShopRequest;
@@ -36,7 +37,11 @@ class ShopController extends Controller
      */
     public function store(SaveShopRequest $request, CreateShop $createShop): RedirectResponse
     {
-        $shop = $createShop->handle($request->user(), $request->validated('name'));
+        $shop = $createShop->handle(
+            $request->user(),
+            $request->validated('name'),
+            ShopType::tryFrom((string) $request->validated('type')) ?? ShopType::Wordpress,
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Shop created.')]);
 
@@ -56,6 +61,8 @@ class ShopController extends Controller
                 'name' => $shop->name,
                 'slug' => $shop->slug,
                 'isPersonal' => $shop->is_personal,
+                'type' => $shop->type->value,
+                'typeLabel' => $shop->type->label(),
             ],
             'members' => $shop->members()->get()->map(function (User $member) {
                 /** @var Membership $membership */
@@ -95,7 +102,10 @@ class ShopController extends Controller
         $shop = DB::transaction(function () use ($request, $shop) {
             $shop = Shop::whereKey($shop->id)->lockForUpdate()->firstOrFail();
 
-            $shop->update(['name' => $request->validated('name')]);
+            $shop->update([
+                'name' => $request->validated('name'),
+                'type' => ShopType::tryFrom((string) $request->validated('type')) ?? $shop->type,
+            ]);
 
             return $shop;
         });

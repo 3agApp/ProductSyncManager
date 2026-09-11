@@ -32,10 +32,13 @@ enum ShopRole: string
                 ShopPermission::CreateProduct,
                 ShopPermission::UpdateProduct,
                 ShopPermission::DeleteProduct,
+                ShopPermission::ManageSync,
+                ShopPermission::RunSync,
             ],
             self::Member => [
                 ShopPermission::CreateProduct,
                 ShopPermission::UpdateProduct,
+                ShopPermission::RunSync,
             ],
         };
     }

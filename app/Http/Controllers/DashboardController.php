@@ -6,6 +6,7 @@ use App\Enums\ProductStatus;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\ShopInvitation;
+use App\Models\SyncRun;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -43,7 +44,14 @@ class DashboardController extends Controller
                 'id' => $product->id,
                 'name' => $product->name,
                 'sku' => $product->sku,
+                'gtin' => $product->gtin,
                 'description' => $product->description,
+                'shortDescription' => $product->short_description,
+                'brands' => $product->brands ?? [],
+                'categories' => $product->categories ?? [],
+                'imageUrl' => $product->image_url,
+                'galleryImageUrls' => $product->gallery_image_urls ?? [],
+                'permalink' => $product->permalink,
                 'price' => $product->price,
                 'stock' => $product->stock,
                 'status' => $product->status->value,
@@ -60,7 +68,34 @@ class DashboardController extends Controller
             'lowStockThreshold' => Product::LOW_STOCK_THRESHOLD,
             'permissions' => $request->user()->toShopPermissions($currentShop),
             'pendingInvitations' => $this->pendingInvitations($request),
+            'activeSyncRun' => fn () => $this->activeSyncRun($currentShop),
         ]);
+    }
+
+    /**
+     * Get the in-flight sync for the shop, if there is one.
+     *
+     * This is deliberately smaller than the payload the sync settings page
+     * uses: the dashboard only shows a progress banner, and it is reloaded
+     * on a timer while a sync runs.
+     *
+     * @return array{id: int, status: string, progress: int|null, processedProducts: int, totalProducts: int|null}|null
+     */
+    private function activeSyncRun(Shop $shop): ?array
+    {
+        $run = $shop->syncRuns()->active()->latest('id')->first();
+
+        if (! $run instanceof SyncRun) {
+            return null;
+        }
+
+        return [
+            'id' => $run->id,
+            'status' => $run->status->value,
+            'progress' => $run->progress(),
+            'processedProducts' => $run->processed_products,
+            'totalProducts' => $run->total_products,
+        ];
     }
 
     /**

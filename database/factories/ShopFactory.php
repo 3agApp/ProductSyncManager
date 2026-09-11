@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ShopType;
 use App\Models\Shop;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ class ShopFactory extends Factory
             'name' => fake()->unique()->company(),
             'slug' => fn (array $attributes) => Str::slug($attributes['name']),
             'is_personal' => false,
+            'type' => ShopType::Wordpress,
         ];
     }
 

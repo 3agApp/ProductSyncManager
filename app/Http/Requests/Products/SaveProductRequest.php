@@ -41,7 +41,7 @@ class SaveProductRequest extends FormRequest
                     ->where('shop_id', $this->shop()->id)
                     ->ignore($this->product()?->id),
             ],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => ['nullable', 'string', 'max:65535'],
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
             'stock' => ['required', 'integer', 'min:0', 'max:1000000'],
             'status' => ['required', Rule::enum(ProductStatus::class)],

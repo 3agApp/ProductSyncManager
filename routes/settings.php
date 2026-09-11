@@ -5,6 +5,8 @@ use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Shops\ShopController;
 use App\Http\Controllers\Shops\ShopInvitationController;
 use App\Http\Controllers\Shops\ShopMemberController;
+use App\Http\Controllers\Shops\ShopSyncController;
+use App\Http\Controllers\Shops\SyncRunController;
 use App\Http\Middleware\EnsureShopMembership;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +46,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::post('settings/shops/{shop}/invitations', [ShopInvitationController::class, 'store'])->name('shops.invitations.store');
         Route::delete('settings/shops/{shop}/invitations/{invitation}', [ShopInvitationController::class, 'destroy'])->name('shops.invitations.destroy');
+
+        Route::get('settings/shops/{shop}/sync', [ShopSyncController::class, 'edit'])->name('shops.sync.edit');
+        Route::patch('settings/shops/{shop}/sync/connection', [ShopSyncController::class, 'updateConnection'])->name('shops.sync.connection.update');
+        Route::patch('settings/shops/{shop}/sync/schedule', [ShopSyncController::class, 'updateSchedule'])->name('shops.sync.schedule.update');
+        Route::post('settings/shops/{shop}/sync/test', [ShopSyncController::class, 'test'])
+            ->middleware('throttle:10,1')
+            ->name('shops.sync.test');
+        Route::post('settings/shops/{shop}/sync/runs', [SyncRunController::class, 'store'])
+            ->middleware('throttle:20,1')
+            ->name('shops.sync.runs.store');
     });
 });
 

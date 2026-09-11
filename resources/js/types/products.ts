@@ -4,7 +4,14 @@ export type Product = {
     id: number;
     name: string;
     sku: string;
+    gtin: string | null;
     description: string | null;
+    shortDescription: string | null;
+    brands: string[];
+    categories: string[];
+    imageUrl: string | null;
+    galleryImageUrls: string[];
+    permalink: string | null;
     price: string;
     stock: number;
     status: ProductStatus;

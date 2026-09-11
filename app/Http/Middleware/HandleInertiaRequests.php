@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\ShopType;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,6 +47,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'currentShop' => fn () => $user?->currentShop ? $user->toUserShop($user->currentShop) : null,
             'shops' => fn () => $user?->toUserShops(includeCurrent: true) ?? [],
+            'shopTypes' => ShopType::options(),
         ];
     }
 }

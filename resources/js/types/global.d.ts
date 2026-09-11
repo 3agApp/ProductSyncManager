@@ -1,5 +1,5 @@
 import type { Auth } from '@/types/auth';
-import type { Shop } from '@/types/shops';
+import type { Shop, ShopTypeOption } from '@/types/shops';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -15,6 +15,7 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             currentShop: Shop | null;
             shops: Shop[];
+            shopTypes: ShopTypeOption[];
             [key: string]: unknown;
         };
     }
