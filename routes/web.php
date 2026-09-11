@@ -14,7 +14,9 @@ Route::prefix('{current_shop}')
     ->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
+        Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
         Route::post('products', [ProductController::class, 'store'])->name('products.store');
+        Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
         Route::patch('products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
     });

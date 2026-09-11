@@ -24,6 +24,7 @@ test('the dashboard lists products for the current shop only', function () {
             ->where('products.total', 3)
             ->has('products.data.0', fn (Assert $product) => $product->hasAll([
                 'id',
+                'remoteId',
                 'name',
                 'sku',
                 'gtin',

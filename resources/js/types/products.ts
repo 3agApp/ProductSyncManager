@@ -2,6 +2,7 @@ export type ProductStatus = 'active' | 'draft' | 'archived';
 
 export type Product = {
     id: number;
+    remoteId: number | null;
     name: string;
     sku: string;
     gtin: string | null;

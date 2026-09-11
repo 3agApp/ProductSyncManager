@@ -42,6 +42,7 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'products' => $products->through(fn (Product $product) => [
                 'id' => $product->id,
+                'remoteId' => $product->remote_id,
                 'name' => $product->name,
                 'sku' => $product->sku,
                 'gtin' => $product->gtin,

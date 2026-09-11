@@ -21,7 +21,6 @@ import { useEffect, useRef, useState } from 'react';
 import DeleteProductModal from '@/components/delete-product-modal';
 import PendingInvitationsModal from '@/components/pending-invitations-modal';
 import ProductDetailModal from '@/components/product-detail-modal';
-import ProductFormModal from '@/components/product-form-modal';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { ProductStockLevel } from '@/components/product-stock-level';
 import { SyncProgressBar } from '@/components/sync-progress';
@@ -51,6 +50,10 @@ import {
 } from '@/components/ui/table';
 import { cn, formatCurrency } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import {
+    create as createProduct,
+    edit as editProduct,
+} from '@/routes/products';
 import type {
     ActiveSyncRun,
     DashboardInvitation,
@@ -99,8 +102,6 @@ export default function Dashboard({
         pendingInvitations.length > 0,
     );
     const [search, setSearch] = useState(filters.search);
-    const [formOpen, setFormOpen] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(
         null,
@@ -169,16 +170,6 @@ export default function Dashboard({
         applyFilters({ search: '', status: null });
     };
 
-    const openCreateForm = () => {
-        setEditingProduct(null);
-        setFormOpen(true);
-    };
-
-    const openEditForm = (product: Product) => {
-        setEditingProduct(product);
-        setFormOpen(true);
-    };
-
     const openDetail = (product: Product) => {
         setProductToView(product);
         setDetailOpen(true);
@@ -245,11 +236,13 @@ export default function Dashboard({
                     </div>
 
                     {permissions.canCreateProduct ? (
-                        <Button
-                            data-test="add-product-button"
-                            onClick={openCreateForm}
-                        >
-                            <Plus /> Add product
+                        <Button asChild>
+                            <Link
+                                href={createProduct(currentShop.slug)}
+                                data-test="add-product-button"
+                            >
+                                <Plus /> Add product
+                            </Link>
                         </Button>
                     ) : null}
                 </div>
@@ -485,14 +478,20 @@ export default function Dashboard({
                                                         <DropdownMenuSeparator />
                                                         {permissions.canUpdateProduct ? (
                                                             <DropdownMenuItem
+                                                                asChild
                                                                 data-test="product-edit"
-                                                                onSelect={() =>
-                                                                    openEditForm(
-                                                                        product,
-                                                                    )
-                                                                }
                                                             >
-                                                                <Pencil /> Edit
+                                                                <Link
+                                                                    href={editProduct(
+                                                                        [
+                                                                            currentShop.slug,
+                                                                            product.id,
+                                                                        ],
+                                                                    )}
+                                                                >
+                                                                    <Pencil />{' '}
+                                                                    Edit
+                                                                </Link>
                                                             </DropdownMenuItem>
                                                         ) : null}
                                                         {permissions.canUpdateProduct &&
@@ -558,11 +557,14 @@ export default function Dashboard({
                                         </p>
                                     </div>
                                     {permissions.canCreateProduct ? (
-                                        <Button
-                                            size="sm"
-                                            onClick={openCreateForm}
-                                        >
-                                            <Plus /> Add product
+                                        <Button size="sm" asChild>
+                                            <Link
+                                                href={createProduct(
+                                                    currentShop.slug,
+                                                )}
+                                            >
+                                                <Plus /> Add product
+                                            </Link>
                                         </Button>
                                     ) : null}
                                 </>
@@ -642,14 +644,6 @@ export default function Dashboard({
                     ) : null}
                 </div>
             </div>
-
-            <ProductFormModal
-                shop={currentShop}
-                product={editingProduct}
-                statuses={statuses}
-                open={formOpen}
-                onOpenChange={setFormOpen}
-            />
 
             <DeleteProductModal
                 shop={currentShop}
