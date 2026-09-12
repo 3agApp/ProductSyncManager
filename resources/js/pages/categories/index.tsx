@@ -11,7 +11,7 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
-import DeleteCatalogTermModal from '@/components/delete-catalog-term-modal';
+import DeleteCategoryModal from '@/components/delete-category-modal';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,12 +34,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
-import {
-    destroy,
-    index as categoriesIndex,
-    store,
-    update,
-} from '@/routes/categories';
+import { index as categoriesIndex, store, update } from '@/routes/categories';
 import { index as productsIndex } from '@/routes/products';
 import type { Category, ShopPermissions } from '@/types';
 
@@ -125,11 +120,9 @@ export default function CategoryIndex({ categories, permissions }: Props) {
         <>
             <Head title="Categories" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="space-y-0.5">
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        Categories
-                    </h1>
+            <div className="workspace-page">
+                <div className="page-heading">
+                    <h1 className="page-title">Categories</h1>
                     <p className="text-muted-foreground text-sm">
                         How the {currentShop.name} catalog is filed. A category
                         can sit under another, and a product can be in several.
@@ -141,7 +134,7 @@ export default function CategoryIndex({ categories, permissions }: Props) {
                         {...store.form(currentShop.slug)}
                         options={{ preserveScroll: true }}
                         resetOnSuccess
-                        className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-4"
+                        className="workspace-panel p-5 sm:p-6"
                     >
                         {({ errors, processing }) => (
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -202,7 +195,7 @@ export default function CategoryIndex({ categories, permissions }: Props) {
                     </Form>
                 ) : null}
 
-                <div className="border-sidebar-border/70 dark:border-sidebar-border flex flex-col rounded-xl border">
+                <div className="workspace-table">
                     {categories.length > 0 ? (
                         <div className="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
                             <div className="relative w-full sm:max-w-xs">
@@ -533,20 +526,15 @@ export default function CategoryIndex({ categories, permissions }: Props) {
                 </div>
             </div>
 
-            <DeleteCatalogTermModal
-                open={toDelete !== null}
-                onOpenChange={(open) => !open && setToDelete(null)}
-                action={
-                    toDelete ? destroy([currentShop.slug, toDelete.id]) : null
-                }
-                title="Delete category"
-                confirmLabel="Delete category"
-                description={
-                    toDelete
-                        ? `${toDelete.name} will be removed. Its ${toDelete.productCount} product${toDelete.productCount === 1 ? '' : 's'} stay in the catalog${toDelete.childCount > 0 ? `, and its ${toDelete.childCount} subcategor${toDelete.childCount === 1 ? 'y moves' : 'ies move'} up a level` : ''}.`
-                        : ''
-                }
-            />
+            {toDelete && (
+                <DeleteCategoryModal
+                    key={toDelete.id}
+                    category={toDelete}
+                    shopSlug={currentShop.slug}
+                    permissions={permissions}
+                    onClose={() => setToDelete(null)}
+                />
+            )}
         </>
     );
 }

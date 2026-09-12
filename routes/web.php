@@ -28,6 +28,7 @@ Route::prefix('{current_shop}')
         Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
         Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
         Route::patch('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+        Route::get('categories/{category}/deletion-preview', [CategoryController::class, 'deletionPreview'])->name('categories.deletion-preview');
         Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 
         Route::get('brands', [BrandController::class, 'index'])->name('brands.index');

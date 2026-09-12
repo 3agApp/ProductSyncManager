@@ -535,3 +535,92 @@ test('a shop with no connection fails the run', function () {
 
     expect($run->refresh()->status)->toBe(SyncRunStatus::Failed);
 });
+
+test('reaching the product page limit never archives an unread product', function () {
+    config(['services.woocommerce.max_pages' => 1]);
+    $run = queuedRun();
+    $existing = Product::factory()->for($run->shop)->create([
+        'remote_id' => 102,
+        'status' => ProductStatus::Active,
+    ]);
+    fakeStore([remoteProduct(101), remoteProduct(102)], perPage: 1);
+
+    expect(fn () => runSync($run))->toThrow(WooCommerceRequestException::class);
+    expect($existing->fresh()->status)->toBe(ProductStatus::Active)
+        ->and($run->refresh()->status)->not->toBe(SyncRunStatus::Completed)
+        ->and($run->archived_products)->toBe(0);
+});
+
+test('an invalid catalog response never archives existing products', function (string $body) {
+    $run = queuedRun();
+    $existing = Product::factory()->for($run->shop)->create([
+        'remote_id' => 102,
+        'status' => ProductStatus::Active,
+    ]);
+    Http::fake(function (Request $request) use ($body) {
+        if (str_contains($request->url(), 'products/categories') || ($request->data()['type'] ?? '') === 'variable') {
+            return Http::response([], 200, ['X-WP-Total' => '0']);
+        }
+
+        return Http::response($body, 200);
+    });
+
+    expect(fn () => runSync($run))->toThrow(WooCommerceRequestException::class);
+    expect($existing->fresh()->status)->toBe(ProductStatus::Active)
+        ->and($run->refresh()->archived_products)->toBe(0);
+})->with(['<html>Maintenance</html>', '{}', 'null', '[{"name":"Missing ID"}]', '[{"id":-1}]']);
+
+test('an unexpectedly empty product page cannot complete a partial catalog', function () {
+    $run = queuedRun();
+    Http::fake(function (Request $request) {
+        if (str_contains($request->url(), 'products/categories') || ($request->data()['type'] ?? '') === 'variable') {
+            return Http::response([], 200);
+        }
+
+        return Http::response([], 200, ['X-WP-Total' => '10', 'X-WP-TotalPages' => '1']);
+    });
+
+    expect(fn () => runSync($run))->toThrow(WooCommerceRequestException::class);
+    expect($run->refresh()->status)->not->toBe(SyncRunStatus::Completed);
+});
+
+test('reaching the category page limit does not import a partial tree', function () {
+    config(['services.woocommerce.max_pages' => 1]);
+    $run = queuedRun();
+    Http::fake(function (Request $request) {
+        if (str_contains($request->url(), 'products/categories')) {
+            return Http::response([remoteCategory(20, 'Child', 10)], 200, ['X-WP-TotalPages' => '2']);
+        }
+
+        return Http::response([], 200);
+    });
+
+    expect(fn () => runSync($run))->toThrow(WooCommerceRequestException::class);
+    expect($run->shop->categories()->count())->toBe(0);
+});
+
+test('store redirects are rejected', function () {
+    $run = queuedRun();
+    Http::fake(fn () => Http::response('', 302, ['Location' => 'https://other.test']));
+
+    expect(fn () => runSync($run))->toThrow(WooCommerceRequestException::class);
+    Http::assertSentCount(1);
+});
+
+test('a truncated final page cannot archive the remaining catalog', function () {
+    $run = queuedRun();
+    $existing = Product::factory()->for($run->shop)->create([
+        'remote_id' => 102,
+        'status' => ProductStatus::Active,
+    ]);
+    Http::fake(function (Request $request) {
+        if (str_contains($request->url(), 'products/categories') || ($request->data()['type'] ?? '') === 'variable') {
+            return Http::response([], 200);
+        }
+
+        return Http::response([remoteProduct(101)], 200, ['X-WP-Total' => '2', 'X-WP-TotalPages' => '1']);
+    });
+
+    expect(fn () => runSync($run))->toThrow(WooCommerceRequestException::class);
+    expect($existing->fresh()->status)->toBe(ProductStatus::Active);
+});

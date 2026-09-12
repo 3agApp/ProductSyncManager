@@ -22,10 +22,8 @@ type Props = {
 };
 
 /**
- * Confirm deleting a brand or a category.
- *
- * Both read the same way -- the term goes, the products stay -- so they
- * share one dialog and differ only in what it says.
+ * Confirm removing a catalog term while retaining its products.
+ * Category cleanup uses its own dialog with child and product choices.
  */
 export default function DeleteCatalogTermModal({
     title,

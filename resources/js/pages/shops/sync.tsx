@@ -181,7 +181,7 @@ export default function ShopSync({
             <Head title={`Sync ${shop.name}`} />
 
             <div className="flex flex-col space-y-10">
-                <div className="space-y-6">
+                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                     <Heading
                         variant="small"
                         title="WooCommerce connection"
@@ -263,7 +263,7 @@ export default function ShopSync({
                                         ) : null}
                                     </div>
 
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-wrap items-center gap-4">
                                         <Button
                                             type="submit"
                                             data-test="connection-save"
@@ -300,7 +300,7 @@ export default function ShopSync({
                     )}
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                     <Heading
                         variant="small"
                         title="Scheduled sync"
@@ -447,7 +447,7 @@ export default function ShopSync({
                                         <InputError message={errors.timezone} />
                                     </div>
 
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-wrap items-center gap-4">
                                         <Button
                                             type="submit"
                                             data-test="schedule-save"
@@ -480,8 +480,8 @@ export default function ShopSync({
                     )}
                 </div>
 
-                <div className="space-y-6">
-                    <div className="flex items-start justify-between gap-4">
+                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
                         <Heading
                             variant="small"
                             title="Sync now"
@@ -526,7 +526,7 @@ export default function ShopSync({
                     ) : null}
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                     <Heading
                         variant="small"
                         title="Recent syncs"

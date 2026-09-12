@@ -48,7 +48,7 @@ class WooCommerceClient
         ]);
 
         /** @var array<int, array<string, mixed>> $products */
-        $products = is_array($response->json()) ? $response->json() : [];
+        $products = $this->catalogItems($response);
 
         return new WooCommerceProductPage(
             products: $products,
@@ -73,7 +73,7 @@ class WooCommerceClient
         ]);
 
         /** @var array<int, array<string, mixed>> $categories */
-        $categories = is_array($response->json()) ? $response->json() : [];
+        $categories = $this->catalogItems($response);
 
         return new WooCommerceCategoryPage(
             categories: $categories,
@@ -139,11 +139,33 @@ class WooCommerceClient
             );
         }
 
-        if ($response->failed()) {
+        if (! $response->successful()) {
             throw WooCommerceRequestException::status($response->status(), $response->body());
         }
 
         return $response;
+    }
+
+    /**
+     * Reject error pages and malformed catalogs instead of treating them as empty.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function catalogItems(Response $response): array
+    {
+        $items = json_decode($response->body());
+
+        if (! is_array($items)) {
+            throw new WooCommerceRequestException('WooCommerce did not return a catalog array.');
+        }
+
+        foreach ($items as $item) {
+            if (! is_object($item) || ! isset($item->id) || ! is_int($item->id) || $item->id <= 0) {
+                throw new WooCommerceRequestException('WooCommerce returned an invalid catalog item.');
+            }
+        }
+
+        return $response->json();
     }
 
     /**
@@ -156,6 +178,7 @@ class WooCommerceClient
         return Http::baseUrl($baseUrl)
             ->withBasicAuth($this->connection->consumer_key, $this->connection->consumer_secret)
             ->acceptJson()
+            ->withoutRedirecting()
             ->connectTimeout($this->quick ? 5 : 10)
             ->timeout($this->quick ? 10 : 30)
             ->retry(
@@ -173,7 +196,7 @@ class WooCommerceClient
      * limits are handled by the caller, which fails or releases the job
      * instead of hammering the store.
      */
-    private function shouldRetry(Throwable $exception): bool
+    private function shouldRetry(?Throwable $exception): bool
     {
         if ($exception instanceof ConnectionException) {
             return true;

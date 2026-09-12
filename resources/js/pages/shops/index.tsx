@@ -35,7 +35,7 @@ export default function ShopsIndex({ shops }: Props) {
             <h1 className="sr-only">Shops</h1>
 
             <div className="flex flex-col space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                     <Heading
                         variant="small"
                         title="Shops"
@@ -58,12 +58,12 @@ export default function ShopsIndex({ shops }: Props) {
                             <div
                                 key={shop.id}
                                 data-test="shop-row"
-                                className="flex items-center justify-between gap-4 rounded-lg border p-4"
+                                className="bg-muted/20 flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4"
                             >
-                                <div className="flex items-center gap-4">
+                                <div className="min-w-0 flex-1">
                                     <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-medium break-words">
                                                 {shop.name}
                                             </span>
                                             {shop.isPersonal ? (
@@ -79,7 +79,7 @@ export default function ShopsIndex({ shops }: Props) {
                                 </div>
 
                                 <TooltipProvider>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         {canLeaveShop ? (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>

@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import ProductForm from '@/components/product-form';
-import { dashboard } from '@/routes';
+import { index as productsIndex } from '@/routes/products';
 import type { Product, ProductStatusOption, Shop } from '@/types';
 
 type Props = {
@@ -22,17 +22,15 @@ export default function ProductEdit({
         <>
             <Head title={`Edit ${product.name}`} />
 
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="space-y-0.5">
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        Edit product
-                    </h1>
+            <div className="workspace-page">
+                <div className="page-heading">
+                    <h1 className="page-title">Edit product</h1>
                     <p className="text-muted-foreground text-sm">
                         Update the details for {product.name}.
                     </p>
                 </div>
 
-                <div className="max-w-3xl">
+                <div className="w-full max-w-4xl">
                     <ProductForm
                         shop={shop}
                         product={product}
@@ -51,7 +49,7 @@ ProductEdit.layout = (props: {
     product: { name: string };
 }) => ({
     breadcrumbs: [
-        { title: 'Products', href: dashboard(props.shop.slug) },
+        { title: 'Products', href: productsIndex(props.shop.slug) },
         { title: props.product.name, href: '' },
     ],
 });

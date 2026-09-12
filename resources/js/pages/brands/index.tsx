@@ -37,11 +37,9 @@ export default function BrandIndex({ brands, permissions }: Props) {
         <>
             <Head title="Brands" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="space-y-0.5">
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        Brands
-                    </h1>
+            <div className="workspace-page">
+                <div className="page-heading">
+                    <h1 className="page-title">Brands</h1>
                     <p className="text-muted-foreground text-sm">
                         The names products in {currentShop.name} are sold under.
                         A product carries one.
@@ -53,7 +51,7 @@ export default function BrandIndex({ brands, permissions }: Props) {
                         {...store.form(currentShop.slug)}
                         options={{ preserveScroll: true }}
                         resetOnSuccess
-                        className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-4"
+                        className="workspace-panel p-5 sm:p-6"
                     >
                         {({ errors, processing }) => (
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -83,7 +81,7 @@ export default function BrandIndex({ brands, permissions }: Props) {
                     </Form>
                 ) : null}
 
-                <div className="border-sidebar-border/70 dark:border-sidebar-border flex flex-col rounded-xl border">
+                <div className="workspace-table">
                     {brands.length > 0 ? (
                         <Table>
                             <TableHeader>

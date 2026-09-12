@@ -10,6 +10,7 @@ use App\Models\SyncRun;
 use App\Services\WooCommerce\Exceptions\WooCommerceAuthenticationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
+use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use App\Services\WooCommerce\WooCommerceClient;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -118,6 +119,10 @@ class SyncWooCommerceProducts implements ShouldQueue
 
             $this->importAllPages($client, $import, $shop, $runStartedAt);
 
+            if ($this->totalProducts !== null && $this->counters['processed'] !== $this->totalProducts) {
+                throw new WooCommerceRequestException('The product count changed during sync; archiving was cancelled.');
+            }
+
             // Only archive once every page succeeded. Archiving after a partial
             // failure would wipe the catalog the store still has.
             $this->counters['archived'] = $this->archiveMissing($shop, $runStartedAt);
@@ -152,17 +157,21 @@ class SyncWooCommerceProducts implements ShouldQueue
             $remotePage = $client->categoryPage($page);
 
             if ($remotePage->isEmpty()) {
-                break;
+                if ($remotePage->totalPages !== null && $page < $remotePage->totalPages) {
+                    throw new WooCommerceRequestException('The category catalog ended before all pages were received.');
+                }
+
+                return $import->handle($shop, $remoteCategories);
             }
 
             $remoteCategories = [...$remoteCategories, ...$remotePage->categories];
 
             if ($remotePage->totalPages !== null && $page >= $remotePage->totalPages) {
-                break;
+                return $import->handle($shop, $remoteCategories);
             }
         }
 
-        return $import->handle($shop, $remoteCategories);
+        throw new WooCommerceRequestException('The category catalog exceeded the configured page limit.');
     }
 
     /**
@@ -184,6 +193,11 @@ class SyncWooCommerceProducts implements ShouldQueue
             }
 
             if ($remotePage->isEmpty()) {
+                if (($remotePage->totalPages !== null && $page < $remotePage->totalPages)
+                    || ($this->totalProducts !== null && $this->counters['processed'] < $this->totalProducts)) {
+                    throw new WooCommerceRequestException('The product catalog ended before all products were received.');
+                }
+
                 return;
             }
 
@@ -200,6 +214,8 @@ class SyncWooCommerceProducts implements ShouldQueue
                 return;
             }
         }
+
+        throw new WooCommerceRequestException('The product catalog exceeded the configured page limit; archiving was cancelled.');
     }
 
     /**

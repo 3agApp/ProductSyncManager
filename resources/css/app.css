@@ -141,3 +141,37 @@
         @apply bg-background text-foreground;
     }
 }
+
+@layer components {
+    .workspace-page {
+        @apply bg-muted/30 flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8;
+    }
+
+    .page-heading {
+        @apply min-w-0 space-y-2;
+    }
+
+    .page-title {
+        @apply text-3xl font-semibold tracking-tight;
+    }
+
+    .workspace-panel {
+        @apply bg-card min-w-0 rounded-2xl border shadow-xs;
+    }
+
+    .workspace-table {
+        @apply bg-card flex min-w-0 flex-col overflow-hidden rounded-2xl border shadow-xs;
+    }
+
+    .workspace-table thead {
+        @apply bg-muted/40;
+    }
+
+    .workspace-table th {
+        @apply h-12 text-xs;
+    }
+
+    .workspace-table td {
+        @apply py-4;
+    }
+}

@@ -142,3 +142,16 @@ test('the product form keeps its categories and warns about unsaved work', async
 
     await errors.assertNone();
 });
+
+test('sorting while search is pending keeps both choices', async ({ page }) => {
+    await page.goto(`/${SHOP}/products`);
+    await page.clock.install();
+    await page.getByTestId('product-search').fill('bag');
+    await page.getByTestId('sort-price').click();
+    await expect(page).toHaveURL(/search=bag/);
+    await expect(page).toHaveURL(/sort=price/);
+    await page.clock.runFor(500);
+    await expect(page).toHaveURL(/search=bag/);
+    await expect(page).toHaveURL(/sort=price/);
+    await expect(page.getByTestId('product-search')).toHaveValue('bag');
+});

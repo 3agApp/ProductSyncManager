@@ -145,7 +145,8 @@ export default function ProductIndex({
     // Everything the list is showing lives in the query string, so a view
     // worth keeping can be bookmarked or passed to someone else.
     const applyFilters = (next: Partial<ProductFilters>) => {
-        const query = { ...filters, ...next };
+        clearTimeout(searchTimeout.current);
+        const query = { ...filters, search: search.trim(), ...next };
 
         setSelected([]);
 
@@ -235,12 +236,10 @@ export default function ProductIndex({
     return (
         <>
             <Head title="Products" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+            <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="space-y-0.5">
-                        <h1 className="text-xl font-semibold tracking-tight">
-                            Products
-                        </h1>
+                    <div className="page-heading">
+                        <h1 className="page-title">Products</h1>
                         <p className="text-muted-foreground text-sm">
                             Manage the catalog, pricing and inventory for{' '}
                             {currentShop.name}.
@@ -262,7 +261,7 @@ export default function ProductIndex({
                 {activeSyncRun ? (
                     <div
                         data-test="sync-banner"
-                        className="border-sidebar-border/70 dark:border-sidebar-border space-y-3 rounded-xl border p-4"
+                        className="workspace-panel space-y-3 p-5"
                     >
                         <div className="flex items-center gap-2 text-sm">
                             <RefreshCw className="size-4 animate-spin" />
@@ -279,7 +278,7 @@ export default function ProductIndex({
                     </div>
                 ) : null}
 
-                <div className="border-sidebar-border/70 dark:border-sidebar-border flex flex-col rounded-xl border">
+                <div className="workspace-table">
                     <div className="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
                         <div className="relative w-full sm:max-w-xs">
                             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -695,7 +694,7 @@ export default function ProductIndex({
 
                     {products.total > 0 ? (
                         <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
-                            <div className="text-muted-foreground flex items-center gap-3">
+                            <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-3">
                                 <p>
                                     Showing{' '}
                                     <span className="text-foreground font-medium">
@@ -739,7 +738,7 @@ export default function ProductIndex({
 
                             {products.last_page > 1 ? (
                                 <nav
-                                    className="flex items-center gap-1"
+                                    className="flex flex-wrap items-center justify-center gap-1"
                                     aria-label="Pagination"
                                 >
                                     <PaginationArrow

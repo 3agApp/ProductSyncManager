@@ -94,8 +94,8 @@ export default function Welcome() {
     return (
         <>
             <Head title="Product management for multi-shop sellers" />
-            <div className="bg-background text-foreground flex min-h-screen flex-col">
-                <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+            <div className="bg-muted/20 text-foreground flex min-h-screen flex-col">
+                <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
                     <Link
                         href={home()}
                         className="flex items-center gap-2 font-semibold tracking-tight"
@@ -165,7 +165,7 @@ export default function Welcome() {
                         {features.map((feature) => (
                             <div
                                 key={feature.title}
-                                className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-6"
+                                className="workspace-panel p-6"
                             >
                                 <div className="bg-muted mb-4 flex size-10 items-center justify-center rounded-lg">
                                     <feature.icon className="size-5" />

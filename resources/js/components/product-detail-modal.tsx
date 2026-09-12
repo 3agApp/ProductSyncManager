@@ -24,9 +24,11 @@ type FieldProps = {
 
 function Field({ label, children }: FieldProps) {
     return (
-        <div className="grid gap-1">
+        <div className="grid min-w-0 gap-1">
             <p className="text-muted-foreground text-xs">{label}</p>
-            <div className="text-sm">{children}</div>
+            <div className="min-w-0 text-sm [overflow-wrap:anywhere]">
+                {children}
+            </div>
         </div>
     );
 }
@@ -47,8 +49,8 @@ export default function ProductDetailModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-                <DialogHeader>
+            <DialogContent className="max-h-[85svh] grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-2xl sm:max-w-2xl">
+                <DialogHeader className="min-w-0 pr-6 text-left [overflow-wrap:anywhere]">
                     <DialogTitle data-test="product-detail-name">
                         {product.name}
                     </DialogTitle>
@@ -58,12 +60,18 @@ export default function ProductDetailModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6">
+                <div className="min-w-0 space-y-6">
                     {images.length > 0 ? (
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                            {images.map((url) => (
+                        <div
+                            className="focus-visible:ring-ring flex max-w-full min-w-0 gap-2 overflow-x-auto rounded-lg pb-2 focus-visible:ring-2 focus-visible:outline-none"
+                            role="region"
+                            aria-label="Product images"
+                            tabIndex={0}
+                            data-test="product-detail-gallery"
+                        >
+                            {images.map((url, index) => (
                                 <img
-                                    key={url}
+                                    key={`${url}-${index}`}
                                     src={url}
                                     alt=""
                                     loading="lazy"
@@ -99,7 +107,12 @@ export default function ProductDetailModal({
 
                     {product.brand ? (
                         <Field label="Brand">
-                            <Badge variant="secondary">{product.brand}</Badge>
+                            <Badge
+                                variant="secondary"
+                                className="max-w-full text-left [overflow-wrap:anywhere] whitespace-normal"
+                            >
+                                {product.brand}
+                            </Badge>
                         </Field>
                     ) : null}
 
@@ -110,7 +123,11 @@ export default function ProductDetailModal({
                                 data-test="product-detail-categories"
                             >
                                 {product.categories.map((category) => (
-                                    <Badge key={category} variant="outline">
+                                    <Badge
+                                        key={category}
+                                        variant="outline"
+                                        className="max-w-full text-left [overflow-wrap:anywhere] whitespace-normal"
+                                    >
                                         {category}
                                     </Badge>
                                 ))}

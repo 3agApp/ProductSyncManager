@@ -36,9 +36,9 @@ type SectionProps = PropsWithChildren<{
 
 function Section({ title, description, children }: SectionProps) {
     return (
-        <section className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-4">
+        <section className="workspace-panel p-5 sm:p-6">
             <div className="space-y-0.5">
-                <h2 className="text-base font-medium">{title}</h2>
+                <h2 className="text-base font-semibold">{title}</h2>
                 <p className="text-muted-foreground text-sm">{description}</p>
             </div>
 
@@ -68,7 +68,7 @@ export default function ProductForm({
     return (
         <Form
             {...formRoute}
-            className="space-y-4 pb-20"
+            className="space-y-6 pb-4"
             onInput={() => setDirty(true)}
             onSuccess={() => setDirty(false)}
         >
@@ -377,8 +377,8 @@ export default function ProductForm({
                         </div>
                     </Section>
 
-                    <div className="bg-background/80 fixed inset-x-0 bottom-0 z-10 border-t backdrop-blur md:left-(--sidebar-width)">
-                        <div className="flex items-center gap-4 p-4">
+                    <div className="bg-card/95 sticky bottom-4 z-10 rounded-2xl border shadow-lg backdrop-blur">
+                        <div className="flex flex-wrap items-center gap-3 p-4">
                             <Button
                                 type="submit"
                                 data-test="product-submit"

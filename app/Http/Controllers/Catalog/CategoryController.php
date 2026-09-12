@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Catalog;
 
+use App\Actions\Catalog\DeleteCategory;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Catalog\DeleteCategoryRequest;
 use App\Http\Requests\Catalog\SaveCategoryRequest;
 use App\Models\Category;
 use App\Models\Shop;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -86,20 +89,47 @@ class CategoryController extends Controller
     }
 
     /**
-     * Delete the specified category.
-     *
-     * Its products simply lose the link, and its subcategories move up to
-     * where it sat rather than being deleted with it.
+     * Preview unique affected products and surviving destinations.
      */
-    public function destroy(Shop $currentShop, Category $category): RedirectResponse
+    public function deletionPreview(Request $request, Shop $currentShop, Category $category, DeleteCategory $delete): JsonResponse
     {
         Gate::authorize('delete', $category);
+        $validated = $request->validate(['children' => ['sometimes', 'required', 'in:keep,delete']]);
+        $plan = $delete->plan($category, ($validated['children'] ?? 'keep') === 'delete');
+        $paths = Category::pathsFor($currentShop);
 
-        $category->children()->update(['parent_id' => $category->parent_id]);
+        return response()->json([
+            'categoryCount' => count($plan['categoryIds']),
+            'descendantCount' => $plan['descendantCount'],
+            'productCount' => count($plan['productIds']),
+            'exclusiveProductCount' => count($plan['exclusiveProductIds']),
+            'sharedProductCount' => count($plan['productIds']) - count($plan['exclusiveProductIds']),
+            'hasSyncedCategories' => $plan['hasSyncedCategories'],
+            'token' => $plan['token'],
+            'destinations' => $currentShop->categories()->whereNotIn('id', $plan['categoryIds'])->get()
+                ->map(fn (Category $term) => ['id' => $term->id, 'path' => $paths[$term->id] ?? $term->name])
+                ->sortBy('path')->values()->all(),
+        ])->header('Cache-Control', 'no-store');
+    }
 
-        $category->delete();
+    public function destroy(DeleteCategoryRequest $request, Shop $currentShop, Category $category, DeleteCategory $delete): RedirectResponse
+    {
+        $result = $delete->handle(
+            $category,
+            $request->validated('children', 'keep'),
+            $request->validated('products', 'keep'),
+            $request->filled('destination_id') ? (int) $request->validated('destination_id') : null,
+            $request->validated('preview_token'),
+        );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Category deleted.')]);
+        $message = trans_choice('{1} :count category deleted.|[0,*] :count categories deleted.', $result['categories']);
+        $message .= ' '.match ($request->validated('products', 'keep')) {
+            'delete' => trans_choice('{1} :count exclusive product deleted. Shared products kept.|[0,*] :count exclusive products deleted. Shared products kept.', $result['products']),
+            'move' => trans_choice('{1} :count product moved.|[0,*] :count products moved.', $result['moved']),
+            default => __('All products kept.'),
+        };
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return back();
     }

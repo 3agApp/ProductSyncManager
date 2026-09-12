@@ -97,3 +97,17 @@ worker, the scheduler, logs and Vite.
 | `WOOCOMMERCE_PER_PAGE`  | 100     | Products fetched per API request.                      |
 | `WOOCOMMERCE_RETRIES`   | 3       | Attempts per request for transient failures.           |
 | `WOOCOMMERCE_MAX_PAGES` | 500     | Hard stop, so a misbehaving store cannot loop forever. |
+
+### Queue visibility and incomplete catalogs
+
+The sync job timeout is 900 seconds. Keep `DB_QUEUE_RETRY_AFTER`,
+`REDIS_QUEUE_RETRY_AFTER`, or `BEANSTALKD_QUEUE_RETRY_AFTER` above that timeout;
+the defaults are 960 seconds. Existing environment overrides must also be
+updated. SQS deployments need an equivalent visibility timeout. Rebuild cached
+configuration and restart supervised workers when deploying configuration changes.
+
+A sync rejects malformed catalog responses, redirects, and catalogs that reach
+`WOOCOMMERCE_MAX_PAGES` before completion can be established. Product count
+mismatches also prevent archiving. Pages already imported remain saved, but unseen
+products are not archived on these failures. Configure the store's final canonical
+URL if its previous address redirects.

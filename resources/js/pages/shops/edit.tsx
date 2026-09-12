@@ -104,7 +104,7 @@ export default function ShopEdit({
             <h1 className="sr-only">{pageTitle}</h1>
 
             <div className="flex flex-col space-y-10">
-                <div className="space-y-6">
+                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                     {permissions.canUpdateShop ? (
                         <>
                             <Heading
@@ -164,7 +164,7 @@ export default function ShopEdit({
                                             <InputError message={errors.type} />
                                         </div>
 
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex flex-wrap items-center gap-4">
                                             <Button
                                                 type="submit"
                                                 data-test="shop-save-button"
@@ -185,8 +185,8 @@ export default function ShopEdit({
                 </div>
 
                 {permissions.canRunSync ? (
-                    <div className="space-y-6">
-                        <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
                             <Heading
                                 variant="small"
                                 title="Product sync"
@@ -205,8 +205,8 @@ export default function ShopEdit({
                     </div>
                 ) : null}
 
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                         <Heading
                             variant="small"
                             title="Shop members"
@@ -234,7 +234,7 @@ export default function ShopEdit({
                                 data-test="member-row"
                                 className="flex items-center justify-between rounded-lg border p-4"
                             >
-                                <div className="flex items-center gap-4">
+                                <div className="flex flex-wrap items-center gap-4">
                                     <Avatar className="h-10 w-10">
                                         {member.avatar ? (
                                             <AvatarImage
@@ -324,7 +324,7 @@ export default function ShopEdit({
                 </div>
 
                 {invitations.length > 0 ? (
-                    <div className="space-y-6">
+                    <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                         <Heading
                             variant="small"
                             title="Pending invitations"
@@ -338,7 +338,7 @@ export default function ShopEdit({
                                     data-test="invitation-row"
                                     className="flex items-center justify-between rounded-lg border p-4"
                                 >
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-wrap items-center gap-4">
                                         <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full">
                                             <Mail className="text-muted-foreground h-5 w-5" />
                                         </div>
@@ -382,7 +382,7 @@ export default function ShopEdit({
                 ) : null}
 
                 {permissions.canDeleteShop && !shop.isPersonal ? (
-                    <div className="space-y-6">
+                    <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                         <Heading
                             variant="small"
                             title="Delete shop"
