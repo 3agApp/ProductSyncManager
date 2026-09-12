@@ -122,6 +122,43 @@ class Category extends Model
     }
 
     /**
+     * Get this category's id together with every id beneath it.
+     *
+     * Filtering products by a category means everything filed under it as
+     * well: asking for "Bags" should not hide what sits in "Bags > Totes".
+     * The shop's tree is read at once and walked in memory, the same way
+     * its paths are.
+     *
+     * @return array<int, int>
+     */
+    public function subtreeIds(): array
+    {
+        $children = $this->shop->categories()
+            ->select(['id', 'parent_id'])
+            ->get()
+            ->groupBy('parent_id');
+
+        $ids = [$this->id];
+        $queue = [$this->id];
+
+        // The depth cap stops a parent chain that loops from spinning here.
+        for ($depth = 0; $queue !== [] && $depth < self::MAX_DEPTH; $depth++) {
+            $next = [];
+
+            foreach ($queue as $parentId) {
+                foreach ($children->get($parentId, []) as $child) {
+                    $ids[] = $child->id;
+                    $next[] = $child->id;
+                }
+            }
+
+            $queue = $next;
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Get the shop that owns the category.
      *
      * @return BelongsTo<Shop, $this>

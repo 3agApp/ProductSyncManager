@@ -35,6 +35,20 @@ export type ProductStats = {
 export type ProductFilters = {
     search: string;
     status: ProductStatus | null;
+    /** A category id, "none" for products filed nowhere, or null. */
+    category: string | null;
+    /** A brand id, "none" for products with no brand, or null. */
+    brand: string | null;
+    sort: ProductSort;
+    direction: 'asc' | 'desc';
+    perPage: number;
+};
+
+export type ProductSort = 'name' | 'price' | 'stock' | 'updated';
+
+export type FilterOption = {
+    value: string;
+    label: string;
 };
 
 export type ProductStatusOption = {

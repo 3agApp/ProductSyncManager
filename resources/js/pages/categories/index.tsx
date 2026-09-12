@@ -1,4 +1,4 @@
-import { Form, Head, usePage } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import {
     CornerDownRight,
     FolderTree,
@@ -35,6 +35,7 @@ import {
     store,
     update,
 } from '@/routes/categories';
+import { index as productsIndex } from '@/routes/products';
 import type { Category, ShopPermissions } from '@/types';
 
 type Props = {
@@ -305,7 +306,11 @@ export default function CategoryIndex({ categories, permissions }: Props) {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums">
-                                            {category.productCount.toLocaleString()}
+                                            <ProductCountLink
+                                                count={category.productCount}
+                                                href={`${productsIndex(currentShop.slug).url}?category=${category.id}`}
+                                                label={category.path}
+                                            />
                                         </TableCell>
                                         <TableCell className="pr-4 text-right">
                                             <div className="flex justify-end gap-1">
@@ -387,6 +392,31 @@ export default function CategoryIndex({ categories, permissions }: Props) {
                 }
             />
         </>
+    );
+}
+
+function ProductCountLink({
+    count,
+    href,
+    label,
+}: {
+    count: number;
+    href: string;
+    label: string;
+}) {
+    if (count === 0) {
+        return <span className="text-muted-foreground">0</span>;
+    }
+
+    return (
+        <Link
+            href={href}
+            data-test="product-count-link"
+            className="hover:text-primary underline-offset-4 hover:underline"
+            aria-label={`Show the ${count} products in ${label}`}
+        >
+            {count.toLocaleString()}
+        </Link>
     );
 }
 

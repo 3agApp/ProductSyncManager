@@ -2,6 +2,8 @@
 
 use App\Enums\ProductStatus;
 use App\Enums\ShopRole;
+use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
@@ -148,4 +150,191 @@ test('the products page exposes product permissions for the current user', funct
             ->where('permissions.canUpdateProduct', true)
             ->where('permissions.canDeleteProduct', false),
         );
+});
+
+test('products can be filtered by category, including everything nested under it', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $bags = Category::factory()->for($shop)->create(['name' => 'Bags']);
+    $totes = Category::factory()->childOf($bags)->create(['name' => 'Totes']);
+
+    $inParent = Product::factory()->for($shop)->create(['name' => 'Parent bag']);
+    $inChild = Product::factory()->for($shop)->create(['name' => 'Child tote']);
+    Product::factory()->for($shop)->create(['name' => 'Unrelated']);
+
+    $inParent->categories()->sync([$bags->id]);
+    $inChild->categories()->sync([$totes->id]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'category' => $bags->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 2)
+            ->where('filters.category', (string) $bags->id));
+});
+
+test('products can be filtered down to a single nested category', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $bags = Category::factory()->for($shop)->create(['name' => 'Bags']);
+    $totes = Category::factory()->childOf($bags)->create(['name' => 'Totes']);
+
+    Product::factory()->for($shop)->create()->categories()->sync([$bags->id]);
+    Product::factory()->for($shop)->create(['name' => 'Only tote'])->categories()->sync([$totes->id]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'category' => $totes->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Only tote'));
+});
+
+test('products with no category at all can be listed', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    Product::factory()->for($shop)->categorized('Bags')->create();
+    Product::factory()->for($shop)->create(['name' => 'Filed nowhere']);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'category' => 'none']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Filed nowhere'));
+});
+
+test('products can be filtered by brand, and by having none', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $acme = Brand::factory()->for($shop)->create(['name' => 'Acme']);
+    Product::factory()->for($shop)->for($acme)->create(['name' => 'An Acme thing']);
+    Product::factory()->for($shop)->create(['name' => 'Unbranded thing']);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'brand' => $acme->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'An Acme thing'));
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'brand' => 'none']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Unbranded thing'));
+});
+
+test('another shops category cannot be used as a filter', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $outsider = Category::factory()->create();
+
+    Product::factory()->for($shop)->count(2)->create();
+
+    // The unusable filter is dropped rather than hiding the whole catalog.
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'category' => $outsider->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 2)
+            ->where('filters.category', null));
+});
+
+test('search also covers the gtin and the brand name', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $acme = Brand::factory()->for($shop)->create(['name' => 'Acme']);
+    Product::factory()->for($shop)->for($acme)->create(['name' => 'Nondescript', 'sku' => 'AAA-1']);
+    Product::factory()->for($shop)->create(['name' => 'Other', 'sku' => 'BBB-1', 'gtin' => '5012345678900']);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'search' => 'Acme']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.sku', 'AAA-1'));
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'search' => '50123456']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.sku', 'BBB-1'));
+});
+
+test('products can be sorted by a chosen column', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    Product::factory()->for($shop)->create(['name' => 'Middle', 'price' => 20]);
+    Product::factory()->for($shop)->create(['name' => 'Cheapest', 'price' => 5]);
+    Product::factory()->for($shop)->create(['name' => 'Dearest', 'price' => 90]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'sort' => 'price', 'direction' => 'asc']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.name', 'Cheapest')
+            ->where('products.data.2.name', 'Dearest')
+            ->where('filters.sort', 'price')
+            ->where('filters.direction', 'asc'));
+});
+
+test('an unknown sort column falls back to the default', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    Product::factory()->for($shop)->count(2)->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'sort' => 'price); drop table products--']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('filters.sort', 'updated'));
+});
+
+test('the page size can be changed, and a silly one is ignored', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    Product::factory()->for($shop)->count(30)->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'per_page' => 25]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 25)
+            ->where('filters.perPage', 25));
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$shop, 'per_page' => 9999]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 10)
+            ->where('filters.perPage', 10));
+});
+
+test('the page offers the shops categories and brands as filter options', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $bags = Category::factory()->for($shop)->create(['name' => 'Bags']);
+    Category::factory()->childOf($bags)->create(['name' => 'Totes']);
+    Brand::factory()->for($shop)->create(['name' => 'Acme']);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('categoryOptions.0.label', 'Bags')
+            ->where('categoryOptions.1.label', 'Bags > Totes')
+            ->where('brandOptions.0.label', 'Acme')
+            ->has('pageSizes', 4));
 });

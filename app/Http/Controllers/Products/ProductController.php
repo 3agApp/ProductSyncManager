@@ -6,9 +6,11 @@ use App\Concerns\PresentsProducts;
 use App\Enums\ProductStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\SaveProductRequest;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -20,9 +22,14 @@ class ProductController extends Controller
     use PresentsProducts;
 
     /**
-     * The number of products shown per page.
+     * The page sizes a product list may be shown at.
      */
-    private const int PER_PAGE = 10;
+    private const array PAGE_SIZES = [10, 25, 50, 100];
+
+    /**
+     * The value standing for "filed under nothing" or "no brand".
+     */
+    private const string NONE = 'none';
 
     /**
      * Show the shop's products.
@@ -31,17 +38,40 @@ class ProductController extends Controller
     {
         $search = $request->string('search')->trim()->toString();
         $status = ProductStatus::tryFrom($request->string('status')->toString());
+        $sort = $request->string('sort')->toString();
+        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+        $perPage = $this->perPage($request);
 
-        $products = $currentShop->products()
+        $categoryFilter = $request->string('category')->toString();
+        $brandFilter = $request->string('brand')->toString();
+
+        // Resolving through the shop is what stops another shop's category
+        // or brand being used as a filter here; an id that does not belong
+        // simply drops out rather than hiding the whole catalog.
+        $category = $this->find($currentShop->categories(), $categoryFilter);
+        $brand = $this->find($currentShop->brands(), $brandFilter);
+
+        $query = $currentShop->products()
             ->with(['brand', 'categories'])
-            ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
-                ->where('name', 'like', "%{$search}%")
-                ->orWhere('sku', 'like', "%{$search}%")))
-            ->when($status !== null, fn ($query) => $query->where('status', $status))
-            ->latest()
-            ->latest('id')
-            ->paginate(self::PER_PAGE)
-            ->withQueryString();
+            ->matching($search);
+
+        if ($status !== null) {
+            $query->where('status', $status);
+        }
+
+        if ($category instanceof Category) {
+            $query->inCategories($category->subtreeIds());
+        } elseif ($categoryFilter === self::NONE) {
+            $query->uncategorized();
+        }
+
+        if ($brand instanceof Brand) {
+            $query->where('brand_id', $brand->id);
+        } elseif ($brandFilter === self::NONE) {
+            $query->whereNull('brand_id');
+        }
+
+        $products = $query->sorted($sort, $direction)->paginate($perPage)->withQueryString();
 
         if ($products->isEmpty() && $products->currentPage() > 1) {
             return redirect($products->url($products->lastPage()));
@@ -54,12 +84,96 @@ class ProductController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status?->value,
+                'category' => $this->filterValue($category, $categoryFilter),
+                'brand' => $this->filterValue($brand, $brandFilter),
+                'sort' => array_key_exists($sort, Product::SORTABLE) ? $sort : 'updated',
+                'direction' => $direction,
+                'perPage' => $perPage,
             ],
             'statuses' => ProductStatus::options(),
+            'categoryOptions' => $this->categoryOptions($currentShop, $categoryPaths),
+            'brandOptions' => $this->brandOptions($currentShop),
+            'pageSizes' => self::PAGE_SIZES,
             'lowStockThreshold' => Product::LOW_STOCK_THRESHOLD,
             'permissions' => $request->user()->toShopPermissions($currentShop),
             'activeSyncRun' => fn () => $this->activeSyncRun($currentShop),
         ]);
+    }
+
+    /**
+     * Find the filtered row within the shop, if the value names one.
+     *
+     * @param  HasMany<Brand, Shop>|HasMany<Category, Shop>  $relation
+     */
+    private function find(HasMany $relation, string $value): Brand|Category|null
+    {
+        if ($value === '' || $value === self::NONE) {
+            return null;
+        }
+
+        $model = $relation->find($value);
+
+        return $model instanceof Brand || $model instanceof Category ? $model : null;
+    }
+
+    /**
+     * Get the filter value to echo back to the page.
+     *
+     * A filter that resolved to nothing is reported as absent, so the page
+     * shows the catalog rather than an option that is not really applied.
+     */
+    private function filterValue(Brand|Category|null $model, string $submitted): ?string
+    {
+        if ($model !== null) {
+            return (string) $model->id;
+        }
+
+        return $submitted === self::NONE ? self::NONE : null;
+    }
+
+    /**
+     * Get the page size, falling back to the smallest offered.
+     */
+    private function perPage(Request $request): int
+    {
+        $perPage = $request->integer('per_page');
+
+        return in_array($perPage, self::PAGE_SIZES, true) ? $perPage : self::PAGE_SIZES[0];
+    }
+
+    /**
+     * Get the shop's categories as filter options, ordered by path.
+     *
+     * @param  array<int, string>  $paths
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function categoryOptions(Shop $shop, array $paths): array
+    {
+        $options = $shop->categories()
+            ->get()
+            ->map(fn (Category $category) => [
+                'value' => (string) $category->id,
+                'label' => $paths[$category->id] ?? $category->name,
+            ])
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+
+        return $options;
+    }
+
+    /**
+     * Get the shop's brands as filter options.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function brandOptions(Shop $shop): array
+    {
+        return $shop->brands()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Brand $brand) => ['value' => (string) $brand->id, 'label' => $brand->name])
+            ->all();
     }
 
     /**

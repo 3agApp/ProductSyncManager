@@ -1,8 +1,11 @@
 import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
+    ArrowDown,
+    ArrowUp,
     ChevronLeft,
     ChevronRight,
+    ChevronsUpDown,
     Eye,
     MoreHorizontal,
     Package,
@@ -44,7 +47,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import {
     create as createProduct,
@@ -53,9 +56,11 @@ import {
 } from '@/routes/products';
 import type {
     ActiveSyncRun,
+    FilterOption,
     Paginated,
     Product,
     ProductFilters,
+    ProductSort,
     ProductStatus,
     ProductStatusOption,
     ShopPermissions,
@@ -65,17 +70,24 @@ type Props = {
     products: Paginated<Product>;
     filters: ProductFilters;
     statuses: ProductStatusOption[];
+    categoryOptions: FilterOption[];
+    brandOptions: FilterOption[];
+    pageSizes: number[];
     lowStockThreshold: number;
     permissions: ShopPermissions;
     activeSyncRun?: ActiveSyncRun | null;
 };
 
-const ALL_STATUSES = 'all';
+const ALL = 'all';
+const NONE = 'none';
 
 export default function ProductIndex({
     products,
     filters,
     statuses,
+    categoryOptions,
+    brandOptions,
+    pageSizes,
     lowStockThreshold,
     permissions,
     activeSyncRun = null,
@@ -118,10 +130,17 @@ export default function ProductIndex({
         return null;
     }
 
-    const hasFilters = filters.search !== '' || filters.status !== null;
+    const hasFilters =
+        filters.search !== '' ||
+        filters.status !== null ||
+        filters.category !== null ||
+        filters.brand !== null;
+
     const canManageProducts =
         permissions.canUpdateProduct || permissions.canDeleteProduct;
 
+    // Everything the list is showing lives in the query string, so a view
+    // worth keeping can be bookmarked or passed to someone else.
     const applyFilters = (next: Partial<ProductFilters>) => {
         const query = { ...filters, ...next };
 
@@ -130,6 +149,15 @@ export default function ProductIndex({
             {
                 ...(query.search ? { search: query.search } : {}),
                 ...(query.status ? { status: query.status } : {}),
+                ...(query.category ? { category: query.category } : {}),
+                ...(query.brand ? { brand: query.brand } : {}),
+                ...(query.sort !== 'updated' ? { sort: query.sort } : {}),
+                ...(query.direction !== 'desc'
+                    ? { direction: query.direction }
+                    : {}),
+                ...(query.perPage !== pageSizes[0]
+                    ? { per_page: query.perPage }
+                    : {}),
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -147,7 +175,28 @@ export default function ProductIndex({
     const clearFilters = () => {
         clearTimeout(searchTimeout.current);
         setSearch('');
-        applyFilters({ search: '', status: null });
+        applyFilters({
+            search: '',
+            status: null,
+            category: null,
+            brand: null,
+        });
+    };
+
+    // Clicking the column you are already on flips the direction; a new
+    // column starts ascending for text and descending for figures, which is
+    // the order each is normally wanted in.
+    const applySort = (sort: ProductSort) => {
+        const direction =
+            filters.sort === sort
+                ? filters.direction === 'asc'
+                    ? 'desc'
+                    : 'asc'
+                : sort === 'name'
+                  ? 'asc'
+                  : 'desc';
+
+        applyFilters({ sort, direction });
     };
 
     const openDetail = (product: Product) => {
@@ -217,19 +266,19 @@ export default function ProductIndex({
                                 onChange={(event) =>
                                     handleSearchChange(event.target.value)
                                 }
-                                placeholder="Search by name or SKU"
-                                aria-label="Search products"
+                                placeholder="Search name, SKU, GTIN or brand"
+                                aria-label="Search products by name, SKU, GTIN or brand"
                                 data-test="product-search"
                                 className="pl-9"
                             />
                         </div>
 
                         <Select
-                            value={filters.status ?? ALL_STATUSES}
+                            value={filters.status ?? ALL}
                             onValueChange={(value) =>
                                 applyFilters({
                                     status:
-                                        value === ALL_STATUSES
+                                        value === ALL
                                             ? null
                                             : (value as ProductStatus),
                                 })
@@ -243,7 +292,7 @@ export default function ProductIndex({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value={ALL_STATUSES}>
+                                <SelectItem value={ALL}>
                                     All statuses
                                 </SelectItem>
                                 {statuses.map((status) => (
@@ -257,11 +306,74 @@ export default function ProductIndex({
                             </SelectContent>
                         </Select>
 
+                        <Select
+                            value={filters.category ?? ALL}
+                            onValueChange={(value) =>
+                                applyFilters({
+                                    category: value === ALL ? null : value,
+                                })
+                            }
+                        >
+                            <SelectTrigger
+                                className="w-full sm:w-56"
+                                aria-label="Filter by category"
+                                data-test="product-category-filter"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL}>
+                                    All categories
+                                </SelectItem>
+                                <SelectItem value={NONE}>
+                                    Filed nowhere
+                                </SelectItem>
+                                {categoryOptions.map((option) => (
+                                    <SelectItem
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select
+                            value={filters.brand ?? ALL}
+                            onValueChange={(value) =>
+                                applyFilters({
+                                    brand: value === ALL ? null : value,
+                                })
+                            }
+                        >
+                            <SelectTrigger
+                                className="w-full sm:w-44"
+                                aria-label="Filter by brand"
+                                data-test="product-brand-filter"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL}>All brands</SelectItem>
+                                <SelectItem value={NONE}>No brand</SelectItem>
+                                {brandOptions.map((option) => (
+                                    <SelectItem
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
                         {hasFilters ? (
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={clearFilters}
+                                data-test="clear-filters"
                             >
                                 <X /> Clear
                             </Button>
@@ -273,15 +385,38 @@ export default function ProductIndex({
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead className="pl-4">
-                                        Product
+                                        <SortButton
+                                            sort="name"
+                                            label="Product"
+                                            filters={filters}
+                                            onSort={applySort}
+                                        />
                                     </TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Inventory</TableHead>
+                                    <TableHead>
+                                        <SortButton
+                                            sort="stock"
+                                            label="Inventory"
+                                            filters={filters}
+                                            onSort={applySort}
+                                        />
+                                    </TableHead>
                                     <TableHead className="text-right">
-                                        Price
+                                        <SortButton
+                                            sort="price"
+                                            label="Price"
+                                            filters={filters}
+                                            onSort={applySort}
+                                            align="end"
+                                        />
                                     </TableHead>
                                     <TableHead className="hidden lg:table-cell">
-                                        Updated
+                                        <SortButton
+                                            sort="updated"
+                                            label="Updated"
+                                            filters={filters}
+                                            onSort={applySort}
+                                        />
                                     </TableHead>
                                     {canManageProducts ? (
                                         <TableHead className="w-12 pr-4">
@@ -491,17 +626,47 @@ export default function ProductIndex({
 
                     {products.total > 0 ? (
                         <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
-                            <p className="text-muted-foreground">
-                                Showing{' '}
-                                <span className="text-foreground font-medium">
-                                    {products.from}–{products.to}
-                                </span>{' '}
-                                of{' '}
-                                <span className="text-foreground font-medium">
-                                    {products.total}
-                                </span>{' '}
-                                products
-                            </p>
+                            <div className="text-muted-foreground flex items-center gap-3">
+                                <p>
+                                    Showing{' '}
+                                    <span className="text-foreground font-medium">
+                                        {products.from}–{products.to}
+                                    </span>{' '}
+                                    of{' '}
+                                    <span className="text-foreground font-medium">
+                                        {products.total}
+                                    </span>{' '}
+                                    products
+                                </p>
+
+                                <Select
+                                    value={String(filters.perPage)}
+                                    onValueChange={(value) =>
+                                        applyFilters({
+                                            perPage: Number(value),
+                                        })
+                                    }
+                                >
+                                    <SelectTrigger
+                                        size="sm"
+                                        className="w-28"
+                                        aria-label="Products per page"
+                                        data-test="per-page"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {pageSizes.map((size) => (
+                                            <SelectItem
+                                                key={size}
+                                                value={String(size)}
+                                            >
+                                                {size} / page
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
                             {products.last_page > 1 ? (
                                 <nav
@@ -575,6 +740,44 @@ export default function ProductIndex({
                 onOpenChange={setDetailOpen}
             />
         </>
+    );
+}
+
+function SortButton({
+    sort,
+    label,
+    filters,
+    onSort,
+    align = 'start',
+}: {
+    sort: ProductSort;
+    label: string;
+    filters: ProductFilters;
+    onSort: (sort: ProductSort) => void;
+    align?: 'start' | 'end';
+}) {
+    const active = filters.sort === sort;
+    const Icon = !active
+        ? ChevronsUpDown
+        : filters.direction === 'asc'
+          ? ArrowUp
+          : ArrowDown;
+
+    return (
+        <button
+            type="button"
+            onClick={() => onSort(sort)}
+            data-test={`sort-${sort}`}
+            aria-label={`Sort by ${label.toLowerCase()}`}
+            className={cn(
+                'hover:text-foreground -mx-2 flex w-full items-center gap-1 rounded px-2 py-1',
+                align === 'end' && 'justify-end',
+                active && 'text-foreground',
+            )}
+        >
+            {label}
+            <Icon className={cn('size-3.5', !active && 'opacity-40')} />
+        </button>
     );
 }
 
