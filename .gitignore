@@ -27,3 +27,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+e2e/.auth/
+database/e2e.sqlite*
+/test-results/
+/playwright-report/
