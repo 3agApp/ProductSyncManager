@@ -18,6 +18,14 @@ enum ShopPermission: string
     case UpdateProduct = 'product:update';
     case DeleteProduct = 'product:delete';
 
+    case CreateBrand = 'brand:create';
+    case UpdateBrand = 'brand:update';
+    case DeleteBrand = 'brand:delete';
+
+    case CreateCategory = 'category:create';
+    case UpdateCategory = 'category:update';
+    case DeleteCategory = 'category:delete';
+
     case ManageSync = 'sync:manage';
     case RunSync = 'sync:run';
 }

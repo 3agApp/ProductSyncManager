@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Settings2 } from 'lucide-react';
+import { FolderTree, LayoutGrid, Package, Settings2, Tags } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -14,6 +14,9 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as brandsIndex } from '@/routes/brands';
+import { index as categoriesIndex } from '@/routes/categories';
+import { index as productsIndex } from '@/routes/products';
 import { edit as editShop } from '@/routes/shops';
 import type { NavItem } from '@/types';
 
@@ -30,11 +33,28 @@ export function AppSidebar() {
     ];
 
     if (currentShop) {
-        mainNavItems.push({
-            title: 'Shop settings',
-            href: editShop(currentShop.slug),
-            icon: Settings2,
-        });
+        mainNavItems.push(
+            {
+                title: 'Products',
+                href: productsIndex(currentShop.slug),
+                icon: Package,
+            },
+            {
+                title: 'Categories',
+                href: categoriesIndex(currentShop.slug),
+                icon: FolderTree,
+            },
+            {
+                title: 'Brands',
+                href: brandsIndex(currentShop.slug),
+                icon: Tags,
+            },
+            {
+                title: 'Shop settings',
+                href: editShop(currentShop.slug),
+                icon: Settings2,
+            },
+        );
     }
 
     return (

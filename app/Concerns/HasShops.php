@@ -178,6 +178,12 @@ trait HasShops
             canCreateProduct: $role?->hasPermission(ShopPermission::CreateProduct) ?? false,
             canUpdateProduct: $role?->hasPermission(ShopPermission::UpdateProduct) ?? false,
             canDeleteProduct: $role?->hasPermission(ShopPermission::DeleteProduct) ?? false,
+            canCreateBrand: $role?->hasPermission(ShopPermission::CreateBrand) ?? false,
+            canUpdateBrand: $role?->hasPermission(ShopPermission::UpdateBrand) ?? false,
+            canDeleteBrand: $role?->hasPermission(ShopPermission::DeleteBrand) ?? false,
+            canCreateCategory: $role?->hasPermission(ShopPermission::CreateCategory) ?? false,
+            canUpdateCategory: $role?->hasPermission(ShopPermission::UpdateCategory) ?? false,
+            canDeleteCategory: $role?->hasPermission(ShopPermission::DeleteCategory) ?? false,
             canManageSync: $role?->hasPermission(ShopPermission::ManageSync) ?? false,
             canRunSync: $role?->hasPermission(ShopPermission::RunSync) ?? false,
         );

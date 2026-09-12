@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Sync\ImportWooCommerceCategories;
 use App\Actions\Sync\ImportWooCommerceProducts;
 use App\Enums\ProductStatus;
 use App\Enums\SyncRunStatus;
@@ -12,6 +13,7 @@ use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Http::preventStrayRequests();
@@ -56,13 +58,25 @@ function remoteProduct(int $id, array $overrides = []): array
  *
  * @param  array<int, array<string, mixed>>  $simple
  * @param  array<int, int>  $failPages  Pages that should return a 500.
+ * @param  array<int, array<string, mixed>>  $categories  The store's category tree.
  */
-function fakeStore(array $simple, int $variableCount = 0, array $failPages = [], int $perPage = 100): void
-{
-    Http::fake(function (Request $request) use ($simple, $variableCount, $failPages, $perPage) {
+function fakeStore(
+    array $simple,
+    int $variableCount = 0,
+    array $failPages = [],
+    int $perPage = 100,
+    array $categories = [],
+): void {
+    Http::fake(function (Request $request) use ($simple, $variableCount, $failPages, $perPage, $categories) {
         $query = $request->data();
         $type = $query['type'] ?? 'simple';
         $page = (int) ($query['page'] ?? 1);
+
+        if (str_contains($request->url(), 'products/categories')) {
+            return Http::response($page === 1 ? $categories : [], 200, [
+                'X-WP-TotalPages' => '1',
+            ]);
+        }
 
         if ($type === 'variable') {
             return Http::response([], 200, ['X-WP-Total' => (string) $variableCount]);
@@ -99,7 +113,7 @@ function queuedRun(?Shop $shop = null): SyncRun
 function runSync(SyncRun $run): void
 {
     app(SyncWooCommerceProducts::class, ['syncRun' => $run])
-        ->handle(app(ImportWooCommerceProducts::class));
+        ->handle(app(ImportWooCommerceProducts::class), app(ImportWooCommerceCategories::class));
 }
 
 test('a sync creates products from the remote catalog', function () {
@@ -128,6 +142,65 @@ test('a sync creates products from the remote catalog', function () {
     ]);
 });
 
+/**
+ * Build a remote category payload in the shape WooCommerce returns.
+ *
+ * @return array<string, mixed>
+ */
+function remoteCategory(int $id, string $name, int $parent = 0): array
+{
+    return [
+        'id' => $id,
+        'name' => $name,
+        'slug' => Str::slug($name),
+        'parent' => $parent,
+    ];
+}
+
+test('a sync rebuilds the store category tree', function () {
+    fakeStore(
+        [remoteProduct(101, ['categories' => [['id' => 20, 'name' => 'Totes', 'slug' => 'totes']]])],
+        categories: [
+            // The child arrives before its parent, which a store is free to do.
+            remoteCategory(20, 'Totes', parent: 10),
+            remoteCategory(10, 'Bags'),
+            remoteCategory(30, 'Accessories'),
+        ],
+    );
+
+    $run = queuedRun();
+    runSync($run);
+
+    $shop = $run->shop;
+    $bags = $shop->categories()->where('remote_id', 10)->sole();
+    $totes = $shop->categories()->where('remote_id', 20)->sole();
+
+    expect($shop->categories()->count())->toBe(3)
+        ->and($totes->parent_id)->toBe($bags->id)
+        ->and($bags->parent_id)->toBeNull()
+        ->and($shop->products()->sole()->categories->pluck('id')->all())->toBe([$totes->id]);
+});
+
+test('a renamed remote category keeps its row and its products', function () {
+    $shop = Shop::factory()->create();
+    $import = app(ImportWooCommerceCategories::class);
+
+    $ids = $import->handle($shop, [remoteCategory(20, 'Totes')]);
+
+    $product = Product::factory()->for($shop)->create();
+    $product->categories()->sync([$ids[20]]);
+
+    // The store renames the category; the id it is known by does not change.
+    $again = $import->handle($shop, [remoteCategory(20, 'Tote Bags')]);
+
+    $category = $shop->categories()->sole();
+
+    expect($again[20])->toBe($ids[20])
+        ->and($category->name)->toBe('Tote Bags')
+        ->and($category->slug)->toBe('tote-bags')
+        ->and($product->categories()->pluck('categories.id')->all())->toBe([$ids[20]]);
+});
+
 test('an imported brand is stored once and shared by its products', function () {
     fakeStore([
         remoteProduct(101),
@@ -144,6 +217,26 @@ test('an imported brand is stored once and shared by its products', function () 
         ->and($run->shop->products()->where('remote_id', 102)->sole()->brand->slug)->toBe('acme');
 });
 
+test('html entities in remote names are decoded rather than stored raw', function () {
+    fakeStore(
+        [remoteProduct(101, [
+            'name' => 'Spülschwamm - Kitty&amp;fish',
+            'brands' => [['id' => 7, 'name' => 'Papier &amp; Co', 'slug' => 'papier-co']],
+            'categories' => [['id' => 20, 'name' => 'Schmuck &amp; Accessoires', 'slug' => 'schmuck-accessoires']],
+        ])],
+        categories: [remoteCategory(20, 'Schmuck &amp; Accessoires')],
+    );
+
+    $run = queuedRun();
+    runSync($run);
+
+    $product = $run->shop->products()->sole();
+
+    expect($product->name)->toBe('Spülschwamm - Kitty&fish')
+        ->and($product->brand->name)->toBe('Papier & Co')
+        ->and($product->categories->pluck('name')->all())->toBe(['Schmuck & Accessoires']);
+});
+
 test('a sync imports the richer woocommerce fields', function () {
     fakeStore([remoteProduct(101)]);
 
@@ -154,7 +247,7 @@ test('a sync imports the richer woocommerce fields', function () {
 
     expect($product->gtin)->toBe('0123456789101')
         ->and($product->brand->name)->toBe('Acme')
-        ->and($product->categories)->toBe(['Bags', 'Accessories'])
+        ->and($product->categories->pluck('name')->sort()->values()->all())->toBe(['Accessories', 'Bags'])
         ->and($product->image_url)->toBe('https://store.test/img/101-main.jpg')
         ->and($product->gallery_image_urls)->toBe(['https://store.test/img/101-alt.jpg'])
         ->and($product->permalink)->toBe('https://store.test/product/101')
@@ -179,7 +272,7 @@ test('a product with no images brands or categories stores nulls', function () {
     expect($product->image_url)->toBeNull()
         ->and($product->gallery_image_urls)->toBeNull()
         ->and($product->brand_id)->toBeNull()
-        ->and($product->categories)->toBeNull()
+        ->and($product->categories)->toBeEmpty()
         ->and($product->gtin)->toBeNull()
         ->and($product->permalink)->toBeNull();
 });

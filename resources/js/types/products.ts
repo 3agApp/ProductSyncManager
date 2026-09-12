@@ -28,6 +28,8 @@ export type ProductStats = {
     lowStock: number;
     outOfStock: number;
     inventoryValue: number;
+    brands: number;
+    categories: number;
 };
 
 export type ProductFilters = {

@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, User> $members
  * @property-read Collection<int, Brand> $brands
+ * @property-read Collection<int, Category> $categories
  * @property-read Collection<int, Product> $products
  * @property-read Collection<int, SyncRun> $syncRuns
  * @property-read WooCommerceConnection|null $wooCommerceConnection
@@ -111,6 +112,16 @@ class Shop extends Model
     public function brands(): HasMany
     {
         return $this->hasMany(Brand::class);
+    }
+
+    /**
+     * Get all categories for this shop.
+     *
+     * @return HasMany<Category, $this>
+     */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
     }
 
     /**

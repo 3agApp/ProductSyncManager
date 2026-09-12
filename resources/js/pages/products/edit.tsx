@@ -7,6 +7,7 @@ type Props = {
     shop: Shop;
     product: Product;
     brands: string[];
+    categories: string[];
     statuses: ProductStatusOption[];
 };
 
@@ -14,6 +15,7 @@ export default function ProductEdit({
     shop,
     product,
     brands,
+    categories,
     statuses,
 }: Props) {
     return (
@@ -35,6 +37,7 @@ export default function ProductEdit({
                         shop={shop}
                         product={product}
                         brands={brands}
+                        categories={categories}
                         statuses={statuses}
                     />
                 </div>

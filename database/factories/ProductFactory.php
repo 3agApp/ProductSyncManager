@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\ProductStatus;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -44,6 +45,28 @@ class ProductFactory extends Factory
             $product->brand()
                 ->associate(Brand::findOrCreateFor($product->shop, $name ?? $this->brandName()))
                 ->save();
+        });
+    }
+
+    /**
+     * Indicate that the product is filed under categories.
+     *
+     * Paths are written the way the form takes them, so "Bags > Totes"
+     * files the product under a nested category, creating the levels that
+     * are new to the shop.
+     */
+    public function categorized(string ...$paths): static
+    {
+        return $this->afterCreating(function (Product $product) use ($paths) {
+            $paths = $paths === [] ? [$this->categoryPath()] : $paths;
+
+            $product->categories()->sync(
+                collect($paths)
+                    ->map(fn (string $path) => Category::findOrCreatePath($product->shop, $path)?->id)
+                    ->filter()
+                    ->unique()
+                    ->all(),
+            );
         });
     }
 
@@ -94,6 +117,21 @@ class ProductFactory extends Factory
     {
         return fake()->randomElement([
             'Acme', 'Globex', 'Initech', 'Northwind', 'Umbra Goods',
+        ]);
+    }
+
+    /**
+     * Pick one of a small pool of category paths, some of them nested.
+     */
+    protected function categoryPath(): string
+    {
+        return fake()->randomElement([
+            'Bags > Totes',
+            'Bags > Backpacks',
+            'Home > Lighting',
+            'Home > Textiles',
+            'Accessories',
+            'Stationery',
         ]);
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Products;
 
 use App\Enums\ProductStatus;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -117,22 +118,60 @@ class SaveProductRequest extends FormRequest
      *
      * The form takes the brand as typed text rather than a chosen id, so a
      * name that is new to the shop becomes a brand here. A brand that was
-     * not submitted at all is left as it is on the product.
+     * not submitted at all is left as it is on the product. Categories are
+     * dropped, since they live on a pivot rather than a column.
      *
      * @return array<string, mixed>
      */
     public function productAttributes(): array
     {
         $validated = $this->validated();
+        $attributes = Arr::except($validated, ['brand', 'categories']);
 
         if (! array_key_exists('brand', $validated)) {
-            return $validated;
+            return $attributes;
         }
 
         return [
-            ...Arr::except($validated, 'brand'),
+            ...$attributes,
             'brand_id' => Brand::findOrCreateFor($this->shop(), $validated['brand'])?->id,
         ];
+    }
+
+    /**
+     * Get the category rows the product should be filed under.
+     *
+     * Each entry is a written path, so "Bags > Totes" files the product
+     * under a nested category, creating the levels that are new to the
+     * shop. Null means the field was not submitted and whatever the product
+     * is already filed under should be left alone.
+     *
+     * @return array<int, int>|null
+     */
+    public function categoryIds(): ?array
+    {
+        if (! $this->has('categories')) {
+            return null;
+        }
+
+        $paths = $this->validated()['categories'] ?? [];
+
+        if (! is_array($paths)) {
+            return [];
+        }
+
+        $shop = $this->shop();
+        $ids = [];
+
+        foreach ($paths as $path) {
+            $category = Category::findOrCreatePath($shop, is_string($path) ? $path : null);
+
+            if ($category !== null) {
+                $ids[$category->id] = $category->id;
+            }
+        }
+
+        return array_values($ids);
     }
 
     /**

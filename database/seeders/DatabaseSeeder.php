@@ -25,17 +25,17 @@ class DatabaseSeeder extends Seeder
 
         $products = Product::factory()->for($user->personalShop());
 
-        $products->count(16)->branded()->create();
-        $products->count(4)->draft()->branded()->create();
-        $products->count(3)->lowStock()->branded()->create();
+        $products->count(16)->branded()->categorized()->create();
+        $products->count(4)->draft()->branded()->categorized()->create();
+        $products->count(3)->lowStock()->branded()->categorized()->create();
 
-        // Left brandless, so the empty column shows up in the dashboard too.
+        // Left bare, so the empty brand and categories show up too.
         $products->count(2)->outOfStock()->create();
         $products->archived()->create();
 
         $outlet = Shop::factory()->create(['name' => 'Acme Outlet']);
         $outlet->members()->attach($user, ['role' => ShopRole::Owner->value]);
 
-        Product::factory()->count(6)->for($outlet)->branded()->create();
+        Product::factory()->count(6)->for($outlet)->branded()->categorized()->create();
     }
 }

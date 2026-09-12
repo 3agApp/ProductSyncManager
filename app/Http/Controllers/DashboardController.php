@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\PresentsProducts;
 use App\Enums\ProductStatus;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\ShopInvitation;
-use App\Models\SyncRun;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -15,58 +15,36 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    use PresentsProducts;
+
     /**
-     * The number of products shown per page.
+     * The number of recently touched products shown on the overview.
      */
-    private const int PER_PAGE = 10;
+    private const int RECENT_PRODUCTS = 5;
 
-    public function __invoke(Request $request, Shop $currentShop): Response|RedirectResponse
+    /**
+     * Show an overview of the shop's catalog.
+     *
+     * The full product table lives on its own page; this one carries what a
+     * member wants at a glance -- the figures, anything a sync is doing, and
+     * the handful of products that changed most recently.
+     */
+    public function __invoke(Request $request, Shop $currentShop): Response
     {
-        $search = $request->string('search')->trim()->toString();
-        $status = ProductStatus::tryFrom($request->string('status')->toString());
-
-        $products = $currentShop->products()
-            ->with('brand')
-            ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
-                ->where('name', 'like', "%{$search}%")
-                ->orWhere('sku', 'like', "%{$search}%")))
-            ->when($status !== null, fn ($query) => $query->where('status', $status))
-            ->latest()
+        $recent = $currentShop->products()
+            ->with(['brand', 'categories'])
+            ->latest('updated_at')
             ->latest('id')
-            ->paginate(self::PER_PAGE)
-            ->withQueryString();
+            ->limit(self::RECENT_PRODUCTS)
+            ->get();
 
-        if ($products->isEmpty() && $products->currentPage() > 1) {
-            return redirect($products->url($products->lastPage()));
-        }
+        $categoryPaths = Category::pathsFor($currentShop);
 
         return Inertia::render('dashboard', [
-            'products' => $products->through(fn (Product $product) => [
-                'id' => $product->id,
-                'remoteId' => $product->remote_id,
-                'name' => $product->name,
-                'sku' => $product->sku,
-                'gtin' => $product->gtin,
-                'description' => $product->description,
-                'shortDescription' => $product->short_description,
-                'brand' => $product->brand?->name,
-                'categories' => $product->categories ?? [],
-                'imageUrl' => $product->image_url,
-                'galleryImageUrls' => $product->gallery_image_urls ?? [],
-                'permalink' => $product->permalink,
-                'price' => $product->price,
-                'stock' => $product->stock,
-                'status' => $product->status->value,
-                'statusLabel' => $product->status->label(),
-                'updatedAt' => $product->updated_at?->toISOString(),
-                'updatedAtDiff' => $product->updated_at?->diffForHumans(),
-            ]),
             'stats' => $this->stats($currentShop),
-            'filters' => [
-                'search' => $search,
-                'status' => $status?->value,
-            ],
-            'statuses' => ProductStatus::options(),
+            'recentProducts' => $recent
+                ->map(fn (Product $product) => $this->productPayload($product, $categoryPaths))
+                ->all(),
             'lowStockThreshold' => Product::LOW_STOCK_THRESHOLD,
             'permissions' => $request->user()->toShopPermissions($currentShop),
             'pendingInvitations' => $this->pendingInvitations($request),
@@ -75,35 +53,9 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get the in-flight sync for the shop, if there is one.
-     *
-     * This is deliberately smaller than the payload the sync settings page
-     * uses: the dashboard only shows a progress banner, and it is reloaded
-     * on a timer while a sync runs.
-     *
-     * @return array{id: int, status: string, progress: int|null, processedProducts: int, totalProducts: int|null}|null
-     */
-    private function activeSyncRun(Shop $shop): ?array
-    {
-        $run = $shop->syncRuns()->active()->latest('id')->first();
-
-        if (! $run instanceof SyncRun) {
-            return null;
-        }
-
-        return [
-            'id' => $run->id,
-            'status' => $run->status->value,
-            'progress' => $run->progress(),
-            'processedProducts' => $run->processed_products,
-            'totalProducts' => $run->total_products,
-        ];
-    }
-
-    /**
      * Get the catalog statistics for the shop.
      *
-     * @return array{total: int, active: int, draft: int, lowStock: int, outOfStock: int, inventoryValue: float}
+     * @return array{total: int, active: int, draft: int, lowStock: int, outOfStock: int, inventoryValue: float, brands: int, categories: int}
      */
     private function stats(Shop $shop): array
     {
@@ -124,6 +76,8 @@ class DashboardController extends Controller
             'lowStock' => (int) ($stats['low_stock'] ?? 0),
             'outOfStock' => (int) ($stats['out_of_stock'] ?? 0),
             'inventoryValue' => round((float) ($stats['inventory_value'] ?? 0), 2),
+            'brands' => $shop->brands()->count(),
+            'categories' => $shop->categories()->count(),
         ];
     }
 

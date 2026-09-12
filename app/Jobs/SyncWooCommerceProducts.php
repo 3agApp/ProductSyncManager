@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Sync\ImportWooCommerceCategories;
 use App\Actions\Sync\ImportWooCommerceProducts;
 use App\Enums\ProductStatus;
 use App\Models\Shop;
@@ -50,6 +51,13 @@ class SyncWooCommerceProducts implements ShouldQueue
 
     private ?int $totalProducts = null;
 
+    /**
+     * Local category ids from this run, keyed by remote id.
+     *
+     * @var array<int, int>
+     */
+    private array $categoryIds = [];
+
     public function __construct(public SyncRun $syncRun)
     {
         //
@@ -82,7 +90,7 @@ class SyncWooCommerceProducts implements ShouldQueue
     /**
      * Pull the shop's catalog from WooCommerce.
      */
-    public function handle(ImportWooCommerceProducts $import): void
+    public function handle(ImportWooCommerceProducts $import, ImportWooCommerceCategories $importCategories): void
     {
         $shop = $this->syncRun->shop;
         $connection = $shop->wooCommerceConnection;
@@ -104,6 +112,10 @@ class SyncWooCommerceProducts implements ShouldQueue
             $this->counters['skipped'] = $client->variableProductCount();
             $this->persistProgress();
 
+            // The tree is read first so products can be filed under it as
+            // they arrive, with the parent links the product payload omits.
+            $this->categoryIds = $this->importCategories($client, $importCategories, $shop);
+
             $this->importAllPages($client, $import, $shop, $runStartedAt);
 
             // Only archive once every page succeeded. Archiving after a partial
@@ -121,6 +133,36 @@ class SyncWooCommerceProducts implements ShouldQueue
             $this->persistProgress();
             $this->fail($exception);
         }
+    }
+
+    /**
+     * Read the store's category tree into the shop.
+     *
+     * @return array<int, int> local category id, keyed by remote id
+     */
+    private function importCategories(
+        WooCommerceClient $client,
+        ImportWooCommerceCategories $import,
+        Shop $shop,
+    ): array {
+        $maxPages = max(1, (int) config('services.woocommerce.max_pages'));
+        $remoteCategories = [];
+
+        for ($page = 1; $page <= $maxPages; $page++) {
+            $remotePage = $client->categoryPage($page);
+
+            if ($remotePage->isEmpty()) {
+                break;
+            }
+
+            $remoteCategories = [...$remoteCategories, ...$remotePage->categories];
+
+            if ($remotePage->totalPages !== null && $page >= $remotePage->totalPages) {
+                break;
+            }
+        }
+
+        return $import->handle($shop, $remoteCategories);
     }
 
     /**
@@ -145,7 +187,7 @@ class SyncWooCommerceProducts implements ShouldQueue
                 return;
             }
 
-            $result = $import->handle($shop, $remotePage->products, $runStartedAt);
+            $result = $import->handle($shop, $remotePage->products, $runStartedAt, $this->categoryIds);
 
             $this->counters['created'] += $result->created;
             $this->counters['updated'] += $result->updated;

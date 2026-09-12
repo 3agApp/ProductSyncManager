@@ -21,6 +21,7 @@ type Props = {
     shop: Shop;
     product: Product | null;
     brands: string[];
+    categories: string[];
     statuses: ProductStatusOption[];
 };
 
@@ -46,6 +47,7 @@ export default function ProductForm({
     shop,
     product,
     brands,
+    categories,
     statuses,
 }: Props) {
     const formRoute = product
@@ -236,7 +238,7 @@ export default function ProductForm({
 
                     <Section
                         title="Organization"
-                        description="The brand it belongs to, and the categories it is listed under."
+                        description="The brand it belongs to, and the categories it is listed under. Nest a category with &gt;, as in Bags &gt; Totes."
                     >
                         <div className="grid gap-6 sm:grid-cols-2">
                             <div className="grid gap-2">
@@ -273,11 +275,20 @@ export default function ProductForm({
                                     id="product-categories"
                                     name="categories"
                                     data-test="product-categories"
+                                    list="product-category-options"
                                     defaultValue={
                                         product?.categories.join(', ') ?? ''
                                     }
-                                    placeholder="Bags, Accessories"
+                                    placeholder="Bags > Totes, Accessories"
                                 />
+                                <datalist id="product-category-options">
+                                    {categories.map((category) => (
+                                        <option
+                                            key={category}
+                                            value={category}
+                                        />
+                                    ))}
+                                </datalist>
                                 <InputError message={errors.categories} />
                             </div>
                         </div>

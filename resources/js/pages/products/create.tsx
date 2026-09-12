@@ -6,10 +6,16 @@ import type { ProductStatusOption, Shop } from '@/types';
 type Props = {
     shop: Shop;
     brands: string[];
+    categories: string[];
     statuses: ProductStatusOption[];
 };
 
-export default function ProductCreate({ shop, brands, statuses }: Props) {
+export default function ProductCreate({
+    shop,
+    brands,
+    categories,
+    statuses,
+}: Props) {
     return (
         <>
             <Head title="Add product" />
@@ -29,6 +35,7 @@ export default function ProductCreate({ shop, brands, statuses }: Props) {
                         shop={shop}
                         product={null}
                         brands={brands}
+                        categories={categories}
                         statuses={statuses}
                     />
                 </div>

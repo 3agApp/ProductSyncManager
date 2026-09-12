@@ -29,12 +29,12 @@ test('shop owners can create products', function () {
 
     $response = $this
         ->actingAs($user)
-        ->from(route('dashboard', $shop))
+        ->from(route('products.index', $shop))
         ->post(route('products.store', $shop), validProductData());
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', $shop))
+        ->assertRedirect(route('products.index', $shop))
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Product created.']);
 
     $this->assertDatabaseHas('products', [
@@ -102,7 +102,7 @@ test('products can be updated', function () {
 
     $response = $this
         ->actingAs($user)
-        ->from(route('dashboard', $shop))
+        ->from(route('products.index', $shop))
         ->patch(route('products.update', [$shop, $product]), validProductData([
             'name' => 'Updated Tote Bag',
             'price' => '19.99',
@@ -112,7 +112,7 @@ test('products can be updated', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', $shop))
+        ->assertRedirect(route('products.index', $shop))
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Product updated.']);
 
     $product->refresh();
@@ -189,9 +189,9 @@ test('owners can delete products', function () {
 
     $this
         ->actingAs($user)
-        ->from(route('dashboard', $shop))
+        ->from(route('products.index', $shop))
         ->delete(route('products.destroy', [$shop, $product]))
-        ->assertRedirect(route('dashboard', $shop))
+        ->assertRedirect(route('products.index', $shop))
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Product deleted.']);
 
     $this->assertModelMissing($product);

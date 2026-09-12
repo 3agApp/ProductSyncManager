@@ -4,6 +4,7 @@ namespace App\Actions\Sync;
 
 use App\Enums\ProductStatus;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
 use Carbon\CarbonInterface;
@@ -36,16 +37,29 @@ class ImportWooCommerceProducts
     private array $brandIds = [];
 
     /**
+     * Local category ids from this run, keyed by remote id.
+     *
+     * @var array<int, int>
+     */
+    private array $categoryIds = [];
+
+    /**
      * Import one page of remote products into the shop.
      *
      * The whole page runs in a single transaction, which keeps SQLite write
      * pressure down while a worker and the web server share the database.
      *
      * @param  array<int, array<string, mixed>>  $remoteProducts
+     * @param  array<int, int>  $categoryIds  local category id, keyed by remote id
      */
-    public function handle(Shop $shop, array $remoteProducts, CarbonInterface $runStartedAt): ImportResult
-    {
+    public function handle(
+        Shop $shop,
+        array $remoteProducts,
+        CarbonInterface $runStartedAt,
+        array $categoryIds = [],
+    ): ImportResult {
         $this->brandIds = [];
+        $this->categoryIds = $categoryIds;
 
         return DB::transaction(function () use ($shop, $remoteProducts, $runStartedAt) {
             $created = 0;
@@ -69,6 +83,10 @@ class ImportWooCommerceProducts
                     $this->attributes($shop, $remoteProduct, $remoteId, $runStartedAt),
                     $remoteId,
                 );
+
+                if ($saved !== null) {
+                    $saved->categories()->sync($this->categoriesFor($shop, $remoteProduct));
+                }
 
                 if ($saved === null) {
                     $skipped++;
@@ -151,7 +169,6 @@ class ImportWooCommerceProducts
             'description' => $this->nullableText($remoteProduct['description'] ?? '', self::DESCRIPTION_LENGTH),
             'short_description' => $this->nullableText($remoteProduct['short_description'] ?? '', self::DESCRIPTION_LENGTH),
             'brand_id' => $this->brandId($shop, $remoteProduct),
-            'categories' => $this->names($remoteProduct['categories'] ?? null),
             'image_url' => $images[0] ?? null,
             'gallery_image_urls' => array_slice($images, 1) ?: null,
             'permalink' => $this->nullableText($remoteProduct['permalink'] ?? '', 2048),
@@ -223,6 +240,56 @@ class ImportWooCommerceProducts
         }
 
         return null;
+    }
+
+    /**
+     * Get the local categories a remote product is filed under.
+     *
+     * The tree was imported before the first page of products, so a remote
+     * category is normally already known. One that is not -- added to the
+     * store mid-run -- is created from what the product payload carries,
+     * which has a name but no parent, so it lands at the top.
+     *
+     * @param  array<string, mixed>  $remoteProduct
+     * @return array<int, int>
+     */
+    private function categoriesFor(Shop $shop, array $remoteProduct): array
+    {
+        $terms = $remoteProduct['categories'] ?? null;
+
+        if (! is_array($terms)) {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach ($terms as $term) {
+            if (! is_array($term)) {
+                continue;
+            }
+
+            $remoteId = (int) ($term['id'] ?? 0);
+
+            if ($remoteId !== 0 && isset($this->categoryIds[$remoteId])) {
+                $ids[] = $this->categoryIds[$remoteId];
+
+                continue;
+            }
+
+            $category = Category::findOrCreatePath($shop, $this->text($term['name'] ?? '', 255));
+
+            if ($category === null) {
+                continue;
+            }
+
+            $ids[] = $category->id;
+
+            if ($remoteId !== 0) {
+                $this->categoryIds[$remoteId] = $category->id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**
@@ -343,7 +410,12 @@ class ImportWooCommerceProducts
     }
 
     /**
-     * Strip markup from a remote string and clamp it to the column width.
+     * Turn a remote string into plain text, clamped to the column width.
+     *
+     * Stores hand back HTML, so tags go first and the entities they leave
+     * behind are decoded after -- otherwise a name like "Kitty&amp;fish"
+     * would be stored and shown with the entity still in it. Decoding
+     * before clamping keeps the limit honest, since it shortens the text.
      */
     private function text(mixed $value, int $limit): string
     {
@@ -351,6 +423,8 @@ class ImportWooCommerceProducts
             return '';
         }
 
-        return Str::limit(trim(strip_tags($value)), $limit, '');
+        $text = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return Str::limit(trim($text), $limit, '');
     }
 }

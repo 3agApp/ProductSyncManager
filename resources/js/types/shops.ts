@@ -61,6 +61,12 @@ export type ShopPermissions = {
     canCreateProduct: boolean;
     canUpdateProduct: boolean;
     canDeleteProduct: boolean;
+    canCreateBrand: boolean;
+    canUpdateBrand: boolean;
+    canDeleteBrand: boolean;
+    canCreateCategory: boolean;
+    canUpdateCategory: boolean;
+    canDeleteCategory: boolean;
     canManageSync: boolean;
     canRunSync: boolean;
 };

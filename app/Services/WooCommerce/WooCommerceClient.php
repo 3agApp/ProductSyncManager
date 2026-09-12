@@ -58,6 +58,30 @@ class WooCommerceClient
     }
 
     /**
+     * Fetch one page of product categories.
+     *
+     * The product payload names a product's categories but not how they
+     * nest, so the tree is read from this endpoint instead.
+     */
+    public function categoryPage(int $page, ?int $perPage = null): WooCommerceCategoryPage
+    {
+        $response = $this->get('products/categories', [
+            'page' => $page,
+            'per_page' => $perPage ?? (int) config('services.woocommerce.per_page'),
+            'orderby' => 'id',
+            'order' => 'asc',
+        ]);
+
+        /** @var array<int, array<string, mixed>> $categories */
+        $categories = is_array($response->json()) ? $response->json() : [];
+
+        return new WooCommerceCategoryPage(
+            categories: $categories,
+            totalPages: $this->intHeader($response, 'X-WP-TotalPages'),
+        );
+    }
+
+    /**
      * Get the number of importable products, verifying the credentials work.
      */
     public function ping(): int

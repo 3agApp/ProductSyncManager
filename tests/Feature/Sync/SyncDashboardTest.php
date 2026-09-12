@@ -2,6 +2,7 @@
 
 use App\Enums\ProductStatus;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\SyncRun;
 use App\Models\User;
@@ -47,12 +48,15 @@ test('the dashboard does not report another shops sync', function () {
         ->assertInertia(fn (Assert $page) => $page->where('activeSyncRun', null));
 });
 
-test('the dashboard exposes the richer product fields', function () {
+test('the products page exposes the richer product fields', function () {
     $user = User::factory()->create();
 
     $brand = Brand::factory()->for($user->currentShop)->create(['name' => 'Acme']);
 
-    $user->currentShop->products()->create([
+    $bags = Category::factory()->for($user->currentShop)->create(['name' => 'Bags']);
+    $totes = Category::factory()->childOf($bags)->create(['name' => 'Totes']);
+
+    $product = $user->currentShop->products()->create([
         'brand_id' => $brand->id,
         'remote_id' => 500,
         'name' => 'Synced Tote',
@@ -60,7 +64,6 @@ test('the dashboard exposes the richer product fields', function () {
         'gtin' => '5012345678900',
         'description' => 'The long description.',
         'short_description' => 'The short one.',
-        'categories' => ['Bags', 'Accessories'],
         'image_url' => 'https://store.test/img/main.jpg',
         'gallery_image_urls' => ['https://store.test/img/alt.jpg'],
         'permalink' => 'https://store.test/product/500',
@@ -69,15 +72,17 @@ test('the dashboard exposes the richer product fields', function () {
         'status' => ProductStatus::Active,
     ]);
 
+    $product->categories()->sync([$totes->id]);
+
     $this
         ->actingAs($user)
-        ->get(route('dashboard', $user->currentShop))
+        ->get(route('products.index', $user->currentShop))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('products.data.0.gtin', '5012345678900')
             ->where('products.data.0.shortDescription', 'The short one.')
             ->where('products.data.0.brand', 'Acme')
-            ->where('products.data.0.categories', ['Bags', 'Accessories'])
+            ->where('products.data.0.categories', ['Bags > Totes'])
             ->where('products.data.0.imageUrl', 'https://store.test/img/main.jpg')
             ->where('products.data.0.galleryImageUrls', ['https://store.test/img/alt.jpg'])
             ->where('products.data.0.permalink', 'https://store.test/product/500'));
@@ -90,7 +95,7 @@ test('a hand made product reports empty collections rather than null', function 
 
     $this
         ->actingAs($user)
-        ->get(route('dashboard', $user->currentShop))
+        ->get(route('products.index', $user->currentShop))
         ->assertInertia(fn (Assert $page) => $page
             ->where('products.data.0.brand', null)
             ->where('products.data.0.categories', [])

@@ -32,12 +32,25 @@ enum ShopRole: string
                 ShopPermission::CreateProduct,
                 ShopPermission::UpdateProduct,
                 ShopPermission::DeleteProduct,
+                ShopPermission::CreateBrand,
+                ShopPermission::UpdateBrand,
+                ShopPermission::DeleteBrand,
+                ShopPermission::CreateCategory,
+                ShopPermission::UpdateCategory,
+                ShopPermission::DeleteCategory,
                 ShopPermission::ManageSync,
                 ShopPermission::RunSync,
             ],
             self::Member => [
                 ShopPermission::CreateProduct,
                 ShopPermission::UpdateProduct,
+                // A member can already add a brand or category by typing one
+                // into the product form, so the dedicated screens allow the
+                // same. Removing them is left to admins.
+                ShopPermission::CreateBrand,
+                ShopPermission::UpdateBrand,
+                ShopPermission::CreateCategory,
+                ShopPermission::UpdateCategory,
                 ShopPermission::RunSync,
             ],
         };

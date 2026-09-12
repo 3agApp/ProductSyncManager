@@ -5,6 +5,7 @@ use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the create page renders with the statuses it needs', function () {
@@ -22,6 +23,7 @@ test('the create page renders with the statuses it needs', function () {
             ->component('products/create')
             ->where('shop.slug', $shop->slug)
             ->where('brands', ['Acme', 'Globex'])
+            ->has('categories')
             ->has('statuses', 3));
 });
 
@@ -98,7 +100,7 @@ test('guests are sent to login', function () {
     $this->get(route('products.create', $user->currentShop))->assertRedirect(route('login'));
 });
 
-test('saving a product returns to the dashboard', function () {
+test('saving a product returns to the product list', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
     $product = Product::factory()->for($shop)->create();
@@ -107,11 +109,11 @@ test('saving a product returns to the dashboard', function () {
         ->actingAs($user)
         ->from(route('products.edit', [$shop, $product]))
         ->patch(route('products.update', [$shop, $product]), validProductData())
-        ->assertRedirect(route('dashboard', $shop))
+        ->assertRedirect(route('products.index', $shop))
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Product updated.']);
 });
 
-test('creating a product returns to the dashboard', function () {
+test('creating a product returns to the product list', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
 
@@ -119,7 +121,7 @@ test('creating a product returns to the dashboard', function () {
         ->actingAs($user)
         ->from(route('products.create', $shop))
         ->post(route('products.store', $shop), validProductData())
-        ->assertRedirect(route('dashboard', $shop))
+        ->assertRedirect(route('products.index', $shop))
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Product created.']);
 });
 
@@ -143,7 +145,7 @@ test('list fields are split, trimmed and de-duplicated', function () {
 
     expect($product->gtin)->toBe('5012345678900')
         ->and($product->short_description)->toBe('A sturdy everyday tote.')
-        ->and($product->categories)->toBe(['Bags', 'Accessories'])
+        ->and($product->categories->pluck('name')->all())->toBe(['Bags', 'Accessories'])
         ->and($product->image_url)->toBe('https://example.com/tote.jpg')
         ->and($product->gallery_image_urls)->toBe([
             'https://example.com/a.jpg',
@@ -156,11 +158,14 @@ test('submitting the fields empty clears them', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
 
-    $product = Product::factory()->for($shop)->for(Brand::factory()->for($shop))->create([
-        'gtin' => '5012345678900',
-        'categories' => ['Bags'],
-        'gallery_image_urls' => ['https://example.com/a.jpg'],
-    ]);
+    $product = Product::factory()
+        ->for($shop)
+        ->for(Brand::factory()->for($shop))
+        ->categorized('Bags')
+        ->create([
+            'gtin' => '5012345678900',
+            'gallery_image_urls' => ['https://example.com/a.jpg'],
+        ]);
 
     $this
         ->actingAs($user)
@@ -176,7 +181,7 @@ test('submitting the fields empty clears them', function () {
 
     expect($product->gtin)->toBeNull()
         ->and($product->brand_id)->toBeNull()
-        ->and($product->categories)->toBeNull()
+        ->and($product->categories)->toBeEmpty()
         ->and($product->gallery_image_urls)->toBeNull();
 });
 
@@ -186,9 +191,11 @@ test('omitting the fields leaves what is stored alone', function () {
 
     $brand = Brand::factory()->for($shop)->create(['name' => 'Acme']);
 
-    $product = Product::factory()->for($shop)->for($brand)->create([
-        'gtin' => '5012345678900',
-    ]);
+    $product = Product::factory()
+        ->for($shop)
+        ->for($brand)
+        ->categorized('Bags')
+        ->create(['gtin' => '5012345678900']);
 
     // validProductData() carries none of the newer fields.
     $this
@@ -199,7 +206,8 @@ test('omitting the fields leaves what is stored alone', function () {
     $product->refresh();
 
     expect($product->gtin)->toBe('5012345678900')
-        ->and($product->brand_id)->toBe($brand->id);
+        ->and($product->brand_id)->toBe($brand->id)
+        ->and($product->categories->pluck('name')->all())->toBe(['Bags']);
 });
 
 test('a typed brand becomes a row on the shop', function () {
@@ -230,6 +238,54 @@ test('a brand spelled differently joins the row it already has', function () {
 
     expect($shop->brands()->count())->toBe(1)
         ->and($shop->products()->sole()->brand_id)->toBe($brand->id);
+});
+
+test('a written path files the product under a nested category', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', $shop), validProductData([
+            'categories' => 'Bags > Totes, Accessories',
+        ]))
+        ->assertSessionHasNoErrors();
+
+    $totes = $shop->categories()->where('slug', 'totes')->sole();
+    $bags = $shop->categories()->where('slug', 'bags')->sole();
+
+    expect($totes->parent_id)->toBe($bags->id)
+        ->and($bags->parent_id)->toBeNull()
+        ->and($shop->products()->sole()->categories->pluck('slug')->sort()->values()->all())
+        ->toBe(['accessories', 'totes']);
+});
+
+test('a product is filed under many categories and a category holds many products', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    Product::factory()->for($shop)->categorized('Bags', 'Accessories')->create();
+    Product::factory()->for($shop)->categorized('Bags')->create();
+
+    $bags = $shop->categories()->where('slug', 'bags')->sole();
+
+    expect($shop->products()->first()->categories)->toHaveCount(2)
+        ->and($bags->products)->toHaveCount(2);
+});
+
+test('deleting a product leaves its categories standing', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $product = Product::factory()->for($shop)->categorized('Bags')->create();
+
+    $this
+        ->actingAs($user)
+        ->delete(route('products.destroy', [$shop, $product]))
+        ->assertSessionHasNoErrors();
+
+    expect($shop->categories()->count())->toBe(1)
+        ->and(DB::table('category_product')->count())->toBe(0);
 });
 
 test('brands belong to the shop that made them', function () {

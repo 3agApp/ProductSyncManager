@@ -15,6 +15,12 @@ readonly class ShopPermissions
         public bool $canCreateProduct,
         public bool $canUpdateProduct,
         public bool $canDeleteProduct,
+        public bool $canCreateBrand,
+        public bool $canUpdateBrand,
+        public bool $canDeleteBrand,
+        public bool $canCreateCategory,
+        public bool $canUpdateCategory,
+        public bool $canDeleteCategory,
         public bool $canManageSync,
         public bool $canRunSync,
     ) {

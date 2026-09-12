@@ -5,9 +5,11 @@ namespace App\Models;
 use App\Enums\ProductStatus;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -20,7 +22,6 @@ use Illuminate\Support\Carbon;
  * @property string|null $gtin
  * @property string|null $description
  * @property string|null $short_description
- * @property array<int, string>|null $categories
  * @property string|null $image_url
  * @property array<int, string>|null $gallery_image_urls
  * @property string|null $permalink
@@ -32,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Shop $shop
  * @property-read Brand|null $brand
+ * @property-read Collection<int, Category> $categories
  */
 #[Fillable([
     'brand_id',
@@ -41,7 +43,6 @@ use Illuminate\Support\Carbon;
     'gtin',
     'description',
     'short_description',
-    'categories',
     'image_url',
     'gallery_image_urls',
     'permalink',
@@ -81,6 +82,16 @@ class Product extends Model
     }
 
     /**
+     * Get the categories the product is filed under.
+     *
+     * @return BelongsToMany<Category, $this>
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -92,7 +103,6 @@ class Product extends Model
             'stock' => 'integer',
             'status' => ProductStatus::class,
             'remote_id' => 'integer',
-            'categories' => 'array',
             'gallery_image_urls' => 'array',
             'last_synced_at' => 'datetime',
         ];
