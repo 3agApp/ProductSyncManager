@@ -322,3 +322,20 @@ test('the newer fields are validated', function (array $overrides, string $field
     'gtin too long' => [['gtin' => str_repeat('9', 65)], 'gtin'],
     'brand too long' => [['brand' => str_repeat('a', 256)], 'brand'],
 ]);
+
+test('a submitted list keeps entries that contain the separator', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    // The picker submits discrete values, so a comma inside one of them is
+    // part of the name rather than a break between two.
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', $shop), validProductData([
+            'categories' => ['Toys, Games', 'Bags > Totes'],
+        ]))
+        ->assertSessionHasNoErrors();
+
+    expect($shop->categories()->pluck('name')->sort()->values()->all())
+        ->toBe(['Bags', 'Totes', 'Toys, Games']);
+});

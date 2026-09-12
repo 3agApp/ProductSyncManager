@@ -44,8 +44,8 @@ Beyond name, SKU, price and stock, each synced product keeps:
 | Field             | From                                                                                                            |
 | ----------------- | --------------------------------------------------------------------------------------------------------------- |
 | GTIN / EAN / UPC  | `global_unique_id`, falling back to `_gtin`, `_ean` or `_upc` product meta on stores older than WooCommerce 9.2 |
-| Brand             | the first of `brands[].name`, stored as a row on the shop's brand list                                          |
-| Categories        | the store's own category tree, read from `products/categories` so nesting is kept                               |
+| Brand             | the first of `brands[]`, kept as a row and matched on the store's own id                                        |
+| Categories        | the store's category tree, read from `products/categories` so nesting is kept, matched on the store's own id    |
 | Short description | `short_description`, markup stripped                                                                            |
 | Description       | `description`, markup stripped                                                                                  |
 | Primary image     | first entry of `images[].src`                                                                                   |

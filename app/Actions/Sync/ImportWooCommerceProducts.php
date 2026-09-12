@@ -30,9 +30,9 @@ class ImportWooCommerceProducts
     private const int DESCRIPTION_LENGTH = 65535;
 
     /**
-     * Brand ids already resolved during this page, keyed by name.
+     * Brand ids already resolved during this page, keyed by remote id.
      *
-     * @var array<string, int|null>
+     * @var array<int, int>
      */
     private array $brandIds = [];
 
@@ -296,44 +296,54 @@ class ImportWooCommerceProducts
      * Get the brand row a remote product belongs to.
      *
      * A local product carries one brand, so a store that puts several on a
-     * product contributes only the first. Resolved ids are remembered for
-     * the page, since a brand normally repeats across its products.
+     * product contributes only the first. The brand is matched on the id
+     * the store knows it by, so renaming it there moves the existing row
+     * rather than leaving an orphan behind and starting a second.
      *
      * @param  array<string, mixed>  $remoteProduct
      */
     private function brandId(Shop $shop, array $remoteProduct): ?int
     {
-        $name = $this->names($remoteProduct['brands'] ?? null)[0] ?? null;
+        $terms = $remoteProduct['brands'] ?? null;
 
-        if ($name === null) {
-            return null;
-        }
-
-        return $this->brandIds[$name] ??= Brand::findOrCreateFor($shop, $name)?->id;
-    }
-
-    /**
-     * Pull the name out of a WooCommerce term list, such as categories.
-     *
-     * @return array<int, string>|null
-     */
-    private function names(mixed $terms): ?array
-    {
         if (! is_array($terms)) {
             return null;
         }
 
-        $names = [];
-
         foreach ($terms as $term) {
-            $name = is_array($term) ? $this->text($term['name'] ?? '', 255) : '';
-
-            if ($name !== '') {
-                $names[] = $name;
+            if (! is_array($term)) {
+                continue;
             }
+
+            $remoteId = (int) ($term['id'] ?? 0);
+            $name = $this->text($term['name'] ?? '', 255);
+
+            if ($name === '') {
+                continue;
+            }
+
+            if ($remoteId !== 0 && isset($this->brandIds[$remoteId])) {
+                return $this->brandIds[$remoteId];
+            }
+
+            // A store that names a brand without giving it an id still gets
+            // one row per name, matched the way a typed one is.
+            $brand = $remoteId === 0
+                ? Brand::findOrCreateFor($shop, $name)
+                : Brand::findOrCreateForRemote($shop, $remoteId, $name, $this->text($term['slug'] ?? '', 255));
+
+            if ($brand === null) {
+                continue;
+            }
+
+            if ($remoteId !== 0) {
+                $this->brandIds[$remoteId] = $brand->id;
+            }
+
+            return $brand->id;
         }
 
-        return $names === [] ? null : $names;
+        return null;
     }
 
     /**

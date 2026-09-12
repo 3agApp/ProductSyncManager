@@ -34,7 +34,12 @@ class ImportWooCommerceCategories
                     continue;
                 }
 
-                $category = $this->save($shop, $remoteId, $name, $remoteCategory['slug'] ?? null);
+                $category = Category::findOrCreateForRemote(
+                    $shop,
+                    $remoteId,
+                    $name,
+                    $this->text($remoteCategory['slug'] ?? null),
+                );
 
                 if ($category === null) {
                     continue;
@@ -48,52 +53,6 @@ class ImportWooCommerceCategories
 
             return $localIds;
         });
-    }
-
-    /**
-     * Create or update one category, matching on its remote id.
-     *
-     * The store's own slug is preferred, since that is what makes the row
-     * line up with the category as the store knows it. A slug already taken
-     * by another of the shop's categories falls back to one derived from
-     * the name, and then to the remote id, rather than failing the run.
-     */
-    private function save(Shop $shop, int $remoteId, string $name, mixed $remoteSlug): ?Category
-    {
-        $category = $shop->categories()->firstOrNew(['remote_id' => $remoteId]);
-
-        foreach ($this->slugCandidates($remoteSlug, $name, $remoteId) as $slug) {
-            $taken = $shop->categories()
-                ->where('slug', $slug)
-                ->when($category->exists, fn ($query) => $query->whereKeyNot($category->getKey()))
-                ->exists();
-
-            if ($taken) {
-                continue;
-            }
-
-            $category->fill(['name' => $name, 'slug' => $slug])->save();
-
-            return $category;
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the slugs to try for a category, in order of preference.
-     *
-     * @return array<int, string>
-     */
-    private function slugCandidates(mixed $remoteSlug, string $name, int $remoteId): array
-    {
-        $candidates = [
-            Str::slug($this->text($remoteSlug ?? '')),
-            Str::slug($name),
-            Str::slug($name).'-'.$remoteId,
-        ];
-
-        return array_values(array_unique(array_filter($candidates)));
     }
 
     /**

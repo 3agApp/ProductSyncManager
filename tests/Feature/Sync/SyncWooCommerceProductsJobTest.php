@@ -201,6 +201,43 @@ test('a renamed remote category keeps its row and its products', function () {
         ->and($product->categories()->pluck('categories.id')->all())->toBe([$ids[20]]);
 });
 
+test('a renamed remote brand keeps its row and its products', function () {
+    $shop = Shop::factory()->create();
+    $import = app(ImportWooCommerceProducts::class);
+
+    $import->handle($shop, [remoteProduct(101, [
+        'brands' => [['id' => 7, 'name' => 'Acme', 'slug' => 'acme']],
+    ])], now());
+
+    $brandId = $shop->brands()->sole()->id;
+
+    // The store renames the brand; the id it is known by does not change.
+    $import->handle($shop, [remoteProduct(101, [
+        'brands' => [['id' => 7, 'name' => 'Acme Corp', 'slug' => 'acme-corp']],
+    ])], now());
+
+    $brand = $shop->brands()->sole();
+
+    expect($brand->id)->toBe($brandId)
+        ->and($brand->name)->toBe('Acme Corp')
+        ->and($brand->slug)->toBe('acme-corp')
+        ->and($brand->remote_id)->toBe(7)
+        ->and($shop->products()->sole()->brand_id)->toBe($brandId);
+});
+
+test('a brand named without an id still gets one row per name', function () {
+    fakeStore([
+        remoteProduct(101, ['brands' => [['name' => 'Acme']]]),
+        remoteProduct(102, ['brands' => [['name' => 'ACME']]]),
+    ]);
+
+    $run = queuedRun();
+    runSync($run);
+
+    expect($run->shop->brands()->count())->toBe(1)
+        ->and($run->shop->brands()->sole()->remote_id)->toBeNull();
+});
+
 test('an imported brand is stored once and shared by its products', function () {
     fakeStore([
         remoteProduct(101),

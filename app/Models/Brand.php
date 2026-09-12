@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\IsCatalogTerm;
 use Database\Factories\BrandFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -10,11 +11,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 /**
  * @property int $id
  * @property int $shop_id
+ * @property int|null $remote_id
  * @property string $name
  * @property string $slug
  * @property Carbon|null $created_at
@@ -22,43 +23,20 @@ use Illuminate\Support\Str;
  * @property-read Shop $shop
  * @property-read Collection<int, Product> $products
  */
-#[Fillable(['name', 'slug'])]
+#[Fillable(['remote_id', 'name', 'slug'])]
 class Brand extends Model
 {
     /** @use HasFactory<BrandFactory> */
-    use HasFactory;
+    use HasFactory, IsCatalogTerm;
 
     /**
-     * Bootstrap the model and its traits.
-     */
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::saving(function (Brand $brand) {
-            if ($brand->isDirty('name') && ! $brand->isDirty('slug')) {
-                $brand->slug = Str::slug($brand->name);
-            }
-        });
-    }
-
-    /**
-     * Get the shop's brand of this name, creating it when it is new.
+     * Get the shop's brands, for the shared term behaviour.
      *
-     * Brands arrive as typed or imported text, so they are matched on the
-     * slug: that keeps "Acme", "acme" and " ACME " on one row instead of
-     * three. A name with nothing sluggable in it is treated as no brand.
+     * @return HasMany<Brand, Shop>
      */
-    public static function findOrCreateFor(Shop $shop, ?string $name): ?self
+    protected static function termsOf(Shop $shop): HasMany
     {
-        $name = trim((string) $name);
-        $slug = Str::slug($name);
-
-        if ($slug === '') {
-            return null;
-        }
-
-        return $shop->brands()->firstOrCreate(['slug' => $slug], ['name' => $name]);
+        return $shop->brands();
     }
 
     /**

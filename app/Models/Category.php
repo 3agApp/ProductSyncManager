@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\IsCatalogTerm;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -31,7 +32,7 @@ use Illuminate\Support\Str;
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
-    use HasFactory;
+    use HasFactory, IsCatalogTerm;
 
     /**
      * The separator between the levels of a written category path.
@@ -47,17 +48,13 @@ class Category extends Model
     public const int MAX_DEPTH = 5;
 
     /**
-     * Bootstrap the model and its traits.
+     * Get the shop's categories, for the shared term behaviour.
+     *
+     * @return HasMany<Category, Shop>
      */
-    protected static function boot(): void
+    protected static function termsOf(Shop $shop): HasMany
     {
-        parent::boot();
-
-        static::saving(function (Category $category) {
-            if ($category->isDirty('name') && ! $category->isDirty('slug')) {
-                $category->slug = Str::slug($category->name);
-            }
-        });
+        return $shop->categories();
     }
 
     /**

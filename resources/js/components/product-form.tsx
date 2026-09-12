@@ -1,5 +1,8 @@
 import { Form, Link } from '@inertiajs/react';
+import { ImageOff } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
+import { useState } from 'react';
+import CategoryPicker from '@/components/category-picker';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +16,8 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import { dashboard } from '@/routes';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { index as productsIndex } from '@/routes/products';
 import { store, update } from '@/routes/products';
 import type { Product, ProductStatusOption, Shop } from '@/types';
 
@@ -55,11 +59,22 @@ export default function ProductForm({
         : store.form(shop.slug);
 
     const isSynced = Boolean(product?.remoteId);
+    const [dirty, setDirty] = useState(false);
+    const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? '');
+    const [galleryUrls, setGalleryUrls] = useState(
+        product?.galleryImageUrls.join('\n') ?? '',
+    );
 
     return (
-        <Form {...formRoute} className="space-y-4">
+        <Form
+            {...formRoute}
+            className="space-y-4 pb-20"
+            onInput={() => setDirty(true)}
+            onSuccess={() => setDirty(false)}
+        >
             {({ errors, processing }) => (
                 <>
+                    <UnsavedChangesGuard dirty={dirty && !processing} />
                     {isSynced ? (
                         <p
                             className="text-muted-foreground text-sm"
@@ -271,24 +286,12 @@ export default function ProductForm({
                                         (optional)
                                     </span>
                                 </Label>
-                                <Input
-                                    id="product-categories"
+                                <CategoryPicker
                                     name="categories"
-                                    data-test="product-categories"
-                                    list="product-category-options"
-                                    defaultValue={
-                                        product?.categories.join(', ') ?? ''
-                                    }
-                                    placeholder="Bags > Totes, Accessories"
+                                    options={categories}
+                                    defaultValue={product?.categories ?? []}
+                                    onChange={() => setDirty(true)}
                                 />
-                                <datalist id="product-category-options">
-                                    {categories.map((category) => (
-                                        <option
-                                            key={category}
-                                            value={category}
-                                        />
-                                    ))}
-                                </datalist>
                                 <InputError message={errors.categories} />
                             </div>
                         </div>
@@ -305,14 +308,20 @@ export default function ProductForm({
                                     (optional)
                                 </span>
                             </Label>
-                            <Input
-                                id="product-image-url"
-                                name="image_url"
-                                type="url"
-                                data-test="product-image-url"
-                                defaultValue={product?.imageUrl ?? ''}
-                                placeholder="https://example.com/tote.jpg"
-                            />
+                            <div className="flex gap-3">
+                                <ImagePreview url={imageUrl} />
+                                <Input
+                                    id="product-image-url"
+                                    name="image_url"
+                                    type="url"
+                                    data-test="product-image-url"
+                                    value={imageUrl}
+                                    onChange={(event) =>
+                                        setImageUrl(event.target.value)
+                                    }
+                                    placeholder="https://example.com/tote.jpg"
+                                />
+                            </div>
                             <InputError message={errors.image_url} />
                         </div>
 
@@ -328,12 +337,25 @@ export default function ProductForm({
                                 name="gallery_image_urls"
                                 data-test="product-gallery"
                                 rows={3}
-                                defaultValue={
-                                    product?.galleryImageUrls.join('\n') ?? ''
+                                value={galleryUrls}
+                                onChange={(event) =>
+                                    setGalleryUrls(event.target.value)
                                 }
                                 placeholder={'https://example.com/tote-2.jpg'}
                             />
                             <InputError message={errors.gallery_image_urls} />
+
+                            {galleryUrls.trim() !== '' ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {galleryUrls
+                                        .split('\n')
+                                        .map((url) => url.trim())
+                                        .filter(Boolean)
+                                        .map((url) => (
+                                            <ImagePreview key={url} url={url} />
+                                        ))}
+                                </div>
+                            ) : null}
                         </div>
 
                         <div className="grid gap-2">
@@ -355,27 +377,70 @@ export default function ProductForm({
                         </div>
                     </Section>
 
-                    <div className="flex items-center gap-4">
-                        <Button
-                            type="submit"
-                            data-test="product-submit"
-                            disabled={processing}
-                        >
-                            {processing && <Spinner />}
-                            {product ? 'Save changes' : 'Add product'}
-                        </Button>
-
-                        <Button type="button" variant="secondary" asChild>
-                            <Link
-                                href={dashboard(shop.slug)}
-                                data-test="product-cancel"
+                    <div className="bg-background/80 fixed inset-x-0 bottom-0 z-10 border-t backdrop-blur md:left-(--sidebar-width)">
+                        <div className="flex items-center gap-4 p-4">
+                            <Button
+                                type="submit"
+                                data-test="product-submit"
+                                disabled={processing}
                             >
-                                Cancel
-                            </Link>
-                        </Button>
+                                {processing && <Spinner />}
+                                {product ? 'Save changes' : 'Add product'}
+                            </Button>
+
+                            <Button type="button" variant="secondary" asChild>
+                                <Link
+                                    href={productsIndex(shop.slug)}
+                                    data-test="product-cancel"
+                                >
+                                    Cancel
+                                </Link>
+                            </Button>
+
+                            {dirty && !processing ? (
+                                <span
+                                    className="text-muted-foreground text-sm"
+                                    data-test="unsaved-notice"
+                                >
+                                    Unsaved changes
+                                </span>
+                            ) : null}
+                        </div>
                     </div>
                 </>
             )}
         </Form>
+    );
+}
+
+function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
+    useUnsavedChanges(
+        dirty,
+        'This product has changes that have not been saved. Leave anyway?',
+    );
+
+    return null;
+}
+
+function ImagePreview({ url }: { url: string }) {
+    const [broken, setBroken] = useState(false);
+    const trimmed = url.trim();
+
+    if (trimmed === '' || broken) {
+        return (
+            <div className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
+                <ImageOff className="size-4" />
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={trimmed}
+            alt=""
+            loading="lazy"
+            onError={() => setBroken(true)}
+            className="bg-muted size-9 shrink-0 rounded-md object-cover"
+        />
     );
 }

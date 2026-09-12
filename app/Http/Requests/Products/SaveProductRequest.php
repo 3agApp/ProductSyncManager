@@ -55,22 +55,26 @@ class SaveProductRequest extends FormRequest
     }
 
     /**
-     * Split separated text into a list of trimmed values.
+     * Read a list of trimmed values out of what was submitted.
+     *
+     * Text is split on the separator, but a list that arrives as a list is
+     * taken as it stands. Joining and re-splitting it would break any entry
+     * containing the separator -- a category named "Toys, Games" among
+     * them.
      *
      * @param  non-empty-string  $separator
      * @return array<int, string>|null
      */
     private function toList(mixed $value, string $separator): ?array
     {
-        if (is_array($value)) {
-            $value = implode($separator, $value);
-        }
+        $items = match (true) {
+            is_array($value) => $value,
+            is_string($value) => explode($separator, $value),
+            default => [],
+        };
 
-        if (! is_string($value)) {
-            return null;
-        }
-
-        $items = collect(explode($separator, $value))
+        $items = collect($items)
+            ->filter(fn (mixed $item) => is_string($item))
             ->map(fn (string $item) => trim($item))
             ->filter()
             ->unique()
