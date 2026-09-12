@@ -3,6 +3,7 @@
 use App\Http\Controllers\Catalog\BrandController;
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Products\BulkProductController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Shops\ShopInvitationController;
 use App\Http\Middleware\EnsureShopMembership;
@@ -19,6 +20,7 @@ Route::prefix('{current_shop}')
         Route::get('products', [ProductController::class, 'index'])->name('products.index');
         Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
         Route::post('products', [ProductController::class, 'store'])->name('products.store');
+        Route::post('products/bulk', BulkProductController::class)->name('products.bulk');
         Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
         Route::patch('products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');

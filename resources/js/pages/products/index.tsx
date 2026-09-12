@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import DeleteProductModal from '@/components/delete-product-modal';
+import ProductBulkBar from '@/components/product-bulk-bar';
 import ProductDetailModal from '@/components/product-detail-modal';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { ProductStockLevel } from '@/components/product-stock-level';
@@ -31,6 +32,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -100,6 +102,7 @@ export default function ProductIndex({
     );
     const [detailOpen, setDetailOpen] = useState(false);
     const [productToView, setProductToView] = useState<Product | null>(null);
+    const [selected, setSelected] = useState<number[]>([]);
     const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
     useEffect(() => {
@@ -144,6 +147,8 @@ export default function ProductIndex({
     const applyFilters = (next: Partial<ProductFilters>) => {
         const query = { ...filters, ...next };
 
+        setSelected([]);
+
         router.get(
             productsIndex(currentShop.slug).url,
             {
@@ -164,6 +169,7 @@ export default function ProductIndex({
     };
 
     const handleSearchChange = (value: string) => {
+        setSelected([]);
         setSearch(value);
         clearTimeout(searchTimeout.current);
         searchTimeout.current = setTimeout(
@@ -203,6 +209,23 @@ export default function ProductIndex({
         setProductToView(product);
         setDetailOpen(true);
     };
+
+    // A selection only ever means rows that are still on screen, so paging
+    // or filtering cannot act on products the user can no longer see.
+    const visibleIds = products.data.map((product) => product.id);
+    const selectedHere = selected.filter((id) => visibleIds.includes(id));
+    const allSelected =
+        visibleIds.length > 0 && selectedHere.length === visibleIds.length;
+
+    const toggleAll = (checked: boolean) =>
+        setSelected(checked ? visibleIds : []);
+
+    const toggleOne = (id: number, checked: boolean) =>
+        setSelected((current) =>
+            checked
+                ? [...current, id]
+                : current.filter((selectedId) => selectedId !== id),
+        );
 
     const confirmDelete = (product: Product) => {
         setProductToDelete(product);
@@ -380,10 +403,34 @@ export default function ProductIndex({
                         ) : null}
                     </div>
 
+                    {canManageProducts ? (
+                        <ProductBulkBar
+                            shopSlug={currentShop.slug}
+                            selected={selectedHere}
+                            onClear={() => setSelected([])}
+                            statuses={statuses}
+                            categoryOptions={categoryOptions}
+                            brandOptions={brandOptions}
+                            permissions={permissions}
+                        />
+                    ) : null}
+
                     {products.data.length > 0 ? (
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
+                                    {canManageProducts ? (
+                                        <TableHead className="w-10 pl-4">
+                                            <Checkbox
+                                                checked={allSelected}
+                                                onCheckedChange={(checked) =>
+                                                    toggleAll(checked === true)
+                                                }
+                                                aria-label="Select every product on this page"
+                                                data-test="select-all"
+                                            />
+                                        </TableHead>
+                                    ) : null}
                                     <TableHead className="pl-4">
                                         <SortButton
                                             sort="name"
@@ -432,7 +479,29 @@ export default function ProductIndex({
                                     <TableRow
                                         key={product.id}
                                         data-test="product-row"
+                                        data-selected={selected.includes(
+                                            product.id,
+                                        )}
                                     >
+                                        {canManageProducts ? (
+                                            <TableCell className="w-10 pl-4">
+                                                <Checkbox
+                                                    checked={selected.includes(
+                                                        product.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        toggleOne(
+                                                            product.id,
+                                                            checked === true,
+                                                        )
+                                                    }
+                                                    aria-label={`Select ${product.name}`}
+                                                    data-test="select-product"
+                                                />
+                                            </TableCell>
+                                        ) : null}
                                         <TableCell className="pl-4">
                                             <div className="flex items-center gap-3">
                                                 {product.imageUrl ? (
@@ -584,8 +653,8 @@ export default function ProductIndex({
                                             No products match your filters
                                         </h2>
                                         <p className="text-muted-foreground text-sm">
-                                            Try a different search term or
-                                            status.
+                                            Try a different search term, or
+                                            loosen the filters.
                                         </p>
                                     </div>
                                     <Button
