@@ -1,15 +1,19 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import {
+    ChevronRight,
+    ChevronsDownUp,
     CornerDownRight,
     FolderTree,
     Pencil,
     Plus,
+    Search,
     Trash2,
     X,
 } from 'lucide-react';
 import { useState } from 'react';
 import DeleteCatalogTermModal from '@/components/delete-catalog-term-modal';
 import InputError from '@/components/input-error';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +32,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import {
     destroy,
@@ -49,6 +54,8 @@ export default function CategoryIndex({ categories, permissions }: Props) {
     const { currentShop } = usePage().props;
     const [editing, setEditing] = useState<Category | null>(null);
     const [toDelete, setToDelete] = useState<Category | null>(null);
+    const [filter, setFilter] = useState('');
+    const [collapsed, setCollapsed] = useState<number[]>([]);
 
     if (!currentShop) {
         return null;
@@ -61,6 +68,57 @@ export default function CategoryIndex({ categories, permissions }: Props) {
             (option) =>
                 option.id !== category.id &&
                 !option.path.startsWith(`${category.path} > `),
+        );
+
+    const term = filter.trim().toLowerCase();
+
+    // A search reveals matches wherever they sit, so a filtered tree
+    // ignores what is collapsed; without one, anything inside a collapsed
+    // branch is folded away.
+    const matches = (category: Category) =>
+        term === '' || category.path.toLowerCase().includes(term);
+
+    const hidden = (category: Category) => {
+        if (term !== '') {
+            return !matches(category) && !descendantMatches(category);
+        }
+
+        return collapsed.some(
+            (id) =>
+                id !== category.id &&
+                category.path.startsWith(`${pathOf(id)} > `),
+        );
+    };
+
+    const pathOf = (id: number) =>
+        categories.find((category) => category.id === id)?.path ?? '';
+
+    const descendantMatches = (category: Category) =>
+        categories.some(
+            (other) =>
+                other.path.startsWith(`${category.path} > `) && matches(other),
+        );
+
+    const visible = categories.filter((category) => !hidden(category));
+
+    const toggle = (category: Category) =>
+        setCollapsed((current) =>
+            current.includes(category.id)
+                ? current.filter((id) => id !== category.id)
+                : [...current, category.id],
+        );
+
+    const allCollapsed = categories
+        .filter((category) => category.childCount > 0)
+        .every((category) => collapsed.includes(category.id));
+
+    const toggleAll = () =>
+        setCollapsed(
+            allCollapsed
+                ? []
+                : categories
+                      .filter((category) => category.childCount > 0)
+                      .map((category) => category.id),
         );
 
     return (
@@ -146,6 +204,52 @@ export default function CategoryIndex({ categories, permissions }: Props) {
 
                 <div className="border-sidebar-border/70 dark:border-sidebar-border flex flex-col rounded-xl border">
                     {categories.length > 0 ? (
+                        <div className="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
+                            <div className="relative w-full sm:max-w-xs">
+                                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                                <Input
+                                    type="search"
+                                    value={filter}
+                                    onChange={(event) =>
+                                        setFilter(event.target.value)
+                                    }
+                                    placeholder="Filter categories"
+                                    aria-label="Filter categories"
+                                    data-test="category-filter"
+                                    className="pl-9"
+                                />
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={toggleAll}
+                                data-test="toggle-all-categories"
+                            >
+                                {allCollapsed ? (
+                                    <>
+                                        <ChevronsDownUp className="rotate-180" />{' '}
+                                        Expand all
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronsDownUp /> Collapse all
+                                    </>
+                                )}
+                            </Button>
+
+                            <span
+                                className="text-muted-foreground text-sm sm:ml-auto"
+                                data-test="category-count"
+                            >
+                                {visible.length === categories.length
+                                    ? `${categories.length} categories`
+                                    : `${visible.length} of ${categories.length} categories`}
+                            </span>
+                        </div>
+                    ) : null}
+
+                    {visible.length > 0 ? (
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
@@ -161,7 +265,7 @@ export default function CategoryIndex({ categories, permissions }: Props) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {categories.map((category) => (
+                                {visible.map((category) => (
                                     <TableRow
                                         key={category.id}
                                         data-test="category-row"
@@ -296,12 +400,64 @@ export default function CategoryIndex({ categories, permissions }: Props) {
                                                         paddingLeft: `${category.depth * 1.25}rem`,
                                                     }}
                                                 >
-                                                    {category.depth > 0 ? (
+                                                    {category.childCount > 0 ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                toggle(category)
+                                                            }
+                                                            data-test="category-toggle"
+                                                            aria-expanded={
+                                                                !collapsed.includes(
+                                                                    category.id,
+                                                                )
+                                                            }
+                                                            aria-label={`${collapsed.includes(category.id) ? 'Expand' : 'Collapse'} ${category.name}`}
+                                                            className="hover:bg-muted -ml-1 rounded p-0.5"
+                                                        >
+                                                            <ChevronRight
+                                                                className={cn(
+                                                                    'text-muted-foreground size-4 transition-transform',
+                                                                    !collapsed.includes(
+                                                                        category.id,
+                                                                    ) &&
+                                                                        'rotate-90',
+                                                                )}
+                                                            />
+                                                        </button>
+                                                    ) : category.depth > 0 ? (
                                                         <CornerDownRight className="text-muted-foreground size-3.5 shrink-0" />
                                                     ) : null}
+
                                                     <span className="font-medium">
                                                         {category.name}
                                                     </span>
+
+                                                    {category.childCount > 0 &&
+                                                    collapsed.includes(
+                                                        category.id,
+                                                    ) ? (
+                                                        <span className="text-muted-foreground text-xs">
+                                                            (
+                                                            {
+                                                                category.childCount
+                                                            }
+                                                            )
+                                                        </span>
+                                                    ) : null}
+
+                                                    {category.productCount ===
+                                                        0 &&
+                                                    category.childCount ===
+                                                        0 ? (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="text-muted-foreground ml-1 font-normal"
+                                                            data-test="category-empty"
+                                                        >
+                                                            empty
+                                                        </Badge>
+                                                    ) : null}
                                                 </div>
                                             )}
                                         </TableCell>
