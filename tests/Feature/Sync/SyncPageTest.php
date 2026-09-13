@@ -30,6 +30,21 @@ test('the sync page exposes everything it needs', function () {
             ->where('currentRun', null));
 });
 
+test('the page says whether automatic setup created webhooks, so a manual secret change can warn', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $connection = WooCommerceConnection::factory()->for($shop)->create();
+
+    $this->actingAs($user)
+        ->get(route('shops.sync.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page->where('connection.hasAutomaticWebhooks', false));
+
+    $connection->update(['webhook_setup' => ['product.created' => ['id' => 1, 'delivery_url' => 'https://productsync.example.com/hook']]]);
+
+    $this->get(route('shops.sync.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page->where('connection.hasAutomaticWebhooks', true));
+});
+
 test('the schedule falls back to defaults before it is configured', function () {
     $user = User::factory()->create();
 

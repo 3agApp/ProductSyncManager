@@ -169,6 +169,7 @@ class ShopSyncController extends Controller
             'webhookUrl' => $connection->webhookDeliveryUrl(),
             'webhooksConfiguredAt' => $connection->webhooks_configured_at?->toISOString(),
             'webhookConfigured' => $connection->webhookSecret() !== null,
+            'hasAutomaticWebhooks' => filled($connection->webhook_setup),
             'storeUrl' => $connection->store_url,
             'consumerKeyPreview' => $connection->keyPreview(),
             'consumerSecretPreview' => $connection->secretPreview(),
