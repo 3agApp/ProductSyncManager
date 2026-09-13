@@ -115,25 +115,38 @@ class WooCommerceClient
     }
 
     /**
-     * Fetch current state, treating only WooCommerce's explicit missing-product
-     * response as deletion (a proxy or HTML 404 must not archive anything).
+     * Fetch the current state of up to a hundred products, in any status.
      *
-     * @return array<string, mixed>|null
+     * A product the store no longer has is absent from the list, which is the
+     * answer the single-product endpoint gives with its 404. Error pages and
+     * malformed lists throw rather than reading as "nothing exists".
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, array<string, mixed>>
      */
-    public function product(int $id): ?array
+    public function products(array $ids): array
     {
-        $response = $this->get('products/'.$id, [], allowMissingProduct: true);
-        if ($response->status() === 404) {
-            return null;
+        if ($ids === []) {
+            return [];
         }
 
-        $product = $response->json();
-        if (! is_array($product) || ($product['id'] ?? null) !== $id
-            || ! is_string($product['status'] ?? null) || ! is_string($product['type'] ?? null)) {
-            throw new WooCommerceRequestException('WooCommerce returned an invalid product.');
+        $response = $this->get('products', [
+            'include' => implode(',', $ids),
+            'per_page' => count($ids),
+            'status' => 'any',
+        ]);
+
+        /** @var array<int, array<string, mixed>> $products */
+        $products = $this->catalogItems($response);
+
+        foreach ($products as $product) {
+            if (! in_array($product['id'], $ids, true)
+                || ! is_string($product['status'] ?? null) || ! is_string($product['type'] ?? null)) {
+                throw new WooCommerceRequestException('WooCommerce returned an invalid product.');
+            }
         }
 
-        return $product;
+        return $products;
     }
 
     /**
@@ -227,7 +240,7 @@ class WooCommerceClient
      * @throws WooCommerceRateLimitException
      * @throws WooCommerceRequestException
      */
-    private function get(string $path, array $query, bool $allowMissingProduct = false): Response
+    private function get(string $path, array $query): Response
     {
         try {
             $response = $this->request()->get($path, $query);
@@ -243,11 +256,6 @@ class WooCommerceClient
             throw WooCommerceRateLimitException::retryAfter(
                 (int) ($response->header('Retry-After') ?: 60),
             );
-        }
-
-        if ($allowMissingProduct && $response->status() === 404
-            && $response->json('code') === 'woocommerce_rest_product_invalid_id') {
-            return $response;
         }
 
         if (! $response->successful()) {

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\SyncWooCommerceProduct;
+use App\Jobs\SyncWooCommerceWebhookDeliveries;
 use App\Models\WooCommerceConnection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,9 +45,10 @@ class WooCommerceWebhookController extends Controller
             ->where('connection_id', $connection->id)->where('delivery_id', $deliveryId)->first();
 
         // A dispatch failure returns 500; retrying the delivery can dispatch again.
-        // Pending duplicates are harmless: the job checks completion under a lock.
+        // The job is unique per connection and applies every pending delivery, so
+        // a store saving its whole catalog queues one job, not one per product.
         if ($delivery->processed_at === null) {
-            SyncWooCommerceProduct::dispatch($delivery->id, $connection->shop_id);
+            SyncWooCommerceWebhookDeliveries::dispatch($connection->id, $connection->shop_id);
         }
 
         return response()->json(['status' => 'accepted'], 202);
