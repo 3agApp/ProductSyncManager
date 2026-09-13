@@ -140,11 +140,6 @@ export default function Welcome() {
                                     <ArrowRight />
                                 </Link>
                             </Button>
-                            {auth.user ? null : (
-                                <Button size="lg" variant="outline" asChild>
-                                    <Link href={login()}>Log in</Link>
-                                </Button>
-                            )}
                         </div>
                     </section>
 
