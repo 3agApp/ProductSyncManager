@@ -25,6 +25,7 @@ export type ProductStats = {
     total: number;
     active: number;
     draft: number;
+    archived: number;
     lowStock: number;
     outOfStock: number;
     inventoryValue: number;
