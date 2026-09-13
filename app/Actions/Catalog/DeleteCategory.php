@@ -29,8 +29,10 @@ class DeleteCategory
      * Describe what deleting the category would affect.
      *
      * Products shared outside the removed categories are never eligible for
-     * permanent deletion. The token fingerprints the tree and the affected
-     * products, so a deletion can refuse to run against a changed catalog.
+     * permanent deletion. The token fingerprints exactly what the preview
+     * counted -- the removed categories and the affected, exclusive products --
+     * so a deletion refuses to run once those change, while edits elsewhere in
+     * the tree leave a reviewed preview valid.
      *
      * @return array{categoryIds: array<int, int>, productIds: array<int, int>, exclusiveProductIds: array<int, int>, descendantCount: int, hasSyncedCategories: bool, token: string}
      */
@@ -75,10 +77,7 @@ class DeleteCategory
             'exclusiveProductIds' => $exclusiveIds,
             'descendantCount' => count($branch) - 1,
             'hasSyncedCategories' => $categories->whereIn('id', $ids)->whereNotNull('remote_id')->isNotEmpty(),
-            'token' => hash('sha256', json_encode([
-                $categories->map(fn (Category $term) => [$term->id, $term->parent_id, $term->name])->all(),
-                $ids, $productIds, $exclusiveIds,
-            ], JSON_THROW_ON_ERROR)),
+            'token' => hash('sha256', json_encode([$ids, $productIds, $exclusiveIds], JSON_THROW_ON_ERROR)),
         ];
     }
 
