@@ -35,6 +35,7 @@ export type ActiveSyncRun = {
 
 export type WooCommerceConnectionPreview = {
     webhookUrl: string;
+    webhooksConfiguredAt: string | null;
     webhookConfigured: boolean;
     storeUrl: string;
     consumerKeyPreview: string;

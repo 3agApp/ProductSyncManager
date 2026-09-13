@@ -6,6 +6,7 @@ use App\Models\WooCommerceConnection;
 use App\Services\WooCommerce\Exceptions\WooCommerceAuthenticationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
+use App\Services\WooCommerce\Exceptions\WooCommerceWebhookSetupException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -28,6 +29,89 @@ class WooCommerceClient
     public static function quick(WooCommerceConnection $connection): self
     {
         return new self($connection, quick: true);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function webhooks(): array
+    {
+        $webhooks = [];
+        for ($page = 1; $page <= 20; $page++) {
+            $response = $this->webhookRequest('GET', 'webhooks', ['page' => $page, 'per_page' => 100, 'status' => 'all']);
+            $items = $this->catalogItems($response);
+            foreach ($items as $item) {
+                if (! is_string($item['topic'] ?? null) || ! is_string($item['delivery_url'] ?? null)) {
+                    throw new WooCommerceWebhookSetupException('WooCommerce returned an invalid webhook list. No new webhooks were created.');
+                }
+            }
+            $webhooks = [...$webhooks, ...$items];
+            if (count(array_unique(array_column($webhooks, 'id'))) !== count($webhooks)) {
+                throw new WooCommerceWebhookSetupException('WooCommerce returned duplicate webhook pages. No new webhooks were created. Please try again.');
+            }
+            $pages = $this->intHeader($response, 'X-WP-TotalPages');
+            if ($pages !== null ? $page >= $pages : count($items) < 100) {
+                $total = $this->intHeader($response, 'X-WP-Total');
+                if ($total !== null && count($webhooks) !== $total) {
+                    throw new WooCommerceWebhookSetupException('The webhook list changed during setup. Please try again.');
+                }
+
+                return $webhooks;
+            }
+            if ($items === []) {
+                break;
+            }
+        }
+
+        throw new WooCommerceWebhookSetupException('Could not read the complete webhook list. No new webhooks were created. Please try again.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function saveWebhook(?int $id, array $data): array
+    {
+        $response = $this->webhookRequest($id === null ? 'POST' : 'PUT', $id === null ? 'webhooks' : 'webhooks/'.$id, $data);
+        $webhook = $response->json();
+        if (! is_array($webhook) || ! is_int($webhook['id'] ?? null) || $webhook['id'] <= 0
+            || ($id !== null && $webhook['id'] !== $id)
+            || ($webhook['topic'] ?? null) !== $data['topic']
+            || ($webhook['delivery_url'] ?? null) !== $data['delivery_url']
+            || ($webhook['status'] ?? null) !== 'active') {
+            throw new WooCommerceWebhookSetupException('WooCommerce did not confirm an active webhook. Try setup again to check and finish any partially created webhooks.');
+        }
+
+        return $webhook;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function webhookRequest(string $method, string $path, array $data): Response
+    {
+        try {
+            // Never automatically retry a POST: it may have succeeded before the
+            // response was lost. The next setup lists remote hooks before writing.
+            $response = $this->request()->retry(1, 0, throw: false)
+                ->send($method, $path, [$method === 'GET' ? 'query' : 'json' => $data]);
+        } catch (ConnectionException $exception) {
+            throw new WooCommerceWebhookSetupException('WooCommerce could not be reached or setup timed out. Try again; existing webhooks will be reused.', previous: $exception);
+        }
+
+        $code = $response->json('code');
+        $message = $response->json('message');
+        if ($response->status() === 403 || in_array($code, ['woocommerce_rest_cannot_view', 'woocommerce_rest_cannot_create', 'woocommerce_rest_cannot_edit'], true)
+            || ($response->status() === 401 && is_string($message) && str_contains(strtolower($message), 'permission'))) {
+            throw new WooCommerceWebhookSetupException('This API key does not have permission to manage webhooks. Save a Read/Write key belonging to a WooCommerce user who can manage webhooks, then try again.');
+        }
+        if ($response->status() === 401) {
+            throw new WooCommerceAuthenticationException('WooCommerce rejected the API credentials.');
+        }
+        if ($response->status() === 429) {
+            throw new WooCommerceWebhookSetupException('WooCommerce is limiting requests. Wait a moment, then try setup again.');
+        }
+        if (! $response->successful()) {
+            throw new WooCommerceWebhookSetupException('WooCommerce could not complete webhook setup. Check that this app’s public HTTPS address is reachable, then try again. Existing setup progress is kept.');
+        }
+
+        return $response;
     }
 
     /**

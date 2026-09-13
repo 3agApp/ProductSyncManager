@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
  * @property int $shop_id
  * @property string $store_url
  * @property string $consumer_key
+ * @property array<string, array{id: int, delivery_url: string}>|null $webhook_setup
+ * @property Carbon|null $webhooks_configured_at
  * @property string|null $webhook_secret
  * @property string $consumer_secret
  * @property string|null $key_last_four
@@ -25,6 +27,8 @@ use Illuminate\Support\Carbon;
  * @property-read Shop $shop
  */
 #[Fillable([
+    'webhook_setup',
+    'webhooks_configured_at',
     'webhook_secret',
     'store_url',
     'consumer_key',
@@ -40,6 +44,11 @@ class WooCommerceConnection extends Model
     use HasFactory;
 
     protected $hidden = ['webhook_secret'];
+
+    public function webhookDeliveryUrl(): string
+    {
+        return rtrim((string) config('app.url'), '/').route('woocommerce.webhook', ['connection' => $this->id], absolute: false);
+    }
 
     /**
      * Get the shop that owns the connection.
@@ -91,6 +100,8 @@ class WooCommerceConnection extends Model
     protected function casts(): array
     {
         return [
+            'webhook_setup' => 'array',
+            'webhooks_configured_at' => 'datetime',
             'webhook_secret' => 'encrypted',
             'consumer_key' => 'encrypted',
             'consumer_secret' => 'encrypted',

@@ -50,6 +50,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('settings/shops/{shop}/sync', [ShopSyncController::class, 'edit'])->name('shops.sync.edit');
         Route::patch('settings/shops/{shop}/sync/connection', [ShopSyncController::class, 'updateConnection'])->name('shops.sync.connection.update');
         Route::patch('settings/shops/{shop}/sync/schedule', [ShopSyncController::class, 'updateSchedule'])->name('shops.sync.schedule.update');
+        Route::post('settings/shops/{shop}/sync/webhooks', [ShopSyncController::class, 'setupWebhooks'])
+            ->middleware('throttle:5,1')
+            ->name('shops.sync.webhooks.store');
         Route::post('settings/shops/{shop}/sync/test', [ShopSyncController::class, 'test'])
             ->middleware('throttle:10,1')
             ->name('shops.sync.test');

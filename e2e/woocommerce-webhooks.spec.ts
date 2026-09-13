@@ -9,10 +9,17 @@ test('webhook setup saves securely and fits desktop and mobile', async ({
     await page.getByLabel('Store address').fill('https://webhooks.example.com');
     await page.getByLabel('Consumer key', { exact: true }).fill('ck_test');
     await page.getByLabel('Consumer secret', { exact: true }).fill('cs_test');
+    await page
+        .getByRole('button', { name: 'Save connection', exact: true })
+        .click();
+    await page.getByText('Manual webhook setup', { exact: true }).click();
     const secret = 'e2e-webhook-secret-0123456789abcdef';
     await page.getByLabel('Webhook secret (optional)').fill(secret);
     await page
-        .getByRole('button', { name: 'Save connection', exact: true })
+        .getByRole('button', {
+            name: 'Save manual webhook settings',
+            exact: true,
+        })
         .click();
     await expect(page.getByLabel('Webhook secret (optional)')).toHaveValue('');
     await expect(page.getByLabel('Webhook secret (optional)')).toHaveAttribute(
@@ -23,6 +30,7 @@ test('webhook setup saves securely and fits desktop and mobile', async ({
         /\/webhooks\/woocommerce\/\d+$/,
     );
     await page.reload();
+    await page.getByText('Manual webhook setup', { exact: true }).click();
     await expect(page.getByLabel('Webhook secret (optional)')).toHaveValue('');
     for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 1000 });

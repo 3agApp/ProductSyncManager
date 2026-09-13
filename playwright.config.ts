@@ -43,6 +43,9 @@ export default defineConfig({
     ],
 
     webServer: {
+        // A canonical public callback URL for the fake WooCommerce API tests.
+        // The browser still connects to the isolated localhost test server.
+        env: { APP_URL: 'https://productsync.example.com' },
         command: `bash e2e/serve.sh ${PORT}`,
         url: BASE_URL,
         reuseExistingServer: false,

@@ -12,7 +12,8 @@ product comes back.
 1. Settings → Shops → _shop_ → **Sync**.
 2. Enter the store address and a WooCommerce REST API consumer key and secret.
    Generate these in WooCommerce under **Settings → Advanced → REST API**.
-   Read permission is enough.
+   Read permission is enough for product imports. Automatic webhook setup also
+   needs write permission; the app reports insufficient permissions when you try setup.
 3. Press **Test connection** to check the credentials before saving.
 4. Press **Sync now**, or turn on a schedule.
 
@@ -119,19 +120,33 @@ with `php artisan queue:restart`. Webhooks use the same queue worker as full syn
 Set `APP_URL` to the public HTTPS address of this app. The delivery URL must be
 reachable from the WooCommerce server; localhost cannot receive remote events.
 
-1. Open the shop's **Sync** settings. Enter a random **Webhook secret** of at
-   least 32 characters and save the connection. This secret is separate from
-   the read-only REST API credentials and is encrypted at rest. Blank means
-   keep the saved secret; changing the store address clears it unless a new
-   secret is supplied.
-2. Copy the **Webhook delivery URL** displayed below the secret field.
-3. In WooCommerce → **Settings → Advanced → Webhooks**, create four active
-   webhooks: **Product created**, **Product updated**, **Product deleted**, and
-   **Product restored**. Use the same delivery URL and secret for each, with
-   the current WooCommerce REST API payload version. Save each webhook.
-4. Edit a published simple product in WooCommerce and check the local product
-   after the queue worker processes the notification. Keep a daily or hourly
-   full sync enabled as reconciliation.
+Open the shop's **Sync** settings, save your API credentials, then click
+**Set up webhooks automatically**. The app creates or repairs four active
+webhooks: product created, updated, deleted, and restored. It generates an
+encrypted secret if needed, and reuses the existing secret and matching webhooks
+on subsequent attempts. The webhook user must be able to manage webhooks and
+the key must have Read/Write access. Permission errors appear only after clicking;
+there is no separate permission setup step.
+
+The button uses the **saved** credentials, so save changes to the key or store
+address before clicking. **Check and repair webhooks** can reactivate disabled
+webhooks and update managed delivery URLs after `APP_URL` changes. Other webhook
+destinations are left alone. Partial progress is kept. A timed-out creation is
+not automatically repeated: the next attempt lists remote webhooks first to find
+any webhook that was created before the response was lost. A shared lock prevents
+simultaneous setup attempts or credential changes during setup. The success
+message records the last completed setup, not continuous webhook health.
+
+For manual setup, expand **Manual webhook setup**, enter a random secret of at
+least 32 characters and click **Save manual webhook settings**. Create the four
+active product webhooks in WooCommerce → Settings → Advanced → Webhooks using
+the displayed URL and the same secret. Blank keeps the saved secret. Changing
+the store address clears the secret and managed webhook references; changing a
+secret clears the successful-setup status until setup is run again.
+
+Edit a published simple product in WooCommerce and check the local product
+after the queue worker processes the notification. Keep a daily or hourly full
+sync enabled as reconciliation.
 
 The endpoint verifies the HMAC-SHA256 signature against the exact request body.
 WooCommerce's unsigned activation ping returns 200 but never queues product work.

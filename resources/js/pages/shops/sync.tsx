@@ -24,6 +24,7 @@ import { edit as editShop, index as shopsIndex } from '@/routes/shops';
 import { edit as editSync, test as testConnection } from '@/routes/shops/sync';
 import { update as updateConnection } from '@/routes/shops/sync/connection';
 import { store as startSyncRun } from '@/routes/shops/sync/runs';
+import { store as setupWebhooks } from '@/routes/shops/sync/webhooks';
 import type {
     Shop,
     ShopPermissions,
@@ -38,6 +39,7 @@ type Props = {
     supportsSync: boolean;
     connection: {
         webhookUrl: string;
+        webhooksConfiguredAt: string | null;
         webhookConfigured: boolean;
         storeUrl: string;
         consumerKeyPreview: string;
@@ -168,18 +170,14 @@ export default function ShopSync({
                     <Heading
                         variant="small"
                         title="WooCommerce connection"
-                        description="Point this shop at your WooCommerce store. Generate a read-only REST API key in WooCommerce under Settings, Advanced, REST API."
+                        description="Point this shop at your WooCommerce store. Generate a REST API key in WooCommerce under Settings, Advanced, REST API."
                     />
 
                     {permissions.canManageSync ? (
                         <Form
                             {...updateConnection.form(shop.slug)}
                             data-test="connection-form"
-                            resetOnSuccess={[
-                                'consumer_key',
-                                'consumer_secret',
-                                'webhook_secret',
-                            ]}
+                            resetOnSuccess={['consumer_key', 'consumer_secret']}
                             options={{ preserveScroll: true }}
                             className="space-y-6"
                         >
@@ -251,65 +249,6 @@ export default function ShopSync({
                                         ) : null}
                                     </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="webhook_secret">
-                                            Webhook secret (optional)
-                                        </Label>
-                                        <Input
-                                            id="webhook_secret"
-                                            name="webhook_secret"
-                                            type="password"
-                                            autoComplete="off"
-                                            minLength={32}
-                                            maxLength={255}
-                                            placeholder={
-                                                connection?.webhookConfigured
-                                                    ? 'Configured — leave blank to keep'
-                                                    : 'Use a random secret of at least 32 characters'
-                                            }
-                                        />
-                                        <InputError
-                                            message={errors.webhook_secret}
-                                        />
-                                        <p className="text-muted-foreground text-xs">
-                                            Save a secret here, then use the
-                                            same secret for each WooCommerce
-                                            webhook. Changing the store address
-                                            clears the saved webhook secret
-                                            unless you enter a new one.
-                                        </p>
-                                        {connection && (
-                                            <>
-                                                <Label htmlFor="webhook_url">
-                                                    Webhook delivery URL
-                                                </Label>
-                                                <Input
-                                                    id="webhook_url"
-                                                    value={
-                                                        connection.webhookUrl
-                                                    }
-                                                    readOnly
-                                                    onFocus={(event) =>
-                                                        event.currentTarget.select()
-                                                    }
-                                                />
-                                                <p className="text-muted-foreground text-xs">
-                                                    In WooCommerce → Settings →
-                                                    Advanced → Webhooks, create
-                                                    active Product created,
-                                                    Product updated, Product
-                                                    deleted and Product restored
-                                                    webhooks using this URL and
-                                                    secret. Keep scheduled sync
-                                                    enabled to recover missed
-                                                    changes. The URL must be
-                                                    publicly reachable over
-                                                    HTTPS.
-                                                </p>
-                                            </>
-                                        )}
-                                    </div>
-
                                     <div className="flex flex-wrap items-center gap-4">
                                         <Button
                                             type="submit"
@@ -344,6 +283,189 @@ export default function ShopSync({
                                 ? `Connected to ${connection.storeUrl}.`
                                 : 'This shop is not connected to a store yet.'}
                         </p>
+                    )}
+                </div>
+
+                <div
+                    className="space-y-5 border-t pt-8"
+                    data-test="automatic-webhooks"
+                >
+                    <Heading
+                        variant="small"
+                        title="Automatic webhook setup"
+                        description="Connect product changes to this app without copying URLs or secrets into WooCommerce."
+                    />
+                    {permissions.canManageSync ? (
+                        <Form
+                            {...setupWebhooks.form(shop.slug)}
+                            options={{ preserveScroll: true }}
+                            className="space-y-4"
+                        >
+                            {({ errors, processing }) => (
+                                <>
+                                    <p className="text-muted-foreground text-sm">
+                                        Uses your saved API credentials to
+                                        configure product created, updated,
+                                        deleted, and restored webhooks. Existing
+                                        matches are reused. Save any connection
+                                        changes above before continuing.
+                                    </p>
+                                    {errors.webhooks && (
+                                        <Alert
+                                            variant="destructive"
+                                            role="alert"
+                                            data-test="webhook-setup-error"
+                                        >
+                                            <AlertTitle>
+                                                Webhook setup could not finish
+                                            </AlertTitle>
+                                            <AlertDescription>
+                                                {errors.webhooks}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    {connection?.webhooksConfiguredAt &&
+                                        !errors.webhooks && (
+                                            <p
+                                                className="text-muted-foreground text-sm"
+                                                role="status"
+                                                data-test="webhook-setup-success"
+                                            >
+                                                All four product webhooks were
+                                                configured successfully. Run
+                                                setup again to check and repair
+                                                them.
+                                            </p>
+                                        )}
+                                    <Button
+                                        type="submit"
+                                        disabled={processing || !connection}
+                                        data-test="webhook-setup-button"
+                                    >
+                                        {processing ? (
+                                            <Spinner />
+                                        ) : (
+                                            <PlugZap className="size-4" />
+                                        )}
+                                        {processing
+                                            ? 'Setting up webhooks…'
+                                            : connection?.webhooksConfiguredAt
+                                              ? 'Check and repair webhooks'
+                                              : 'Set up webhooks automatically'}
+                                    </Button>
+                                    {!connection && (
+                                        <p className="text-muted-foreground text-sm">
+                                            Save a WooCommerce connection above
+                                            to get started.
+                                        </p>
+                                    )}
+                                </>
+                            )}
+                        </Form>
+                    ) : (
+                        <p className="text-muted-foreground text-sm">
+                            {connection?.webhooksConfiguredAt
+                                ? 'Product webhooks have been configured.'
+                                : 'An owner or admin can set up product webhooks.'}
+                        </p>
+                    )}
+                    {permissions.canManageSync && connection && (
+                        <details className="rounded-lg border p-4">
+                            <summary className="cursor-pointer text-sm font-medium">
+                                Manual webhook setup
+                            </summary>
+                            <Form
+                                {...updateConnection.form(shop.slug)}
+                                options={{ preserveScroll: true }}
+                                resetOnSuccess={['webhook_secret']}
+                                className="mt-4 space-y-4"
+                            >
+                                {({ errors, processing }) => (
+                                    <>
+                                        <input
+                                            type="hidden"
+                                            name="store_url"
+                                            value={connection.storeUrl}
+                                        />
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="webhook_secret">
+                                                Webhook secret (optional)
+                                            </Label>
+                                            <Input
+                                                id="webhook_secret"
+                                                name="webhook_secret"
+                                                type="password"
+                                                autoComplete="off"
+                                                minLength={32}
+                                                maxLength={255}
+                                                placeholder={
+                                                    connection?.webhookConfigured
+                                                        ? 'Configured — leave blank to keep'
+                                                        : 'Use a random secret of at least 32 characters'
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.webhook_secret}
+                                            />
+                                            <InputError
+                                                message={errors.store_url}
+                                            />
+                                            <p className="text-muted-foreground text-xs">
+                                                Automatic setup generates a
+                                                secret for you. For manual
+                                                setup, save a secret here and
+                                                use the same secret in
+                                                WooCommerce. Changing the store
+                                                address clears the saved webhook
+                                                secret unless you enter a new
+                                                one.
+                                            </p>
+                                            {connection && (
+                                                <>
+                                                    <Label htmlFor="webhook_url">
+                                                        Webhook delivery URL
+                                                    </Label>
+                                                    <Input
+                                                        id="webhook_url"
+                                                        value={
+                                                            connection.webhookUrl
+                                                        }
+                                                        readOnly
+                                                        onFocus={(event) =>
+                                                            event.currentTarget.select()
+                                                        }
+                                                    />
+                                                    <p className="text-muted-foreground text-xs">
+                                                        In WooCommerce →
+                                                        Settings → Advanced →
+                                                        Webhooks, create active
+                                                        Product created, Product
+                                                        updated, Product deleted
+                                                        and Product restored
+                                                        webhooks using this URL
+                                                        and secret. Keep
+                                                        scheduled sync enabled
+                                                        to recover missed
+                                                        changes. The URL must be
+                                                        publicly reachable over
+                                                        HTTPS.
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        <Button
+                                            type="submit"
+                                            variant="secondary"
+                                            disabled={processing}
+                                        >
+                                            {processing && <Spinner />}Save
+                                            manual webhook settings
+                                        </Button>
+                                    </>
+                                )}
+                            </Form>
+                        </details>
                     )}
                 </div>
 

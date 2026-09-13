@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Shops;
 
+use App\Actions\Sync\ConfigureWooCommerceWebhooks;
 use App\Actions\Sync\SaveShopSyncSettings;
 use App\Actions\Sync\SaveWooCommerceConnection;
 use App\Enums\SyncFrequency;
@@ -74,6 +75,26 @@ class ShopSyncController extends Controller
         return back();
     }
 
+    public function setupWebhooks(Shop $shop, ConfigureWooCommerceWebhooks $configure): RedirectResponse
+    {
+        Gate::authorize('manageSync', $shop);
+        abort_unless($shop->type->supportsSync(), 404);
+        $connection = $shop->wooCommerceConnection;
+        if ($connection === null) {
+            return back()->withErrors(['webhooks' => 'Save the WooCommerce connection first, then set up webhooks.']);
+        }
+
+        try {
+            $configure->handle($connection);
+        } catch (WooCommerceException $exception) {
+            return back()->withErrors(['webhooks' => $exception->userMessage()]);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'All four product webhooks are configured and active in WooCommerce.']);
+
+        return back();
+    }
+
     /**
      * Save the shop's sync schedule.
      */
@@ -140,7 +161,8 @@ class ShopSyncController extends Controller
         }
 
         return [
-            'webhookUrl' => route('woocommerce.webhook', ['connection' => $connection->id]),
+            'webhookUrl' => $connection->webhookDeliveryUrl(),
+            'webhooksConfiguredAt' => $connection->webhooks_configured_at?->toISOString(),
             'webhookConfigured' => rescue(fn () => filled($connection->webhook_secret), false, report: false),
             'storeUrl' => $connection->store_url,
             'consumerKeyPreview' => $connection->keyPreview(),
