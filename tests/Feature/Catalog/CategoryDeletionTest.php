@@ -176,6 +176,25 @@ test('changed shared membership invalidates a destructive preview', function () 
     expect($this->shop->products()->count())->toBe(4);
 });
 
+test('editing an unrelated category keeps a reviewed preview valid', function () {
+    $options = deletionOptions($this->root, products: 'delete');
+    Category::factory()->for($this->shop)->create(['name' => 'Elsewhere'])->update(['name' => 'Renamed elsewhere']);
+    $this->destination->update(['name' => 'Accessories and more']);
+
+    $this->delete(route('categories.destroy', [$this->shop, $this->root]), [...$options, 'confirmation' => $this->root->name])
+        ->assertSessionHasNoErrors();
+    expect(Product::find($this->exclusive->id))->toBeNull();
+});
+
+test('moving a category into the branch invalidates the reviewed preview', function () {
+    $options = deletionOptions($this->root);
+    $this->destination->update(['parent_id' => $this->leaf->id]);
+
+    $this->delete(route('categories.destroy', [$this->shop, $this->root]), $options)
+        ->assertSessionHasErrors('preview_token');
+    expect($this->shop->categories()->count())->toBe(4);
+});
+
 test('deep branches are fully deleted without the display depth cap', function () {
     $parent = $this->leaf;
     for ($i = 0; $i < 7; $i++) {
