@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Sync\ConfigureWooCommerceWebhooks;
 use App\Jobs\SyncWooCommerceWebhookDeliveries;
 use App\Models\WooCommerceConnection;
 use Illuminate\Http\JsonResponse;
@@ -24,9 +25,7 @@ class WooCommerceWebhookController extends Controller
 
         $signature = base64_encode(hash_hmac('sha256', $request->getContent(), $secret, true));
         abort_unless(hash_equals($signature, (string) $request->header('X-WC-Webhook-Signature')), 401);
-        abort_unless(in_array($request->header('X-WC-Webhook-Topic'), [
-            'product.created', 'product.updated', 'product.deleted', 'product.restored', 'product.published',
-        ], true), 422);
+        abort_unless(in_array($request->header('X-WC-Webhook-Topic'), ConfigureWooCommerceWebhooks::TOPICS, true), 422);
         $data = $request->validate(['id' => ['required', 'integer', 'min:1']]);
         $remoteDelivery = (string) $request->header('X-WC-Webhook-Delivery-ID');
         abort_if($remoteDelivery === '' || strlen($remoteDelivery) > 255, 422);

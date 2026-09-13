@@ -90,7 +90,7 @@ class ShopSyncController extends Controller
             return back()->withErrors(['webhooks' => $exception->userMessage()]);
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'All four product webhooks are configured and active in WooCommerce.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Product webhooks are configured and active in WooCommerce.')]);
 
         return back();
     }
