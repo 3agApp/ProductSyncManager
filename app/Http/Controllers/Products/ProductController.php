@@ -13,6 +13,7 @@ use App\Models\Shop;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -239,9 +240,13 @@ class ProductController extends Controller
      */
     public function store(SaveProductRequest $request, Shop $currentShop): RedirectResponse
     {
-        $product = $currentShop->products()->create($request->productAttributes());
+        // Resolving the brand and category paths can create rows of their
+        // own, so the whole save commits together or not at all.
+        DB::transaction(function () use ($request, $currentShop) {
+            $product = $currentShop->products()->create($request->productAttributes());
 
-        $this->syncCategories($request, $product);
+            $this->syncCategories($request, $product);
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product created.')]);
 
@@ -255,9 +260,13 @@ class ProductController extends Controller
      */
     public function update(SaveProductRequest $request, Shop $currentShop, Product $product): RedirectResponse
     {
-        $product->update($request->productAttributes());
+        // Resolving the brand and category paths can create rows of their
+        // own, so the whole save commits together or not at all.
+        DB::transaction(function () use ($request, $product) {
+            $product->update($request->productAttributes());
 
-        $this->syncCategories($request, $product);
+            $this->syncCategories($request, $product);
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product updated.')]);
 

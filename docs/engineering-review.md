@@ -32,9 +32,9 @@ A dispatch that throws now reports the exception and marks the run failed with a
 
 Covered by `tests/Feature/Sync/StartSyncRunTest.php`. The invariant is enforced by the index rather than by timing, but truly concurrent starts have not been exercised against the production database driver.
 
-### P2 — Make product edits atomic with taxonomy writes
+### Implemented 2026-09-13 — Make product edits atomic with taxonomy writes
 
-`app/Http/Controllers/Products/ProductController.php:240` and `:256` save the product before synchronizing categories; resolving submitted brands and category paths can also write new rows. If a later write fails, users get an error after some changes have already persisted. Enclose the complete product/brand/category operation in one transaction and add a failure-injection rollback test.
+`ProductController::store` and `::update` now resolve the brand, save the product, resolve category paths and sync the pivot inside one `DB::transaction`, so a failure at any step leaves no new brand, category or product row and no partial update. `tests/Feature/Products/ProductSaveTransactionTest.php` injects a failure once category rows are being written, after the brand and product were saved, and checks both create and update roll back; both tests fail against the previous controller.
 
 ### P2 — Finish frontend state and accessibility verification
 
