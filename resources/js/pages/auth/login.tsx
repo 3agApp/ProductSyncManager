@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import PasskeyVerify from '@/components/passkey-verify';
@@ -103,6 +104,21 @@ export default function Login({
                                 {processing && <Spinner />}
                                 Log in
                             </Button>
+                        </div>
+
+                        <div className="text-muted-foreground text-center text-sm">
+                            Don't have an account?{' '}
+                            <TextLink
+                                href={register({
+                                    query: {
+                                        invitation: shopInvitation?.code,
+                                    },
+                                })}
+                                data-test="register-link"
+                                tabIndex={5}
+                            >
+                                Sign up
+                            </TextLink>
                         </div>
                     </>
                 )}
