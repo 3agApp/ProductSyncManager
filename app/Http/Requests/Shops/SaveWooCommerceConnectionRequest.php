@@ -31,6 +31,7 @@ class SaveWooCommerceConnectionRequest extends FormRequest
         $hasConnection = $this->shop()->wooCommerceConnection !== null;
 
         return [
+            'webhook_secret' => ['nullable', 'string', 'min:32', 'max:255'],
             'store_url' => ['required', 'string', 'max:255', new StoreUrl],
             'consumer_key' => [$hasConnection ? 'nullable' : 'required', 'string', 'max:255'],
             'consumer_secret' => [$hasConnection ? 'nullable' : 'required', 'string', 'max:255'],

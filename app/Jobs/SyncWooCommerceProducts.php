@@ -25,7 +25,7 @@ class SyncWooCommerceProducts implements ShouldQueue
     /**
      * The number of times the job may be attempted.
      */
-    public int $tries = 3;
+    public int $tries = 120;
 
     /**
      * The number of seconds the job may run before timing out.
@@ -73,7 +73,8 @@ class SyncWooCommerceProducts implements ShouldQueue
     {
         return [
             (new WithoutOverlapping('shop-sync:'.$this->syncRun->shop_id))
-                ->dontRelease()
+                ->shared()
+                ->releaseAfter(30)
                 ->expireAfter(3600),
         ];
     }

@@ -6,8 +6,13 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Products\BulkProductController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Shops\ShopInvitationController;
+use App\Http\Controllers\WooCommerceWebhookController;
 use App\Http\Middleware\EnsureShopMembership;
 use Illuminate\Support\Facades\Route;
+
+Route::post('webhooks/woocommerce/{connection}', WooCommerceWebhookController::class)
+    ->whereNumber('connection')
+    ->name('woocommerce.webhook');
 
 Route::inertia('/', 'welcome')->name('home');
 

@@ -111,3 +111,49 @@ A sync rejects malformed catalog responses, redirects, and catalogs that reach
 mismatches also prevent archiving. Pages already imported remain saved, but unseen
 products are not archived on these failures. Configure the store's final canonical
 URL if its previous address redirects.
+
+## Near-real-time updates with webhooks
+
+Run `php artisan migrate` when deploying this feature and restart queue workers
+with `php artisan queue:restart`. Webhooks use the same queue worker as full syncs.
+Set `APP_URL` to the public HTTPS address of this app. The delivery URL must be
+reachable from the WooCommerce server; localhost cannot receive remote events.
+
+1. Open the shop's **Sync** settings. Enter a random **Webhook secret** of at
+   least 32 characters and save the connection. This secret is separate from
+   the read-only REST API credentials and is encrypted at rest. Blank means
+   keep the saved secret; changing the store address clears it unless a new
+   secret is supplied.
+2. Copy the **Webhook delivery URL** displayed below the secret field.
+3. In WooCommerce → **Settings → Advanced → Webhooks**, create four active
+   webhooks: **Product created**, **Product updated**, **Product deleted**, and
+   **Product restored**. Use the same delivery URL and secret for each, with
+   the current WooCommerce REST API payload version. Save each webhook.
+4. Edit a published simple product in WooCommerce and check the local product
+   after the queue worker processes the notification. Keep a daily or hourly
+   full sync enabled as reconciliation.
+
+The endpoint verifies the HMAC-SHA256 signature against the exact request body.
+WooCommerce's unsigned activation ping returns 200 but never queues product work.
+Authenticated events are recorded before queueing and acknowledged with 202;
+finished duplicate deliveries do no work. Pending duplicates and retries are
+safe to process. Jobs fetch the product's **current** REST API state, including
+for deletion notifications, so a delayed deletion cannot archive a restored
+product. Only a recognized WooCommerce missing-product response, an unpublished
+product, or a non-simple product archives the corresponding local product.
+Proxy errors, authentication errors and malformed responses never archive it.
+
+Full and individual sync jobs share a per-shop lock. Busy jobs wait and retry;
+transient failures use backoff, and rate limits honor Retry-After. Failed jobs
+appear in Laravel's failed-job storage and can be retried with
+`php artisan queue:retry <id>`. Individual updates are not full catalog runs and
+therefore do not appear in the Recent syncs table. Delivery receipts are retained
+in `woocommerce_webhook_deliveries`; they contain IDs and timestamps, not product
+payloads or secrets. Deleting a connection cascades its receipts.
+
+Webhooks improve latency but do not replace reconciliation. Category hierarchy
+and standalone taxonomy changes are refreshed by full syncs. Stock changes made
+by extensions that bypass normal WooCommerce product events may also require
+reconciliation. WooCommerce may disable repeatedly failing webhooks; inspect
+**WooCommerce → Status → Logs → webhooks-delivery** and re-enable after fixing
+connectivity or secrets. See the [official webhook setup guide](https://woocommerce.com/document/webhooks/).

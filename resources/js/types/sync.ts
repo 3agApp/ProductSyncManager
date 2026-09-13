@@ -34,6 +34,8 @@ export type ActiveSyncRun = {
 };
 
 export type WooCommerceConnectionPreview = {
+    webhookUrl: string;
+    webhookConfigured: boolean;
     storeUrl: string;
     consumerKeyPreview: string;
     consumerSecretPreview: string;

@@ -40,6 +40,15 @@ class SaveWooCommerceConnection
             $connection->verified_at = null;
         }
 
+        if ($connection->isDirty('store_url')) {
+            $connection->webhook_secret = null;
+        }
+
+        $webhookSecret = trim((string) ($data['webhook_secret'] ?? ''));
+        if ($webhookSecret !== '') {
+            $connection->webhook_secret = $webhookSecret;
+        }
+
         $connection->save();
 
         return $connection->refresh();

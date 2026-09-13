@@ -140,6 +140,8 @@ class ShopSyncController extends Controller
         }
 
         return [
+            'webhookUrl' => route('woocommerce.webhook', ['connection' => $connection->id]),
+            'webhookConfigured' => rescue(fn () => filled($connection->webhook_secret), false, report: false),
             'storeUrl' => $connection->store_url,
             'consumerKeyPreview' => $connection->keyPreview(),
             'consumerSecretPreview' => $connection->secretPreview(),

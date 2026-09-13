@@ -45,6 +45,8 @@ type Props = {
     shop: Shop;
     supportsSync: boolean;
     connection: {
+        webhookUrl: string;
+        webhookConfigured: boolean;
         storeUrl: string;
         consumerKeyPreview: string;
         consumerSecretPreview: string;
@@ -192,6 +194,11 @@ export default function ShopSync({
                         <Form
                             {...updateConnection.form(shop.slug)}
                             data-test="connection-form"
+                            resetOnSuccess={[
+                                'consumer_key',
+                                'consumer_secret',
+                                'webhook_secret',
+                            ]}
                             options={{ preserveScroll: true }}
                             className="space-y-6"
                         >
@@ -261,6 +268,65 @@ export default function ShopSync({
                                                 to keep the stored ones.
                                             </p>
                                         ) : null}
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="webhook_secret">
+                                            Webhook secret (optional)
+                                        </Label>
+                                        <Input
+                                            id="webhook_secret"
+                                            name="webhook_secret"
+                                            type="password"
+                                            autoComplete="off"
+                                            minLength={32}
+                                            maxLength={255}
+                                            placeholder={
+                                                connection?.webhookConfigured
+                                                    ? 'Configured — leave blank to keep'
+                                                    : 'Use a random secret of at least 32 characters'
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors.webhook_secret}
+                                        />
+                                        <p className="text-muted-foreground text-xs">
+                                            Save a secret here, then use the
+                                            same secret for each WooCommerce
+                                            webhook. Changing the store address
+                                            clears the saved webhook secret
+                                            unless you enter a new one.
+                                        </p>
+                                        {connection && (
+                                            <>
+                                                <Label htmlFor="webhook_url">
+                                                    Webhook delivery URL
+                                                </Label>
+                                                <Input
+                                                    id="webhook_url"
+                                                    value={
+                                                        connection.webhookUrl
+                                                    }
+                                                    readOnly
+                                                    onFocus={(event) =>
+                                                        event.currentTarget.select()
+                                                    }
+                                                />
+                                                <p className="text-muted-foreground text-xs">
+                                                    In WooCommerce → Settings →
+                                                    Advanced → Webhooks, create
+                                                    active Product created,
+                                                    Product updated, Product
+                                                    deleted and Product restored
+                                                    webhooks using this URL and
+                                                    secret. Keep scheduled sync
+                                                    enabled to recover missed
+                                                    changes. The URL must be
+                                                    publicly reachable over
+                                                    HTTPS.
+                                                </p>
+                                            </>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-4">

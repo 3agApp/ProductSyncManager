@@ -31,6 +31,28 @@ class WooCommerceClient
     }
 
     /**
+     * Fetch current state, treating only WooCommerce's explicit missing-product
+     * response as deletion (a proxy or HTML 404 must not archive anything).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function product(int $id): ?array
+    {
+        $response = $this->get('products/'.$id, [], allowMissingProduct: true);
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        $product = $response->json();
+        if (! is_array($product) || ($product['id'] ?? null) !== $id
+            || ! is_string($product['status'] ?? null) || ! is_string($product['type'] ?? null)) {
+            throw new WooCommerceRequestException('WooCommerce returned an invalid product.');
+        }
+
+        return $product;
+    }
+
+    /**
      * Fetch one page of published simple products, oldest first.
      *
      * Unpublished and variable products are excluded at the API level, so
@@ -121,7 +143,7 @@ class WooCommerceClient
      * @throws WooCommerceRateLimitException
      * @throws WooCommerceRequestException
      */
-    private function get(string $path, array $query): Response
+    private function get(string $path, array $query, bool $allowMissingProduct = false): Response
     {
         try {
             $response = $this->request()->get($path, $query);
@@ -137,6 +159,11 @@ class WooCommerceClient
             throw WooCommerceRateLimitException::retryAfter(
                 (int) ($response->header('Retry-After') ?: 60),
             );
+        }
+
+        if ($allowMissingProduct && $response->status() === 404
+            && $response->json('code') === 'woocommerce_rest_product_invalid_id') {
+            return $response;
         }
 
         if (! $response->successful()) {
