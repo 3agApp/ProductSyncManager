@@ -161,6 +161,7 @@ class ShopSyncController extends Controller
 
         if ($settings === null) {
             return [
+                'isConfigured' => false,
                 'isEnabled' => false,
                 'frequency' => SyncFrequency::Daily->value,
                 'timeOfDay' => '02:00',
@@ -173,6 +174,7 @@ class ShopSyncController extends Controller
         }
 
         return [
+            'isConfigured' => true,
             'isEnabled' => $settings->is_enabled,
             'frequency' => $settings->frequency->value,
             'timeOfDay' => $settings->time_of_day,

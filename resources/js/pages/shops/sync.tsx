@@ -5,19 +5,12 @@ import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SyncProgress from '@/components/sync-progress';
+import SyncScheduleForm from '@/components/sync-schedule-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import {
     Table,
@@ -31,7 +24,6 @@ import { edit as editShop, index as shopsIndex } from '@/routes/shops';
 import { edit as editSync, test as testConnection } from '@/routes/shops/sync';
 import { update as updateConnection } from '@/routes/shops/sync/connection';
 import { store as startSyncRun } from '@/routes/shops/sync/runs';
-import { update as updateSchedule } from '@/routes/shops/sync/schedule';
 import type {
     Shop,
     ShopPermissions,
@@ -60,16 +52,6 @@ type Props = {
     timezones: string[];
     permissions: ShopPermissions;
 };
-
-const DAYS = [
-    { value: '0', label: 'Sunday' },
-    { value: '1', label: 'Monday' },
-    { value: '2', label: 'Tuesday' },
-    { value: '3', label: 'Wednesday' },
-    { value: '4', label: 'Thursday' },
-    { value: '5', label: 'Friday' },
-    { value: '6', label: 'Saturday' },
-];
 
 const STATUS_VARIANTS: Record<SyncRunStatus, string> = {
     queued: 'text-muted-foreground',
@@ -101,7 +83,6 @@ export default function ShopSync({
     timezones,
     permissions,
 }: Props) {
-    const [frequency, setFrequency] = useState(settings.frequency);
     const [testing, setTesting] = useState(false);
     const [starting, setStarting] = useState(false);
 
@@ -370,173 +351,17 @@ export default function ShopSync({
                     <Heading
                         variant="small"
                         title="Scheduled sync"
-                        description="Pull the catalog automatically on a schedule."
+                        description="Check your full catalog regularly to keep products, prices, and stock up to date."
                     />
 
                     {permissions.canManageSync ? (
-                        <Form
-                            {...updateSchedule.form(shop.slug)}
-                            options={{ preserveScroll: true }}
-                            className="space-y-6"
-                        >
-                            {({ errors, processing }) => (
-                                <>
-                                    <div className="flex items-center gap-3">
-                                        <Checkbox
-                                            id="is_enabled"
-                                            name="is_enabled"
-                                            value="1"
-                                            data-test="schedule-enabled"
-                                            defaultChecked={settings.isEnabled}
-                                        />
-                                        <Label htmlFor="is_enabled">
-                                            Sync on a schedule
-                                        </Label>
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="frequency">
-                                            Frequency
-                                        </Label>
-                                        <Select
-                                            name="frequency"
-                                            value={frequency}
-                                            onValueChange={(value) =>
-                                                setFrequency(
-                                                    value as typeof frequency,
-                                                )
-                                            }
-                                        >
-                                            <SelectTrigger
-                                                id="frequency"
-                                                data-test="schedule-frequency"
-                                                className="w-full"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {frequencies.map((option) => (
-                                                    <SelectItem
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError
-                                            message={errors.frequency}
-                                        />
-                                    </div>
-
-                                    {frequency === 'weekly' ? (
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="day_of_week">
-                                                Day of the week
-                                            </Label>
-                                            <Select
-                                                name="day_of_week"
-                                                defaultValue={String(
-                                                    settings.dayOfWeek ?? 1,
-                                                )}
-                                            >
-                                                <SelectTrigger
-                                                    id="day_of_week"
-                                                    data-test="schedule-day"
-                                                    className="w-full"
-                                                >
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {DAYS.map((day) => (
-                                                        <SelectItem
-                                                            key={day.value}
-                                                            value={day.value}
-                                                        >
-                                                            {day.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <InputError
-                                                message={errors.day_of_week}
-                                            />
-                                        </div>
-                                    ) : null}
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="time_of_day">
-                                            {frequency === 'hourly'
-                                                ? 'Minutes past the hour'
-                                                : 'Time of day'}
-                                        </Label>
-                                        <Input
-                                            id="time_of_day"
-                                            name="time_of_day"
-                                            type="time"
-                                            data-test="schedule-time"
-                                            defaultValue={settings.timeOfDay}
-                                            required
-                                        />
-                                        <InputError
-                                            message={errors.time_of_day}
-                                        />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="timezone">
-                                            Timezone
-                                        </Label>
-                                        <Select
-                                            name="timezone"
-                                            defaultValue={settings.timezone}
-                                        >
-                                            <SelectTrigger
-                                                id="timezone"
-                                                data-test="schedule-timezone"
-                                                className="w-full"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {timezones.map((zone) => (
-                                                    <SelectItem
-                                                        key={zone}
-                                                        value={zone}
-                                                    >
-                                                        {zone}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError message={errors.timezone} />
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-4">
-                                        <Button
-                                            type="submit"
-                                            data-test="schedule-save"
-                                            disabled={processing}
-                                        >
-                                            {processing && <Spinner />}
-                                            Save schedule
-                                        </Button>
-
-                                        {settings.isEnabled &&
-                                        settings.nextRunAtDiff ? (
-                                            <p
-                                                className="text-muted-foreground text-sm"
-                                                data-test="schedule-next-run"
-                                            >
-                                                Next run{' '}
-                                                {settings.nextRunAtDiff}.
-                                            </p>
-                                        ) : null}
-                                    </div>
-                                </>
-                            )}
-                        </Form>
+                        <SyncScheduleForm
+                            key={`${shop.slug}:${JSON.stringify(settings)}`}
+                            shopSlug={shop.slug}
+                            settings={settings}
+                            frequencies={frequencies}
+                            timezones={timezones}
+                        />
                     ) : (
                         <p className="text-muted-foreground text-sm">
                             {settings.isEnabled

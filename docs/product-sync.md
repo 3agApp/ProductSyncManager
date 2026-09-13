@@ -157,3 +157,18 @@ by extensions that bypass normal WooCommerce product events may also require
 reconciliation. WooCommerce may disable repeatedly failing webhooks; inspect
 **WooCommerce → Status → Logs → webhooks-delivery** and re-enable after fixing
 connectivity or secrets. See the [official webhook setup guide](https://woocommerce.com/document/webhooks/).
+
+### Choosing a schedule
+
+The schedule form previews the selected run times before you save:
+
+- **Hourly:** choose a minute, such as `:15`, to run at 9:15, 10:15, and so on.
+- **Every 6 hours:** choose one run time; the preview lists all four daily runs.
+- **Daily:** choose the time to run each day.
+- **Weekly:** choose a weekday and time.
+
+Times use the timezone shown below the controls. New schedules default to the
+browser's timezone when supported. Existing schedules keep their saved timezone;
+use **Change timezone** to choose another, or **Use my timezone** to switch back.
+The preview updates as you edit, but changes take effect only after **Save
+schedule**. Turning off scheduled sync does not stop webhooks or manual sync.

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Models\ShopSyncSetting;
 use App\Models\SyncRun;
 use App\Models\User;
 use App\Models\WooCommerceConnection;
@@ -36,6 +37,7 @@ test('the schedule falls back to defaults before it is configured', function () 
         ->actingAs($user)
         ->get(route('shops.sync.edit', $user->currentShop))
         ->assertInertia(fn (Assert $page) => $page
+            ->where('settings.isConfigured', false)
             ->where('settings.isEnabled', false)
             ->where('settings.frequency', 'daily')
             ->where('settings.timeOfDay', '02:00')
@@ -79,4 +81,14 @@ test('a poll only returns the props it asked for', function () {
         ->assertJsonPath('props.currentRun.status', 'running')
         ->assertJsonMissingPath('props.recentRuns')
         ->assertJsonMissingPath('props.timezones');
+});
+
+test('an existing schedule exposes its saved timezone instead of browser defaults', function () {
+    $user = User::factory()->create();
+    ShopSyncSetting::factory()->for($user->currentShop)->create(['timezone' => 'Europe/London']);
+
+    $this->actingAs($user)->get(route('shops.sync.edit', $user->currentShop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('settings.isConfigured', true)
+            ->where('settings.timezone', 'Europe/London'));
 });

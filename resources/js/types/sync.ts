@@ -44,6 +44,7 @@ export type WooCommerceConnectionPreview = {
 };
 
 export type SyncSettings = {
+    isConfigured: boolean;
     isEnabled: boolean;
     frequency: SyncFrequency;
     timeOfDay: string;
