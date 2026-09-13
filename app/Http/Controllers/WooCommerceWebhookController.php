@@ -11,11 +11,14 @@ use Illuminate\Support\Facades\DB;
 
 class WooCommerceWebhookController extends Controller
 {
+    /**
+     * Verify a WooCommerce delivery, record it once, and queue it for syncing.
+     */
     public function __invoke(Request $request, WooCommerceConnection $connection): JsonResponse
     {
-        abort_unless($connection->shop()->first()?->type->supportsSync(), 404);
-        $secret = rescue(fn () => $connection->webhook_secret, null, report: false);
-        abort_unless(filled($secret), 403);
+        abort_unless($connection->shop->type->supportsSync(), 404);
+        $secret = $connection->webhookSecret();
+        abort_if($secret === null, 403);
 
         // WooCommerce's activation ping is unsigned and never changes data.
         if (! $request->hasHeader('X-WC-Webhook-Signature')
