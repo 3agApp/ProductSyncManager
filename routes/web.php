@@ -8,9 +8,24 @@ use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Shops\ShopInvitationController;
 use App\Http\Controllers\WooCommerceWebhookController;
 use App\Http\Middleware\EnsureShopMembership;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetShopUrlDefaults;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
+// WooCommerce calls this, not a browser, and signs each delivery instead of
+// carrying a CSRF token. Without a session, a burst of deliveries no longer
+// writes one session per request.
 Route::post('webhooks/woocommerce/{connection}', WooCommerceWebhookController::class)
+    ->withoutMiddleware([
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        PreventRequestForgery::class,
+        HandleInertiaRequests::class,
+        SetShopUrlDefaults::class,
+    ])
     ->whereNumber('connection')
     ->name('woocommerce.webhook');
 

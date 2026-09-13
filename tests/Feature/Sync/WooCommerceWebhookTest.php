@@ -79,6 +79,15 @@ test('signed product webhooks queue without authentication and duplicates share 
     Http::assertNothingSent();
 });
 
+test('webhooks start no session and answer errors as json', function () {
+    sendProductWebhook($this)->assertAccepted()->assertCookieMissing(config('session.cookie'));
+
+    $this->call('POST', route('woocommerce.webhook', $this->connection), [], [], [], ['CONTENT_TYPE' => 'application/json'], '{"id":42}')
+        ->assertUnauthorized()
+        ->assertCookieMissing(config('session.cookie'))
+        ->assertJsonStructure(['message']);
+});
+
 test('rejects invalid signatures, payloads and unsupported topics', function () {
     sendProductWebhook($this, signature: 'invalid')->assertUnauthorized();
     sendProductWebhook($this, '{"id":0}')->assertUnprocessable();
