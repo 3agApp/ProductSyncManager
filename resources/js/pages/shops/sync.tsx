@@ -331,10 +331,9 @@ export default function ShopSync({
                                                 role="status"
                                                 data-test="webhook-setup-success"
                                             >
-                                                All four product webhooks were
-                                                configured successfully. Run
-                                                setup again to check and repair
-                                                them.
+                                                Product webhooks were configured
+                                                successfully. Run setup again to
+                                                check and repair them.
                                             </p>
                                         )}
                                     <Button

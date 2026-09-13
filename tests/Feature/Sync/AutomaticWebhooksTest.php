@@ -47,7 +47,7 @@ test('one click creates all four active webhooks with a persisted secret and tru
         return Http::response(['id' => ++$id, ...$request->data()], 201);
     });
     setupProductWebhooks($this)->assertSessionHasNoErrors()->assertInertiaFlash('toast', [
-        'type' => 'success', 'message' => 'All four product webhooks are configured and active in WooCommerce.',
+        'type' => 'success', 'message' => 'Product webhooks are configured and active in WooCommerce.',
     ]);
     $connection = $this->connection->fresh();
     expect($connection->webhook_setup)->toHaveCount(4)
