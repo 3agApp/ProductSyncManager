@@ -75,13 +75,18 @@ class ShopSyncController extends Controller
         return back();
     }
 
+    /**
+     * Create or repair the product webhooks in the shop's store.
+     */
     public function setupWebhooks(Shop $shop, ConfigureWooCommerceWebhooks $configure): RedirectResponse
     {
         Gate::authorize('manageSync', $shop);
         abort_unless($shop->type->supportsSync(), 404);
+
         $connection = $shop->wooCommerceConnection;
+
         if ($connection === null) {
-            return back()->withErrors(['webhooks' => 'Save the WooCommerce connection first, then set up webhooks.']);
+            return back()->withErrors(['webhooks' => __('Save the WooCommerce connection first, then set up webhooks.')]);
         }
 
         try {
@@ -163,7 +168,7 @@ class ShopSyncController extends Controller
         return [
             'webhookUrl' => $connection->webhookDeliveryUrl(),
             'webhooksConfiguredAt' => $connection->webhooks_configured_at?->toISOString(),
-            'webhookConfigured' => rescue(fn () => filled($connection->webhook_secret), false, report: false),
+            'webhookConfigured' => $connection->webhookSecret() !== null,
             'storeUrl' => $connection->store_url,
             'consumerKeyPreview' => $connection->keyPreview(),
             'consumerSecretPreview' => $connection->secretPreview(),

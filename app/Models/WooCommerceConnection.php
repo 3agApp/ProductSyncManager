@@ -77,6 +77,19 @@ class WooCommerceConnection extends Model
     }
 
     /**
+     * Get the webhook secret, or null when none is stored or it cannot be decrypted.
+     *
+     * The secret is encrypted with the application key like the credentials,
+     * so rotating that key leaves it unreadable too.
+     */
+    public function webhookSecret(): ?string
+    {
+        $secret = rescue(fn () => $this->webhook_secret, null, report: false);
+
+        return filled($secret) ? $secret : null;
+    }
+
+    /**
      * Get the masked preview of the consumer key.
      */
     public function keyPreview(): string
