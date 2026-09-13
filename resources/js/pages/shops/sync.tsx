@@ -478,7 +478,18 @@ export default function ShopSync({
 
                     {permissions.canManageSync ? (
                         <SyncScheduleForm
-                            key={`${shop.slug}:${JSON.stringify(settings)}`}
+                            // Remount only when the saved schedule changes. The
+                            // relative next-run text changes on every reload,
+                            // and keying on it would wipe unsaved edits.
+                            key={[
+                                shop.slug,
+                                settings.isConfigured,
+                                settings.isEnabled,
+                                settings.frequency,
+                                settings.timeOfDay,
+                                settings.dayOfWeek,
+                                settings.timezone,
+                            ].join(':')}
                             shopSlug={shop.slug}
                             settings={settings}
                             frequencies={frequencies}
