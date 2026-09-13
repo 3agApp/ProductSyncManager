@@ -14,7 +14,7 @@ import AppLogoIcon from '@/components/app-logo-icon';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { ProductStockLevel } from '@/components/product-stock-level';
 import { Button } from '@/components/ui/button';
-import { dashboard, home, login, register } from '@/routes';
+import { dashboard, home, login } from '@/routes';
 import type { ProductStatus } from '@/types';
 
 const features = [
@@ -112,14 +112,9 @@ export default function Welcome() {
                                 <Link href={dashboardUrl}>Dashboard</Link>
                             </Button>
                         ) : (
-                            <>
-                                <Button variant="ghost" asChild>
-                                    <Link href={login()}>Log in</Link>
-                                </Button>
-                                <Button asChild>
-                                    <Link href={register()}>Get started</Link>
-                                </Button>
-                            </>
+                            <Button asChild>
+                                <Link href={login()}>Log in</Link>
+                            </Button>
                         )}
                     </nav>
                 </header>
@@ -140,12 +135,8 @@ export default function Welcome() {
                         </p>
                         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                             <Button size="lg" asChild>
-                                <Link
-                                    href={auth.user ? dashboardUrl : register()}
-                                >
-                                    {auth.user
-                                        ? 'Open dashboard'
-                                        : 'Start for free'}
+                                <Link href={auth.user ? dashboardUrl : login()}>
+                                    {auth.user ? 'Open dashboard' : 'Log in'}
                                     <ArrowRight />
                                 </Link>
                             </Button>
