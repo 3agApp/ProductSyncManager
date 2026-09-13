@@ -37,6 +37,9 @@ set('writable_dirs', [
 
 set('writable_mode', 'chmod');
 
+// Every class is in the classmap after install, so skip filesystem lookups.
+set('composer_options', '--verbose --prefer-dist --no-progress --no-interaction --no-dev --optimize-autoloader --classmap-authoritative');
+
 /*
 |--------------------------------------------------------------------------
 | Load Environment Variables
