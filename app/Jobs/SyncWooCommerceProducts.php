@@ -94,6 +94,12 @@ class SyncWooCommerceProducts implements ShouldQueue
      */
     public function handle(ImportWooCommerceProducts $import, ImportWooCommerceCategories $importCategories): void
     {
+        // A retry can arrive after the stalled-run reaper failed this run and a
+        // newer run took the shop's slot. Reviving it would collide with that run.
+        if ($this->syncRun->refresh()->status->isFinished()) {
+            return;
+        }
+
         $shop = $this->syncRun->shop;
         $connection = $shop->wooCommerceConnection;
 

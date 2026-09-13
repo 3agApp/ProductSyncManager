@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Shops;
 
 use App\Actions\Sync\StartSyncRun;
+use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
@@ -31,9 +32,11 @@ class SyncRunController extends Controller
 
         $run = $startSyncRun->handle($shop, SyncTrigger::Manual, $request->user());
 
-        Inertia::flash('toast', $run === null
-            ? ['type' => 'warning', 'message' => __('A sync is already running for this shop.')]
-            : ['type' => 'success', 'message' => __('Sync started.')]);
+        Inertia::flash('toast', match (true) {
+            $run === null => ['type' => 'warning', 'message' => __('A sync is already running for this shop.')],
+            $run->status === SyncRunStatus::Failed => ['type' => 'error', 'message' => $run->message],
+            default => ['type' => 'success', 'message' => __('Sync started.')],
+        });
 
         return back();
     }

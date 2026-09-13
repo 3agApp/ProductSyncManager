@@ -106,11 +106,11 @@ test('a shop without a connection is skipped but still rescheduled', function ()
 test('a run that stalled is failed', function () {
     Queue::fake();
 
-    $shop = Shop::factory()->create();
-    $stalled = SyncRun::factory()->for($shop)->running()->create([
+    // A shop holds one active run at most, so the fresh run belongs elsewhere.
+    $stalled = SyncRun::factory()->running()->create([
         'created_at' => now()->subMinutes(SyncRun::ACTIVE_TIMEOUT_MINUTES + 1),
     ]);
-    $fresh = SyncRun::factory()->for($shop)->running()->create();
+    $fresh = SyncRun::factory()->running()->create();
 
     $this->artisan('sync:dispatch-due')->assertSuccessful();
 

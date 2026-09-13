@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $shop_id
+ * @property int|null $active_shop_id
  * @property int|null $triggered_by
  * @property SyncTrigger $trigger
  * @property SyncRunStatus $status
@@ -56,6 +57,20 @@ class SyncRun extends Model
      * Runs still active after this many minutes are treated as stalled.
      */
     public const int ACTIVE_TIMEOUT_MINUTES = 60;
+
+    /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // The unique index on active_shop_id is what stops a shop having two
+        // active runs, so every write keeps it in step with the status.
+        static::saving(function (SyncRun $run) {
+            $run->active_shop_id = $run->status->isActive() ? $run->shop_id : null;
+        });
+    }
 
     /**
      * Get the shop that owns the run.

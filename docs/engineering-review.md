@@ -24,11 +24,13 @@ A catalog without pagination headers needs an empty page to establish completion
 
 Resolve and validate all candidate addresses at request time, reject non-public destinations, and pin the validated address while retaining TLS hostname verification. Pair this with deployment egress restrictions. Verify public/private IPv4, IPv6, mixed DNS answers, and rebinding using controlled DNS/transport tests before calling this protection complete.
 
-### P1 — Serialize sync admission and make dispatch recoverable
+### Implemented 2026-09-13 — Serialize sync admission and make dispatch recoverable
 
-`app/Actions/Sync/StartSyncRun.php:28` checks for an active run and inserts a new one inside a transaction without locking a shared shop row. On databases allowing concurrent readers, two requests can both pass the check. The worker's `WithoutOverlapping()->dontRelease()` can discard one job and leave its run queued until the stalled-run reaper acts. A queue dispatch failure after the transaction commits can also leave a queued run with no job.
+Admission is now an enforced invariant rather than a check-then-insert. `sync_runs.active_shop_id` holds the shop id while a run is queued or running and null otherwise, maintained by a `saving` hook on `SyncRun`; its unique index makes the database refuse a second active run on SQLite, MySQL and PostgreSQL alike. `StartSyncRun` treats the resulting `UniqueConstraintViolationException` as "already running". The migration fails any older duplicate active runs before backfilling.
 
-Serialize admission per shop with a database-aware lock or enforced active-run invariant. Make dispatch failure recoverable through an outbox or explicit reconciliation. Test concurrent manual/scheduled starts and queue unavailability against the intended production database; SQLite sequential tests do not establish that guarantee.
+A dispatch that throws now reports the exception and marks the run failed with a user-facing message, freeing the shop immediately instead of waiting for the reaper; the manual sync page and scheduler both surface it. The job also exits when its run already finished, so a late retry cannot revive a run the reaper failed after a newer run took the slot.
+
+Covered by `tests/Feature/Sync/StartSyncRunTest.php`. The invariant is enforced by the index rather than by timing, but truly concurrent starts have not been exercised against the production database driver.
 
 ### P2 — Make product edits atomic with taxonomy writes
 

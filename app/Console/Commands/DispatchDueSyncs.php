@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\Sync\CalculateNextSyncRun;
 use App\Actions\Sync\StartSyncRun;
+use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
 use App\Models\ShopSyncSetting;
 use App\Models\SyncRun;
@@ -44,6 +45,8 @@ class DispatchDueSyncs extends Command
 
             if ($run === null) {
                 $this->components->warn("Skipped shop {$settings->shop->slug}: a sync is already running or it is not configured.");
+            } elseif ($run->status === SyncRunStatus::Failed) {
+                $this->components->error("Could not queue a sync for shop {$settings->shop->slug}.");
             }
 
             // Always advance from now rather than from the missed slot, so an
