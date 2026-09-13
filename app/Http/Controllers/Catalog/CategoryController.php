@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Catalog;
 
 use App\Actions\Catalog\DeleteCategory;
+use App\Enums\CategoryChildrenAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Catalog\DeleteCategoryRequest;
 use App\Http\Requests\Catalog\SaveCategoryRequest;
@@ -13,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -94,8 +96,9 @@ class CategoryController extends Controller
     public function deletionPreview(Request $request, Shop $currentShop, Category $category, DeleteCategory $delete): JsonResponse
     {
         Gate::authorize('delete', $category);
-        $validated = $request->validate(['children' => ['sometimes', 'required', 'in:keep,delete']]);
-        $plan = $delete->plan($category, ($validated['children'] ?? 'keep') === 'delete');
+        $validated = $request->validate(['children' => ['sometimes', 'required', Rule::enum(CategoryChildrenAction::class)]]);
+        $children = CategoryChildrenAction::tryFrom($validated['children'] ?? '') ?? CategoryChildrenAction::Keep;
+        $plan = $delete->plan($category, $children);
         $paths = Category::pathsFor($currentShop);
 
         return response()->json([
@@ -108,28 +111,29 @@ class CategoryController extends Controller
             'token' => $plan['token'],
             'destinations' => $currentShop->categories()->whereNotIn('id', $plan['categoryIds'])->get()
                 ->map(fn (Category $term) => ['id' => $term->id, 'path' => $paths[$term->id] ?? $term->name])
-                ->sortBy('path')->values()->all(),
+                ->sortBy('path', SORT_NATURAL | SORT_FLAG_CASE)->values()->all(),
         ])->header('Cache-Control', 'no-store');
     }
 
+    /**
+     * Delete the category, doing what the user chose with its children and products.
+     */
     public function destroy(DeleteCategoryRequest $request, Shop $currentShop, Category $category, DeleteCategory $delete): RedirectResponse
     {
+        $products = $request->productsAction();
+
         $result = $delete->handle(
             $category,
-            $request->validated('children', 'keep'),
-            $request->validated('products', 'keep'),
+            $request->childrenAction(),
+            $products,
             $request->filled('destination_id') ? (int) $request->validated('destination_id') : null,
             $request->validated('preview_token'),
         );
 
-        $message = trans_choice('{1} :count category deleted.|[0,*] :count categories deleted.', $result['categories']);
-        $message .= ' '.match ($request->validated('products', 'keep')) {
-            'delete' => trans_choice('{1} :count exclusive product deleted. Shared products kept.|[0,*] :count exclusive products deleted. Shared products kept.', $result['products']),
-            'move' => trans_choice('{1} :count product moved.|[0,*] :count products moved.', $result['moved']),
-            default => __('All products kept.'),
-        };
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $products->message($result['categories'], $result['products'], $result['moved']),
+        ]);
 
         return back();
     }

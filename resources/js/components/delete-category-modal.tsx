@@ -36,6 +36,10 @@ type Preview = {
     destinations: { id: number; path: string }[];
 };
 
+type ChildrenAction = 'keep' | 'delete';
+
+type ProductsAction = 'keep' | 'move' | 'delete';
+
 type Props = {
     category: Category;
     shopSlug: string;
@@ -49,8 +53,8 @@ export default function DeleteCategoryModal({
     permissions,
     onClose,
 }: Props) {
-    const [children, setChildren] = useState('keep');
-    const [products, setProducts] = useState('keep');
+    const [children, setChildren] = useState<ChildrenAction>('keep');
+    const [products, setProducts] = useState<ProductsAction>('keep');
     const [destination, setDestination] = useState('');
     const [confirmation, setConfirmation] = useState('');
     const [preview, setPreview] = useState<Preview | null>(null);
@@ -91,7 +95,7 @@ export default function DeleteCategoryModal({
         setRevision((value) => value + 1);
     };
 
-    const changeChildren = (value: string) => {
+    const changeChildren = (value: ChildrenAction) => {
         setChildren(value);
         setDestination('');
         setPreview(null);
@@ -260,7 +264,10 @@ export default function DeleteCategoryModal({
                                 </p>
                                 <p className="flex items-center gap-2">
                                     <Package className="size-4" />
-                                    {preview.productCount} unique products
+                                    {preview.productCount} unique{' '}
+                                    {preview.productCount === 1
+                                        ? 'product'
+                                        : 'products'}{' '}
                                     affected
                                 </p>
                                 <p className="text-muted-foreground">
@@ -371,7 +378,7 @@ export default function DeleteCategoryModal({
     );
 }
 
-function Choice({
+function Choice<T extends string>({
     name,
     value,
     selected,
@@ -381,9 +388,9 @@ function Choice({
     destructive = false,
 }: {
     name: string;
-    value: string;
-    selected: string;
-    onChange: (value: string) => void;
+    value: T;
+    selected: T;
+    onChange: (value: T) => void;
     title: string;
     description: string;
     destructive?: boolean;
