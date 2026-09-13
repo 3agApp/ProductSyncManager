@@ -4,11 +4,19 @@ namespace App\Actions\Sync;
 
 use App\Models\Shop;
 use App\Models\WooCommerceConnection;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Validation\ValidationException;
 
 class SaveWooCommerceConnection
 {
+    /**
+     * How long to wait for another save or a webhook setup to finish.
+     *
+     * A save holds the lock for milliseconds, so waiting briefly lets two
+     * saves in quick succession both land instead of the second failing.
+     */
+    private const int WAIT_SECONDS = 5;
+
     /**
      * Create or update a shop's WooCommerce connection.
      *
@@ -19,9 +27,15 @@ class SaveWooCommerceConnection
      */
     public function handle(Shop $shop, array $data): WooCommerceConnection
     {
-        $lock = Cache::lock('woocommerce-connection:'.$shop->id, 600);
-        if (! $lock->get()) {
-            throw ValidationException::withMessages(['store_url' => 'Webhook setup is in progress. Wait for it to finish before saving the connection.']);
+        $lock = ConfigureWooCommerceWebhooks::lock($shop->id);
+
+        try {
+            $lock->block(self::WAIT_SECONDS);
+        } catch (LockTimeoutException) {
+            // Only webhook setup holds the lock for longer than the wait.
+            throw ValidationException::withMessages([
+                'store_url' => __('Webhook setup is still running for this shop. Try saving again in a minute.'),
+            ]);
         }
 
         try {

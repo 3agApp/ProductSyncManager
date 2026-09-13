@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\WooCommerceConnection;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Illuminate\Validation\ValidationException;
@@ -176,7 +175,8 @@ test('members and outsiders cannot start automatic setup', function (bool $membe
 })->with([true, false]);
 
 test('the setup lock prevents simultaneous creation and credential changes', function () {
-    $lock = Cache::lock('woocommerce-connection:'.$this->shop->id, 600);
+    Sleep::syncWithCarbon();
+    $lock = ConfigureWooCommerceWebhooks::lock($this->shop->id);
     $lock->get();
     try {
         setupProductWebhooks($this)->assertSessionHasErrors('webhooks');
@@ -185,6 +185,29 @@ test('the setup lock prevents simultaneous creation and credential changes', fun
     } finally {
         $lock->release();
     }
+});
+
+test('a lock left by a killed setup request stops blocking saves soon after the setup deadline', function () {
+    ConfigureWooCommerceWebhooks::lock($this->shop->id)->get();
+
+    $this->travel(ConfigureWooCommerceWebhooks::LOCK_SECONDS + 1)->seconds();
+
+    $saved = app(SaveWooCommerceConnection::class)->handle($this->shop, ['store_url' => 'https://changed.example.com']);
+    expect($saved->store_url)->toBe('https://changed.example.com');
+});
+
+test('setup stops at its deadline instead of outliving its lock', function () {
+    Http::fake(function (Request $request) {
+        $this->travel(ConfigureWooCommerceWebhooks::SETUP_SECONDS + 1)->seconds();
+
+        return Http::response([]);
+    });
+
+    setupProductWebhooks($this)->assertSessionHasErrors([
+        'webhooks' => 'WooCommerce is responding too slowly and setup ran out of time. Try again; existing webhooks will be reused.',
+    ]);
+    Http::assertSentCount(1);
+    expect($this->connection->fresh()->webhooks_configured_at)->toBeNull();
 });
 
 test('changing stores clears webhook ownership and setup status', function () {
