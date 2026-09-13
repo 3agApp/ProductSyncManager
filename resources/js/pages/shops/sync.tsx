@@ -41,6 +41,7 @@ type Props = {
         webhookUrl: string;
         webhooksConfiguredAt: string | null;
         webhookConfigured: boolean;
+        hasAutomaticWebhooks: boolean;
         storeUrl: string;
         consumerKeyPreview: string;
         consumerSecretPreview: string;
@@ -419,6 +420,20 @@ export default function ShopSync({
                                                 secret unless you enter a new
                                                 one.
                                             </p>
+                                            {connection.hasAutomaticWebhooks && (
+                                                <p
+                                                    className="text-xs text-amber-700 dark:text-amber-400"
+                                                    data-test="webhook-secret-warning"
+                                                >
+                                                    Automatic setup created
+                                                    webhooks that sign
+                                                    deliveries with the current
+                                                    secret. After saving a new
+                                                    one, run automatic setup
+                                                    again, or WooCommerce
+                                                    deliveries will be rejected.
+                                                </p>
+                                            )}
                                             {connection && (
                                                 <>
                                                     <Label htmlFor="webhook_url">
