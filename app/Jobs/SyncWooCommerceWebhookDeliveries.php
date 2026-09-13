@@ -136,10 +136,7 @@ class SyncWooCommerceWebhookDeliveries implements ShouldBeUnique, ShouldQueue
         array $remoteProducts,
         int $upTo,
     ): void {
-        $importable = array_values(array_filter(
-            $remoteProducts,
-            fn (array $product) => $product['status'] === 'publish' && $product['type'] === 'simple',
-        ));
+        $importable = ImportWooCommerceProducts::importable($remoteProducts);
 
         // A product the store no longer lists, or that is no longer a published
         // simple product, is archived exactly as a full sync would archive it.

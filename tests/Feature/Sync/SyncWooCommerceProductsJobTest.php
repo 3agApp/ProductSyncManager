@@ -49,6 +49,7 @@ function remoteProduct(int $id, array $overrides = []): array
         'price' => '17.99',
         'stock_quantity' => 12,
         'status' => 'publish',
+        'type' => 'simple',
         ...$overrides,
     ];
 }
@@ -59,6 +60,7 @@ function remoteProduct(int $id, array $overrides = []): array
  * @param  array<int, array<string, mixed>>  $simple
  * @param  array<int, int>  $failPages  Pages that should return a 500.
  * @param  array<int, array<string, mixed>>  $categories  The store's category tree.
+ * @param  array<int, array<string, mixed>>  $unlisted  Products the store has but the listing leaves out.
  */
 function fakeStore(
     array $simple,
@@ -66,9 +68,19 @@ function fakeStore(
     array $failPages = [],
     int $perPage = 100,
     array $categories = [],
+    array $unlisted = [],
 ): void {
-    Http::fake(function (Request $request) use ($simple, $variableCount, $failPages, $perPage, $categories) {
+    Http::fake(function (Request $request) use ($simple, $variableCount, $failPages, $perPage, $categories, $unlisted) {
         $query = $request->data();
+
+        if (isset($query['include'])) {
+            $ids = array_map(intval(...), explode(',', (string) $query['include']));
+
+            return Http::response(array_values(array_filter(
+                [...$simple, ...$unlisted],
+                fn (array $product) => in_array($product['id'], $ids, true),
+            )), 200);
+        }
         $type = $query['type'] ?? 'simple';
         $page = (int) ($query['page'] ?? 1);
 
@@ -358,7 +370,7 @@ test('a product that is unpublished in the store is archived', function () {
 
     // The store still has product 202, but it is no longer published, so it
     // is absent from the published-only listing the sync asks for.
-    fakeStore([remoteProduct(101)]);
+    fakeStore([remoteProduct(101)], unlisted: [remoteProduct(202, ['status' => 'draft'])]);
     runSync($run);
 
     expect($unpublished->fresh()->status)->toBe(ProductStatus::Archived)
@@ -607,20 +619,67 @@ test('store redirects are rejected', function () {
     Http::assertSentCount(1);
 });
 
-test('a truncated final page cannot archive the remaining catalog', function () {
+test('a live product the listing skipped is imported rather than archived', function () {
     $run = queuedRun();
-    $existing = Product::factory()->for($run->shop)->create([
+    $skipped = Product::factory()->for($run->shop)->create([
         'remote_id' => 102,
+        'sku' => 'SKU-102',
         'status' => ProductStatus::Active,
     ]);
+
+    // Deleting a product mid-run shifts the offset pages, so 102 never
+    // appears in the listing even though the store still publishes it.
+    fakeStore([remoteProduct(101)], unlisted: [remoteProduct(102, ['name' => 'Renamed'])]);
+    runSync($run);
+
+    expect($skipped->fresh())
+        ->status->toBe(ProductStatus::Active)
+        ->name->toBe('Renamed')
+        ->and($run->refresh()->status)->toBe(SyncRunStatus::Completed)
+        ->and($run->archived_products)->toBe(0)
+        ->and($run->processed_products)->toBe(2);
+});
+
+test('a product added during the sync does not fail it', function () {
+    $run = queuedRun();
     Http::fake(function (Request $request) {
         if (str_contains($request->url(), 'products/categories') || ($request->data()['type'] ?? '') === 'variable') {
             return Http::response([], 200);
         }
 
-        return Http::response([remoteProduct(101)], 200, ['X-WP-Total' => '2', 'X-WP-TotalPages' => '1']);
+        // The total was read before 102 was published.
+        return Http::response([remoteProduct(101), remoteProduct(102)], 200, ['X-WP-Total' => '1', 'X-WP-TotalPages' => '1']);
+    });
+
+    runSync($run);
+
+    expect($run->refresh()->status)->toBe(SyncRunStatus::Completed)
+        ->and($run->processed_products)->toBe(2)
+        ->and($run->progress())->toBe(100);
+});
+
+test('a failed lookup of unseen products archives nothing', function () {
+    $run = queuedRun();
+    $unseen = Product::factory()->for($run->shop)->create([
+        'remote_id' => 555,
+        'sku' => 'SKU-555',
+        'status' => ProductStatus::Active,
+    ]);
+    Http::fake(function (Request $request) {
+        $query = $request->data();
+
+        if (isset($query['include'])) {
+            return Http::response('Upstream exploded', 500);
+        }
+
+        if (str_contains($request->url(), 'products/categories') || ($query['type'] ?? '') === 'variable') {
+            return Http::response([], 200);
+        }
+
+        return Http::response([remoteProduct(101)], 200, ['X-WP-Total' => '1', 'X-WP-TotalPages' => '1']);
     });
 
     expect(fn () => runSync($run))->toThrow(WooCommerceRequestException::class);
-    expect($existing->fresh()->status)->toBe(ProductStatus::Active);
+    expect($unseen->fresh()->status)->toBe(ProductStatus::Active)
+        ->and($run->refresh()->archived_products)->toBe(0);
 });

@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Actions\Sync\ImportWooCommerceCategories;
 use App\Actions\Sync\ImportWooCommerceProducts;
 use App\Enums\ProductStatus;
+use App\Models\Product;
 use App\Models\Shop;
 use App\Models\SyncRun;
 use App\Services\WooCommerce\Exceptions\WooCommerceAuthenticationException;
@@ -15,6 +16,7 @@ use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use App\Services\WooCommerce\WooCommerceClient;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Throwable;
@@ -37,6 +39,11 @@ class SyncWooCommerceProducts implements ShouldQueue
      * The number of unhandled exceptions to allow before failing.
      */
     public int $maxExceptions = 2;
+
+    /**
+     * Unseen products looked up per request, which is WooCommerce's largest page.
+     */
+    private const int LOOKUP_SIZE = 100;
 
     /**
      * Counters accumulated across every page of the run.
@@ -127,13 +134,9 @@ class SyncWooCommerceProducts implements ShouldQueue
 
             $this->importAllPages($client, $import, $shop, $runStartedAt);
 
-            if ($this->totalProducts !== null && $this->counters['processed'] !== $this->totalProducts) {
-                throw new WooCommerceRequestException('The product count changed during sync; archiving was cancelled.');
-            }
-
             // Only archive once every page succeeded. Archiving after a partial
             // failure would wipe the catalog the store still has.
-            $this->counters['archived'] = $this->archiveMissing($shop, $runStartedAt);
+            $this->counters['archived'] = $this->archiveMissing($client, $import, $shop, $runStartedAt);
             $this->persistProgress();
 
             $this->syncRun->markCompleted();
@@ -202,8 +205,11 @@ class SyncWooCommerceProducts implements ShouldQueue
             }
 
             if ($remotePage->isEmpty()) {
+                // An empty page before the last one, or no products at all from
+                // a store that reports having some, is a broken response rather
+                // than the end of the catalog.
                 if (($remotePage->totalPages !== null && $page < $remotePage->totalPages)
-                    || ($this->totalProducts !== null && $this->counters['processed'] < $this->totalProducts)) {
+                    || ($page === 1 && ($this->totalProducts ?? 0) > 0)) {
                     throw new WooCommerceRequestException('The product catalog ended before all products were received.');
                 }
 
@@ -228,23 +234,64 @@ class SyncWooCommerceProducts implements ShouldQueue
     }
 
     /**
-     * Archive products the store no longer has.
+     * Archive products the store no longer publishes.
+     *
+     * A product can go unseen without leaving the store. Pages are read by
+     * offset, so a product deleted or added mid-run shifts the pages after it
+     * and a live product can slip between two of them. Each unseen product is
+     * therefore looked up by id first, and one that is still a published
+     * simple product is imported rather than archived.
      *
      * Only previously synced products are touched, so anything created by
      * hand in this app is left alone.
      */
-    private function archiveMissing(Shop $shop, CarbonInterface $runStartedAt): int
+    private function archiveMissing(
+        WooCommerceClient $client,
+        ImportWooCommerceProducts $import,
+        Shop $shop,
+        CarbonInterface $runStartedAt,
+    ): int {
+        $archived = 0;
+
+        $this->unseenProducts($shop, $runStartedAt)
+            ->select(['id', 'remote_id'])
+            ->chunkById(self::LOOKUP_SIZE, function ($products) use ($client, $import, $shop, $runStartedAt, &$archived) {
+                $remoteIds = $products->pluck('remote_id')->map(fn ($id) => (int) $id)->all();
+                $importable = ImportWooCommerceProducts::importable($client->products($remoteIds));
+
+                if ($importable !== []) {
+                    $result = $import->handle($shop, $importable, $runStartedAt, $this->categoryIds);
+
+                    $this->counters['created'] += $result->created;
+                    $this->counters['updated'] += $result->updated;
+                    $this->counters['skipped'] += $result->skipped;
+                    $this->counters['processed'] += count($importable);
+                }
+
+                $archived += $this->unseenProducts($shop, $runStartedAt)
+                    ->whereIn('remote_id', array_diff($remoteIds, array_column($importable, 'id')))
+                    ->update([
+                        'status' => ProductStatus::Archived->value,
+                        'updated_at' => now(),
+                    ]);
+            });
+
+        return $archived;
+    }
+
+    /**
+     * Synced, unarchived products this run has not seen.
+     *
+     * @return HasMany<Product, Shop>
+     */
+    private function unseenProducts(Shop $shop, CarbonInterface $runStartedAt): HasMany
     {
         return $shop->products()
             ->whereNotNull('remote_id')
             ->where('status', '!=', ProductStatus::Archived->value)
             ->where(fn ($query) => $query
                 ->whereNull('last_synced_at')
-                ->orWhere('last_synced_at', '<', $runStartedAt))
-            ->update([
-                'status' => ProductStatus::Archived->value,
-                'updated_at' => now(),
-            ]);
+                ->orWhere('last_synced_at', '<', $runStartedAt));
     }
 
     /**

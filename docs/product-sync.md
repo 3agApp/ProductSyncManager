@@ -34,6 +34,10 @@ members can all trigger a manual sync.
   deleted, and only if every page of the run succeeded. That covers both a
   deleted product and one that was merely unpublished. Products created by
   hand in this app are never archived.
+- Before archiving, each synced product the run did not see is looked up by id.
+  Pages are read by offset, so a product deleted mid-run can push a live one
+  past a page boundary; a product the store still publishes is imported
+  instead of archived. Products added or removed during a run do not fail it.
 - **Variable products are not imported.** They keep their price and stock on
   child variations, which do not map onto a single local product. They are
   counted and reported as skipped.
@@ -115,8 +119,8 @@ updated. SQS deployments need an equivalent visibility timeout. Rebuild cached
 configuration and restart supervised workers when deploying configuration changes.
 
 A sync rejects malformed catalog responses, redirects, and catalogs that reach
-`WOOCOMMERCE_MAX_PAGES` before completion can be established. Product count
-mismatches also prevent archiving. Pages already imported remain saved, but unseen
+`WOOCOMMERCE_MAX_PAGES` before completion can be established, as does a failed
+lookup of unseen products. Pages already imported remain saved, but unseen
 products are not archived on these failures. Configure the store's final canonical
 URL if its previous address redirects.
 

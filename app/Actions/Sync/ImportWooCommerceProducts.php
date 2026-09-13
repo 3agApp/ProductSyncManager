@@ -102,6 +102,20 @@ class ImportWooCommerceProducts
     }
 
     /**
+     * Keep only the remote products this app imports: published and simple.
+     *
+     * @param  array<int, array<string, mixed>>  $remoteProducts
+     * @return array<int, array<string, mixed>>
+     */
+    public static function importable(array $remoteProducts): array
+    {
+        return array_values(array_filter(
+            $remoteProducts,
+            fn (array $product) => $product['status'] === 'publish' && $product['type'] === 'simple',
+        ));
+    }
+
+    /**
      * Find the local product for a remote one.
      *
      * Matching prefers the stored remote id. Falling back to the SKU lets a
