@@ -98,6 +98,35 @@ test('repeated setup reuses existing hooks including disabled ones and leaves un
     Http::assertSentCount(10);
 });
 
+test('duplicate webhooks for a topic are disabled so changes are not delivered twice', function () {
+    $url = $this->connection->webhookDeliveryUrl();
+    $remote = [
+        remoteWebhookRecord(1, 'product.created', $url),
+        remoteWebhookRecord(2, 'product.created', $url),
+        [...remoteWebhookRecord(3, 'product.created', $url), 'status' => 'disabled'],
+        remoteWebhookRecord(4, 'product.created', 'https://unrelated.example.com/hook'),
+    ];
+    $next = 100;
+    Http::fake(function (Request $request) use ($remote, &$next) {
+        if ($request->method() === 'GET') {
+            return Http::response($remote);
+        }
+        $id = $request->method() === 'POST' ? ++$next : (int) basename(parse_url($request->url(), PHP_URL_PATH));
+
+        return Http::response(['id' => $id, ...$request->data()], $request->method() === 'POST' ? 201 : 200);
+    });
+
+    setupProductWebhooks($this)->assertSessionHasNoErrors();
+
+    Http::assertSent(fn (Request $request) => $request->method() === 'PUT'
+        && str_ends_with($request->url(), 'webhooks/1') && $request['status'] === 'active');
+    Http::assertSent(fn (Request $request) => $request->method() === 'PUT'
+        && str_ends_with($request->url(), 'webhooks/2') && $request['status'] === 'disabled');
+    Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), 'webhooks/3')
+        || str_ends_with($request->url(), 'webhooks/4'));
+    expect($this->connection->fresh()->webhook_setup['product.created']['id'])->toBe(1);
+});
+
 test('a timed out create is not blindly retried and the next click discovers it', function () {
     $remote = [];
     $timeout = true;
