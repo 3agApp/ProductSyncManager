@@ -143,15 +143,17 @@ test('the dashboard reports catalog statistics for the shop', function () {
     Product::factory()->for($shop)->branded('Acme')->categorized('Bags > Totes')->create(['price' => 10, 'stock' => 3, 'status' => ProductStatus::Active]);
     Product::factory()->for($shop)->create(['price' => 5, 'stock' => 0, 'status' => ProductStatus::Draft]);
     Product::factory()->for($shop)->create(['price' => 2.5, 'stock' => 10, 'status' => ProductStatus::Active]);
+    Product::factory()->for($shop)->create(['price' => 0, 'stock' => 1000, 'status' => ProductStatus::Archived]);
     Product::factory()->create(['price' => 1000, 'stock' => 1000]);
 
     $this
         ->actingAs($user)
         ->get(route('dashboard', $shop))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('stats.total', 3)
+            ->where('stats.total', 4)
             ->where('stats.active', 2)
             ->where('stats.draft', 1)
+            ->where('stats.archived', 1)
             ->where('stats.lowStock', 1)
             ->where('stats.outOfStock', 1)
             ->where('stats.inventoryValue', fn ($value) => (float) $value === 55.0)

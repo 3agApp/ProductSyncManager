@@ -55,7 +55,7 @@ class DashboardController extends Controller
     /**
      * Get the catalog statistics for the shop.
      *
-     * @return array{total: int, active: int, draft: int, lowStock: int, outOfStock: int, inventoryValue: float, brands: int, categories: int}
+     * @return array{total: int, active: int, draft: int, archived: int, lowStock: int, outOfStock: int, inventoryValue: float, brands: int, categories: int}
      */
     private function stats(Shop $shop): array
     {
@@ -64,6 +64,7 @@ class DashboardController extends Controller
             ->selectRaw('count(*) as total')
             ->selectRaw('sum(case when status = ? then 1 else 0 end) as active', [ProductStatus::Active->value])
             ->selectRaw('sum(case when status = ? then 1 else 0 end) as draft', [ProductStatus::Draft->value])
+            ->selectRaw('sum(case when status = ? then 1 else 0 end) as archived', [ProductStatus::Archived->value])
             ->selectRaw('sum(case when stock between 1 and ? then 1 else 0 end) as low_stock', [Product::LOW_STOCK_THRESHOLD])
             ->selectRaw('sum(case when stock = 0 then 1 else 0 end) as out_of_stock')
             ->selectRaw('sum(price * stock) as inventory_value')
@@ -73,6 +74,7 @@ class DashboardController extends Controller
             'total' => (int) ($stats['total'] ?? 0),
             'active' => (int) ($stats['active'] ?? 0),
             'draft' => (int) ($stats['draft'] ?? 0),
+            'archived' => (int) ($stats['archived'] ?? 0),
             'lowStock' => (int) ($stats['low_stock'] ?? 0),
             'outOfStock' => (int) ($stats['out_of_stock'] ?? 0),
             'inventoryValue' => round((float) ($stats['inventory_value'] ?? 0), 2),

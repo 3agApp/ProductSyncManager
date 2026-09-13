@@ -134,7 +134,6 @@ export default function Dashboard({
         },
     ];
 
-    const archived = Math.max(0, stats.total - stats.active - stats.draft);
     const catalogSegments = [
         {
             label: 'Active',
@@ -150,7 +149,7 @@ export default function Dashboard({
         },
         {
             label: 'Archived',
-            count: archived,
+            count: stats.archived,
             color: 'bg-slate-400',
             status: 'archived',
         },
