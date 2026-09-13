@@ -1,6 +1,6 @@
 import { Form } from '@inertiajs/react';
 import { Clock3 } from 'lucide-react';
-import { useState, useSyncExternalStore } from 'react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,9 +29,6 @@ const DAYS = [
 const MINUTES = Array.from({ length: 60 }, (_, minute) =>
     String(minute).padStart(2, '0'),
 );
-const subscribeToTimezone = () => () => {};
-const deviceTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
-const serverTimezone = () => null;
 
 function clockTime(time: string): string {
     const [hour, minute] = time.split(':').map(Number);
@@ -73,10 +70,8 @@ export default function SyncScheduleForm({
     frequencies: SyncFrequencyOption[];
     timezones: string[];
 }) {
-    const localZone = useSyncExternalStore(
-        subscribeToTimezone,
-        deviceTimezone,
-        serverTimezone,
+    const [localZone] = useState(
+        () => Intl.DateTimeFormat().resolvedOptions().timeZone,
     );
     const defaultZone =
         !settings.isConfigured && localZone && timezones.includes(localZone)
