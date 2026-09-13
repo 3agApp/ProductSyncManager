@@ -1,12 +1,15 @@
 <?php
 
 use App\Actions\Catalog\DeleteCategory;
+use App\Enums\CategoryChildrenAction;
+use App\Enums\CategoryProductsAction;
 use App\Enums\ShopRole;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     $this->owner = User::factory()->create();
@@ -31,7 +34,7 @@ function deletionOptions(Category $category, string $children = 'delete', string
     return [
         'children' => $children,
         'products' => $products,
-        'preview_token' => app(DeleteCategory::class)->plan($category, $children === 'delete')['token'],
+        'preview_token' => app(DeleteCategory::class)->plan($category, CategoryChildrenAction::from($children))['token'],
     ];
 }
 
@@ -139,6 +142,17 @@ test('destructive options require a preview and an exact product deletion confir
     ])->assertSessionHasErrors(['preview_token', 'confirmation']);
     expect($this->shop->products()->count())->toBe(4);
 });
+
+test('the action itself refuses destructive choices without a reviewed preview', function (CategoryChildrenAction $children, CategoryProductsAction $products) {
+    expect(fn () => app(DeleteCategory::class)->handle($this->root, $children, $products, $this->destination->id, null))
+        ->toThrow(ValidationException::class);
+    expect($this->shop->categories()->count())->toBe(4)
+        ->and($this->shop->products()->count())->toBe(4);
+})->with([
+    [CategoryChildrenAction::Delete, CategoryProductsAction::Keep],
+    [CategoryChildrenAction::Keep, CategoryProductsAction::Move],
+    [CategoryChildrenAction::Keep, CategoryProductsAction::Delete],
+]);
 
 test('unknown deletion modes fail validation', function () {
     $this->delete(route('categories.destroy', [$this->shop, $this->root]), ['children' => 'unknown', 'products' => 'everything'])
