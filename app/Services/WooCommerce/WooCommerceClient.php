@@ -344,9 +344,14 @@ class WooCommerceClient
             throw new WooCommerceRequestException("The store host {$host} could not be resolved.");
         }
 
+        // A proxy from HTTP_PROXY or HTTPS_PROXY would make the connection to
+        // the proxy instead and resolve the store on the far side, where the
+        // pin does not reach. An empty proxy is Guzzle's final "no proxy".
+        $direct = ['proxy' => ''];
+
         // An IP literal is never looked up, so there is nothing to pin.
         if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
-            return [];
+            return $direct;
         }
 
         $port = parse_url($url, PHP_URL_PORT)
@@ -357,7 +362,7 @@ class WooCommerceClient
             $addresses,
         ));
 
-        return ['curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$pinned}"]]];
+        return [...$direct, 'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$pinned}"]]];
     }
 
     /**

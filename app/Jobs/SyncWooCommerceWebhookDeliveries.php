@@ -6,6 +6,7 @@ use App\Actions\Sync\ImportWooCommerceProducts;
 use App\Enums\ProductStatus;
 use App\Models\Shop;
 use App\Models\WooCommerceConnection;
+use App\Services\WooCommerce\Exceptions\WooCommerceDestinationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
 use App\Services\WooCommerce\WooCommerceClient;
 use Carbon\CarbonInterface;
@@ -100,6 +101,12 @@ class SyncWooCommerceWebhookDeliveries implements ShouldBeUnique, ShouldQueue
                 $remoteProducts = $client->products($productIds);
             } catch (WooCommerceRateLimitException $exception) {
                 $this->release($exception->retryAfter);
+
+                return;
+            } catch (WooCommerceDestinationException $exception) {
+                // The store now points at a private address. Waiting will not
+                // change that, so fail rather than retrying for the whole window.
+                $this->fail($exception);
 
                 return;
             }

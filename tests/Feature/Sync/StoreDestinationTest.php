@@ -1,13 +1,18 @@
 <?php
 
+use App\Enums\ShopType;
 use App\Enums\SyncRunStatus;
 use App\Jobs\SyncWooCommerceProducts;
+use App\Models\Shop;
 use App\Models\User;
 use App\Models\WooCommerceConnection;
 use App\Services\WooCommerce\Exceptions\WooCommerceDestinationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use App\Services\WooCommerce\WooCommerceClient;
+use Illuminate\Contracts\Queue\Job;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Sleep;
 
 beforeEach(function () {
@@ -82,7 +87,8 @@ test('every request is pinned to the addresses that were just checked', function
     expect($sent)->not->toBeEmpty();
 
     foreach ($sent as $options) {
-        expect($options['curl'][CURLOPT_RESOLVE])->toBe([$pin]);
+        expect($options['curl'][CURLOPT_RESOLVE])->toBe([$pin])
+            ->and($options['proxy'])->toBe('');
     }
 })->with([
     'default port' => ['https://store.example.com', 'store.example.com:443:93.184.215.14,[2606:2800:21f:cb07:6820:80da:af6b:8b2c]'],
@@ -96,7 +102,8 @@ test('a public ip literal is contacted without a pin', function () {
     WooCommerceClient::quick(storeConnection('https://93.184.215.14'))->ping();
 
     expect($sent)->not->toBeEmpty()
-        ->and($sent[0])->not->toHaveKey('curl');
+        ->and($sent[0])->not->toHaveKey('curl')
+        ->and($sent[0]['proxy'])->toBe('');
 });
 
 test('a saved store whose dns now answers privately is never contacted', function () {
@@ -155,6 +162,25 @@ test('a host that rebinds to a private address after validation is not contacted
     expect($lookups)->toBe(2);
 
     Http::assertNothingSent();
+});
+
+test('webhook deliveries for a blocked store fail instead of retrying', function () {
+    Queue::fake();
+    $this->connection = WooCommerceConnection::factory()
+        ->for(Shop::factory()->state(['type' => ShopType::Wordpress]))
+        ->create(['webhook_secret' => str_repeat('s', 32)]);
+    sendProductWebhook($this)->assertAccepted();
+
+    $this->resolveHostsTo(['10.0.0.1']);
+    Http::fake();
+    $queued = Mockery::mock(Job::class);
+    $queued->shouldReceive('fail')->once()->with(Mockery::type(WooCommerceDestinationException::class));
+
+    runWebhookDeliveries($this, $queued);
+
+    Http::assertNothingSent();
+
+    expect(DB::table('woocommerce_webhook_deliveries')->whereNull('processed_at')->count())->toBe(1);
 });
 
 test('private hosts are reachable when explicitly allowed', function () {
