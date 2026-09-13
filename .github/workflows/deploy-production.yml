@@ -49,11 +49,13 @@ jobs:
           php artisan key:generate
 
       # deploy.php runs `npm ci && npm run build` before uploading public/build.
+      # Pin the revision so the server code matches the assets built here, even
+      # if main moves while this run is queued.
       - name: Deploy to Production
         uses: deployphp/action@v1
         with:
           private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          dep: deploy
+          dep: deploy --revision=${{ github.event.workflow_run.head_sha || github.sha }}
         env:
           DEPLOY_HOSTNAME: ${{ vars.DEPLOY_HOSTNAME }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
