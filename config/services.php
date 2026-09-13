@@ -39,6 +39,10 @@ return [
         'per_page' => (int) env('WOOCOMMERCE_PER_PAGE', 100),
         'retries' => (int) env('WOOCOMMERCE_RETRIES', 3),
         'max_pages' => (int) env('WOOCOMMERCE_MAX_PAGES', 500),
+        // Lets a store live on a private or loopback address, for a fake
+        // store during local development. Never enable it where the app runs
+        // next to anything a user should not reach through it.
+        'allow_private_hosts' => (bool) env('WOOCOMMERCE_ALLOW_PRIVATE_HOSTS', env('APP_ENV') === 'local'),
     ],
 
 ];

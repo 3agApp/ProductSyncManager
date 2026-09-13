@@ -8,6 +8,7 @@ use App\Enums\ProductStatus;
 use App\Models\Shop;
 use App\Models\SyncRun;
 use App\Services\WooCommerce\Exceptions\WooCommerceAuthenticationException;
+use App\Services\WooCommerce\Exceptions\WooCommerceDestinationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
@@ -140,8 +141,9 @@ class SyncWooCommerceProducts implements ShouldQueue
         } catch (WooCommerceRateLimitException $exception) {
             $this->persistProgress();
             $this->release($exception->retryAfter);
-        } catch (WooCommerceAuthenticationException $exception) {
-            // Bad credentials will not fix themselves; do not burn the retries.
+        } catch (WooCommerceAuthenticationException|WooCommerceDestinationException $exception) {
+            // Bad credentials and a blocked address will not fix themselves;
+            // do not burn the retries.
             $this->persistProgress();
             $this->fail($exception);
         }

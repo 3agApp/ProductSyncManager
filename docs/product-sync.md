@@ -82,6 +82,12 @@ worker, the scheduler, logs and Vite.
   Over plain HTTP it mandates OAuth 1.0a, which this app does not implement,
   so a non-TLS store cannot be synced. Plain HTTP addresses are accepted only
   in the `local` environment, for testing against a fake store.
+- **Stores must be on public addresses.** Every request resolves the store
+  host again, refuses it if any address is private, loopback, link-local or
+  otherwise reserved, and pins the connection to the addresses it checked.
+  A store whose DNS starts pointing inside the network fails its next sync
+  without retrying. Set `WOOCOMMERCE_ALLOW_PRIVATE_HOSTS` only to reach a
+  fake store locally.
 - **Credentials are encrypted with `APP_KEY`.** Rotating that key leaves them
   undecryptable; the settings page will ask for them to be entered again.
   There is no recovery.
@@ -93,11 +99,12 @@ worker, the scheduler, logs and Vite.
 
 ## Configuration
 
-| Variable                | Default | Purpose                                                |
-| ----------------------- | ------- | ------------------------------------------------------ |
-| `WOOCOMMERCE_PER_PAGE`  | 100     | Products fetched per API request.                      |
-| `WOOCOMMERCE_RETRIES`   | 3       | Attempts per request for transient failures.           |
-| `WOOCOMMERCE_MAX_PAGES` | 500     | Hard stop, so a misbehaving store cannot loop forever. |
+| Variable                          | Default                      | Purpose                                                                                           |
+| --------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `WOOCOMMERCE_PER_PAGE`            | 100                          | Products fetched per API request.                                                                 |
+| `WOOCOMMERCE_RETRIES`             | 3                            | Attempts per request for transient failures.                                                      |
+| `WOOCOMMERCE_MAX_PAGES`           | 500                          | Hard stop, so a misbehaving store cannot loop forever.                                            |
+| `WOOCOMMERCE_ALLOW_PRIVATE_HOSTS` | on only when `APP_ENV=local` | Allow stores on private or loopback addresses, for a local fake store. Leave off everywhere else. |
 
 ### Queue visibility and incomplete catalogs
 

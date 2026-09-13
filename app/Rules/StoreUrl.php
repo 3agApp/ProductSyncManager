@@ -2,6 +2,8 @@
 
 namespace App\Rules;
 
+use App\Services\Network\PublicHostGuard;
+use App\Services\Network\UnsafeDestinationException;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Translation\PotentiallyTranslatedString;
@@ -51,31 +53,30 @@ class StoreUrl implements ValidationRule
             return;
         }
 
-        if ($this->isPrivate($host) && ! app()->environment('local', 'testing')) {
+        if (! config('services.woocommerce.allow_private_hosts') && $this->isPrivate($host)) {
             $fail(__('The store address must be a public address.'));
         }
     }
 
     /**
      * Determine if the host points somewhere inside the local network.
+     *
+     * This gives early feedback on the form. It is not the protection: DNS can
+     * change after saving, so the client checks and pins every request too.
      */
     private function isPrivate(string $host): bool
     {
-        if (in_array(strtolower($host), ['localhost', '127.0.0.1', '::1'], true)) {
+        if (strtolower($host) === 'localhost') {
             return true;
         }
 
-        $ip = filter_var($host, FILTER_VALIDATE_IP) !== false ? $host : gethostbyname($host);
-
-        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
-            // Unresolvable hosts are left to the HTTP client to fail on.
-            return false;
+        try {
+            // Unresolvable hosts pass here; the client refuses to connect to them.
+            app(PublicHostGuard::class)->publicAddresses($host);
+        } catch (UnsafeDestinationException) {
+            return true;
         }
 
-        return filter_var(
-            $ip,
-            FILTER_VALIDATE_IP,
-            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE,
-        ) === false;
+        return false;
     }
 }

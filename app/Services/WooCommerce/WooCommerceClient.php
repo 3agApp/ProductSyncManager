@@ -3,7 +3,10 @@
 namespace App\Services\WooCommerce;
 
 use App\Models\WooCommerceConnection;
+use App\Services\Network\PublicHostGuard;
+use App\Services\Network\UnsafeDestinationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceAuthenticationException;
+use App\Services\WooCommerce\Exceptions\WooCommerceDestinationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use App\Services\WooCommerce\Exceptions\WooCommerceWebhookSetupException;
@@ -295,6 +298,7 @@ class WooCommerceClient
         $baseUrl = rtrim($this->connection->store_url, '/').'/wp-json/wc/v3';
 
         return Http::baseUrl($baseUrl)
+            ->withOptions($this->pinnedDestination())
             ->withBasicAuth($this->connection->consumer_key, $this->connection->consumer_secret)
             ->acceptJson()
             ->withoutRedirecting()
@@ -306,6 +310,54 @@ class WooCommerceClient
                 $this->shouldRetry(...),
                 throw: false,
             );
+    }
+
+    /**
+     * Pin the request to store addresses that were checked just now.
+     *
+     * Validating the address when the connection was saved is not enough: DNS
+     * can answer differently by the time a worker connects. The host is
+     * resolved again here, refused if any address is private, and curl is told
+     * to connect only to those addresses. TLS still verifies the hostname.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws WooCommerceDestinationException
+     * @throws WooCommerceRequestException
+     */
+    private function pinnedDestination(): array
+    {
+        if (config('services.woocommerce.allow_private_hosts')) {
+            return [];
+        }
+
+        $url = $this->connection->store_url;
+        $host = (string) parse_url($url, PHP_URL_HOST);
+
+        try {
+            $addresses = app(PublicHostGuard::class)->publicAddresses($host);
+        } catch (UnsafeDestinationException $exception) {
+            throw new WooCommerceDestinationException($exception->getMessage(), previous: $exception);
+        }
+
+        if ($addresses === []) {
+            throw new WooCommerceRequestException("The store host {$host} could not be resolved.");
+        }
+
+        // An IP literal is never looked up, so there is nothing to pin.
+        if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
+            return [];
+        }
+
+        $port = parse_url($url, PHP_URL_PORT)
+            ?? (strtolower((string) parse_url($url, PHP_URL_SCHEME)) === 'http' ? 80 : 443);
+
+        $pinned = implode(',', array_map(
+            fn (string $address) => str_contains($address, ':') ? "[{$address}]" : $address,
+            $addresses,
+        ));
+
+        return ['curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$pinned}"]]];
     }
 
     /**

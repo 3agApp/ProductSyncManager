@@ -18,11 +18,13 @@ A catalog without pagination headers needs an empty page to establish completion
 
 ## Remaining findings, in priority order
 
-### P1 — Validate outbound destinations at connection time
+### Implemented 2026-09-13 — Validate outbound destinations at request time
 
-`app/Rules/StoreUrl.php:68` uses `gethostbyname` during validation. This checks one IPv4 result, does not establish safety of all A/AAAA addresses, and does not bind the later HTTP connection to the validated address. A hostname can resolve differently when a worker eventually connects. Disabling redirects closes one path, but DNS rebinding and IPv6 handling still require work.
+`WooCommerceClient` now resolves the store host on every request through `App\Services\Network\PublicHostGuard`, which checks every A and AAAA answer against Symfony's private subnets plus multicast, NAT64 and discard ranges, and refuses the host if any answer is non-public or none resolve. The request is then pinned to the checked addresses with `CURLOPT_RESOLVE`, so curl cannot look the name up again, while TLS still verifies the hostname. A blocked address fails a sync run without retrying. `StoreUrl` uses the same guard for early form feedback. `WOOCOMMERCE_ALLOW_PRIVATE_HOSTS` disables the guard and defaults on only when `APP_ENV=local`.
 
-Resolve and validate all candidate addresses at request time, reject non-public destinations, and pin the validated address while retaining TLS hostname verification. Pair this with deployment egress restrictions. Verify public/private IPv4, IPv6, mixed DNS answers, and rebinding using controlled DNS/transport tests before calling this protection complete.
+`tests/Feature/Sync/StoreDestinationTest.php` covers private, loopback, link-local, CGNAT, multicast, IPv6, IPv4-mapped and NAT64 answers, a mixed public/private answer, unresolvable hosts, pin formatting including IPv6 and custom ports, the job failure, and a host that rebinds between validation and connection. Tests use a fake resolver, so none touch real DNS. Separately, a local check confirmed curl honours the pin through Laravel's HTTP client against a loopback server.
+
+Remaining: an `HTTP_PROXY`/`HTTPS_PROXY` in the worker environment would move the connection to the proxy and bypass the pin, and the incremental webhook job retries a blocked store until its retry window closes rather than failing at once. Deployment egress restrictions are still recommended as a second layer.
 
 ### Implemented 2026-09-13 — Serialize sync admission and make dispatch recoverable
 
