@@ -5,6 +5,7 @@ namespace App\Actions\Sync;
 use App\Models\WooCommerceConnection;
 use App\Services\WooCommerce\Exceptions\WooCommerceWebhookSetupException;
 use App\Services\WooCommerce\WooCommerceClient;
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -12,9 +13,32 @@ class ConfigureWooCommerceWebhooks
 {
     public const array TOPICS = ['product.created', 'product.updated', 'product.deleted', 'product.restored'];
 
+    /**
+     * The longest setup may talk to WooCommerce before it gives up.
+     */
+    public const int SETUP_SECONDS = 45;
+
+    /**
+     * How long the connection lock outlives a request that never releases it.
+     *
+     * Setup runs inside a web request, and a request killed by the server
+     * never reaches its finally block. The lock must still cover a setup that
+     * runs to its deadline, but no longer, or a killed request would block
+     * saving the connection for that long.
+     */
+    public const int LOCK_SECONDS = self::SETUP_SECONDS + 15;
+
+    /**
+     * The lock shared by webhook setup and connection changes for a shop.
+     */
+    public static function lock(int $shopId): Lock
+    {
+        return Cache::lock('woocommerce-connection:'.$shopId, self::LOCK_SECONDS);
+    }
+
     public function handle(WooCommerceConnection $connection): void
     {
-        $lock = Cache::lock('woocommerce-connection:'.$connection->shop_id, 600);
+        $lock = self::lock($connection->shop_id);
         if (! $lock->get()) {
             throw new WooCommerceWebhookSetupException('Webhook setup or a connection update is already in progress. Please wait and try again.');
         }
@@ -32,7 +56,7 @@ class ConfigureWooCommerceWebhooks
                 throw new WooCommerceWebhookSetupException('Automatic setup needs this app’s public HTTPS address. Configure APP_URL for this installation, then try again.');
             }
 
-            $client = WooCommerceClient::quick($connection);
+            $client = WooCommerceClient::quick($connection)->until(now()->addSeconds(self::SETUP_SECONDS));
             $webhooks = $client->webhooks();
             $secret = rescue(fn () => $connection->webhook_secret, null, report: false);
             // Persist before WooCommerce attempts its activation ping or delivery.

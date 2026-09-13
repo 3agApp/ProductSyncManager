@@ -10,6 +10,7 @@ use App\Services\WooCommerce\Exceptions\WooCommerceDestinationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use App\Services\WooCommerce\Exceptions\WooCommerceWebhookSetupException;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -19,6 +20,11 @@ use Throwable;
 
 class WooCommerceClient
 {
+    /**
+     * When webhook requests must stop, so a caller can bound its total time.
+     */
+    private ?CarbonInterface $deadline = null;
+
     public function __construct(
         private readonly WooCommerceConnection $connection,
         private readonly bool $quick = false,
@@ -32,6 +38,17 @@ class WooCommerceClient
     public static function quick(WooCommerceConnection $connection): self
     {
         return new self($connection, quick: true);
+    }
+
+    /**
+     * Get a copy whose webhook requests all finish by the deadline.
+     */
+    public function until(CarbonInterface $deadline): self
+    {
+        $client = clone $this;
+        $client->deadline = $deadline;
+
+        return $client;
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -89,11 +106,23 @@ class WooCommerceClient
     /** @param array<string, mixed> $data */
     private function webhookRequest(string $method, string $path, array $data): Response
     {
+        // Never automatically retry a POST: it may have succeeded before the
+        // response was lost. The next setup lists remote hooks before writing.
+        $request = $this->request()->retry(1, 0, throw: false);
+
+        if ($this->deadline !== null) {
+            $remaining = now()->diffInSeconds($this->deadline, false);
+
+            if ($remaining <= 0) {
+                throw new WooCommerceWebhookSetupException('WooCommerce is responding too slowly and setup ran out of time. Try again; existing webhooks will be reused.');
+            }
+
+            $request->connectTimeout(min($this->quick ? 5 : 10, $remaining))
+                ->timeout(min($this->quick ? 10 : 30, $remaining));
+        }
+
         try {
-            // Never automatically retry a POST: it may have succeeded before the
-            // response was lost. The next setup lists remote hooks before writing.
-            $response = $this->request()->retry(1, 0, throw: false)
-                ->send($method, $path, [$method === 'GET' ? 'query' : 'json' => $data]);
+            $response = $request->send($method, $path, [$method === 'GET' ? 'query' : 'json' => $data]);
         } catch (ConnectionException $exception) {
             throw new WooCommerceWebhookSetupException('WooCommerce could not be reached or setup timed out. Try again; existing webhooks will be reused.', previous: $exception);
         }
