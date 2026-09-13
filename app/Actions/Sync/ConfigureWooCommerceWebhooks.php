@@ -69,7 +69,7 @@ class ConfigureWooCommerceWebhooks
             $connection->save();
 
             foreach (self::TOPICS as $topic) {
-                $existing = $this->existingWebhook($webhooks, $topic, $url, $connection->webhook_setup[$topic] ?? null);
+                [$existing, $duplicates] = $this->matchingWebhooks($webhooks, $topic, $url, $connection->webhook_setup[$topic] ?? null);
 
                 $webhook = $client->saveWebhook($existing['id'] ?? null, [
                     'name' => 'ProductSync — '.$topic,
@@ -82,6 +82,13 @@ class ConfigureWooCommerceWebhooks
 
                 $connection->webhook_setup = [...($connection->webhook_setup ?? []), $topic => ['id' => $webhook['id'], 'delivery_url' => $url]];
                 $connection->save();
+
+                // A second live hook for the same topic and address would deliver
+                // every change twice. Extras are switched off rather than deleted,
+                // so nothing a store owner set up by hand is lost.
+                foreach ($duplicates as $duplicate) {
+                    $client->disableWebhook($duplicate['id']);
+                }
             }
 
             $connection->update(['webhooks_configured_at' => now()]);
@@ -113,30 +120,35 @@ class ConfigureWooCommerceWebhooks
     }
 
     /**
-     * Find the remote webhook to update for a topic, if there is one.
+     * Find the remote webhook to update for a topic, and any live duplicates of it.
      *
-     * A webhook already pointing at this app is reused, and so is the one
-     * setup created before while it still points where setup left it, which
-     * repairs hooks after APP_URL changes. One another integration has
-     * retargeted is left alone.
+     * The webhook setup created before is preferred while it still points
+     * where setup left it, which repairs hooks after APP_URL changes.
+     * Otherwise the first webhook already pointing at this app is reused.
+     * Every other enabled webhook for the topic pointing at this app is a
+     * duplicate. One another integration has retargeted is left alone.
      *
      * @param  array<int, array<string, mixed>>  $webhooks
      * @param  array{id: int, delivery_url: string}|null  $tracked
-     * @return array<string, mixed>|null
+     * @return array{0: array<string, mixed>|null, 1: array<int, array<string, mixed>>}
      */
-    private function existingWebhook(array $webhooks, string $topic, string $url, ?array $tracked): ?array
+    private function matchingWebhooks(array $webhooks, string $topic, string $url, ?array $tracked): array
     {
-        return collect($webhooks)->first(function (array $webhook) use ($topic, $url, $tracked) {
-            if ($webhook['topic'] !== $topic) {
-                return false;
-            }
+        $forTopic = collect($webhooks)->filter(fn (array $webhook) => $webhook['topic'] === $topic);
 
-            $pointsHere = $webhook['delivery_url'] === $url;
-            $isTracked = $tracked !== null
-                && $webhook['id'] === $tracked['id']
-                && $webhook['delivery_url'] === $tracked['delivery_url'];
+        $trackedWebhook = $tracked === null ? null : $forTopic->first(
+            fn (array $webhook) => $webhook['id'] === $tracked['id'] && $webhook['delivery_url'] === $tracked['delivery_url'],
+        );
+        $pointingHere = $forTopic->filter(fn (array $webhook) => $webhook['delivery_url'] === $url);
 
-            return $pointsHere || $isTracked;
-        });
+        $existing = $trackedWebhook ?? $pointingHere->first();
+
+        $duplicates = $pointingHere
+            ->reject(fn (array $webhook) => $webhook['id'] === ($existing['id'] ?? null)
+                || ($webhook['status'] ?? null) === 'disabled')
+            ->values()
+            ->all();
+
+        return [$existing, $duplicates];
     }
 }

@@ -117,6 +117,18 @@ class WooCommerceClient
             && ($webhook['status'] ?? null) === 'active';
     }
 
+    /**
+     * Switch a webhook off without deleting it.
+     */
+    public function disableWebhook(int $id): void
+    {
+        $webhook = $this->webhookRequest('PUT', 'webhooks/'.$id, ['status' => 'disabled'])->json();
+
+        if (! is_array($webhook) || ($webhook['id'] ?? null) !== $id || ($webhook['status'] ?? null) !== 'disabled') {
+            throw new WooCommerceWebhookSetupException(__('WooCommerce did not confirm that a duplicate webhook was disabled. Try setup again.'));
+        }
+    }
+
     /** @param array<string, mixed> $data */
     private function webhookRequest(string $method, string $path, array $data): Response
     {
