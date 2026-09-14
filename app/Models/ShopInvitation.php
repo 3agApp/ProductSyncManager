@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ShopRole;
 use Database\Factories\ShopInvitationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -63,6 +64,21 @@ class ShopInvitation extends Model
     public function inviter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by');
+    }
+
+    /**
+     * Scope the query to invitations still open to the given email address.
+     *
+     * @param  Builder<ShopInvitation>  $query
+     */
+    public function scopePendingFor(Builder $query, string $email): void
+    {
+        $query
+            ->whereRaw('LOWER(email) = ?', [strtolower($email)])
+            ->whereNull('accepted_at')
+            ->where(fn (Builder $query) => $query
+                ->whereNull('expires_at')
+                ->orWhere('expires_at', '>=', now()));
     }
 
     /**

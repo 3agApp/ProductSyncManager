@@ -220,6 +220,25 @@ test('shop invitations can be declined by the invited user', function () {
     ]);
 });
 
+test('declining an invitation returns to the invitations page while others are pending', function () {
+    $owner = User::factory()->create();
+    $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
+    $shop = Shop::factory()->create();
+
+    $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
+
+    [$invitation] = ShopInvitation::factory()->count(2)->create([
+        'shop_id' => $shop->id,
+        'email' => 'invited@example.com',
+        'invited_by' => $owner->id,
+    ]);
+
+    $this
+        ->actingAs($invitedUser)
+        ->delete(route('invitations.decline', $invitation))
+        ->assertRedirect(route('invitations.index'));
+});
+
 test('shop invitations cannot be declined by uninvited user', function () {
     $owner = User::factory()->create();
     $uninvitedUser = User::factory()->create(['email' => 'uninvited@example.com']);
