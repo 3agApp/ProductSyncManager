@@ -41,7 +41,9 @@ class ProductController extends Controller
         $search = $request->string('search')->trim()->toString();
         $status = ProductStatus::tryFrom($request->string('status')->toString());
         $sort = $request->string('sort')->toString();
-        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+        $sort = array_key_exists($sort, Product::SORTABLE) ? $sort : Product::DEFAULT_SORT;
+        $direction = $request->string('direction')->toString();
+        $direction = in_array($direction, ['asc', 'desc'], true) ? $direction : Product::defaultDirection($sort);
         $perPage = $this->perPage($request);
 
         $categoryFilter = $request->string('category')->toString();
@@ -88,7 +90,7 @@ class ProductController extends Controller
                 'status' => $status?->value,
                 'category' => $this->filterValue($category, $categoryFilter),
                 'brand' => $this->filterValue($brand, $brandFilter),
-                'sort' => array_key_exists($sort, Product::SORTABLE) ? $sort : 'updated',
+                'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $perPage,
             ],

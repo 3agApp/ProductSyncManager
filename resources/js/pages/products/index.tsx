@@ -157,8 +157,8 @@ export default function ProductIndex({
                 ...(query.status ? { status: query.status } : {}),
                 ...(query.category ? { category: query.category } : {}),
                 ...(query.brand ? { brand: query.brand } : {}),
-                ...(query.sort !== 'updated' ? { sort: query.sort } : {}),
-                ...(query.direction !== 'desc'
+                ...(query.sort !== 'name' ? { sort: query.sort } : {}),
+                ...(query.direction !== defaultDirection(query.sort)
                     ? { direction: query.direction }
                     : {}),
                 ...(query.perPage !== pageSizes[0]
@@ -191,17 +191,14 @@ export default function ProductIndex({
     };
 
     // Clicking the column you are already on flips the direction; a new
-    // column starts ascending for text and descending for figures, which is
-    // the order each is normally wanted in.
+    // column starts in its own default order.
     const applySort = (sort: ProductSort) => {
         const direction =
             filters.sort === sort
                 ? filters.direction === 'asc'
                     ? 'desc'
                     : 'asc'
-                : sort === 'name'
-                  ? 'asc'
-                  : 'desc';
+                : defaultDirection(sort);
 
         applyFilters({ sort, direction });
     };
@@ -809,6 +806,12 @@ export default function ProductIndex({
             />
         </>
     );
+}
+
+// Text reads best ascending and figures descending, which is the order each
+// is normally wanted in. Matches Product::defaultDirection() on the server.
+function defaultDirection(sort: ProductSort): ProductFilters['direction'] {
+    return sort === 'name' ? 'asc' : 'desc';
 }
 
 function SortButton({

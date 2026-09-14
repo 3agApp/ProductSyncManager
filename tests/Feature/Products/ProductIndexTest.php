@@ -270,6 +270,41 @@ test('search also covers the gtin and the brand name', function () {
             ->where('products.data.0.sku', 'BBB-1'));
 });
 
+test('products are sorted by name from a to z by default', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    Product::factory()->for($shop)->create(['name' => 'Middle']);
+    Product::factory()->for($shop)->create(['name' => 'Zebra']);
+    Product::factory()->for($shop)->create(['name' => 'Apple']);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.name', 'Apple')
+            ->where('products.data.1.name', 'Middle')
+            ->where('products.data.2.name', 'Zebra')
+            ->where('filters.sort', 'name')
+            ->where('filters.direction', 'asc'));
+});
+
+test('a column chosen without a direction starts in its own default order', function (string $sort, string $direction) {
+    $user = User::factory()->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', [$user->currentShop, 'sort' => $sort]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.sort', $sort)
+            ->where('filters.direction', $direction));
+})->with([
+    'name' => ['name', 'asc'],
+    'price' => ['price', 'desc'],
+    'stock' => ['stock', 'desc'],
+    'updated' => ['updated', 'desc'],
+]);
+
 test('products can be sorted by a chosen column', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
@@ -296,9 +331,11 @@ test('an unknown sort column falls back to the default', function () {
 
     $this
         ->actingAs($user)
-        ->get(route('products.index', [$shop, 'sort' => 'price); drop table products--']))
+        ->get(route('products.index', [$shop, 'sort' => 'price); drop table products--', 'direction' => 'sideways']))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('filters.sort', 'updated'));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.sort', 'name')
+            ->where('filters.direction', 'asc'));
 });
 
 test('the page size can be changed, and a silly one is ignored', function () {

@@ -81,6 +81,22 @@ class Product extends Model
     ];
 
     /**
+     * The column a product list is ordered by when none is chosen.
+     */
+    public const string DEFAULT_SORT = 'name';
+
+    /**
+     * Get the order a sortable column starts in.
+     *
+     * Text reads best ascending and figures descending, which is the order
+     * each is normally wanted in.
+     */
+    public static function defaultDirection(string $sort): string
+    {
+        return $sort === 'name' ? 'asc' : 'desc';
+    }
+
+    /**
      * Narrow the query to products matching a search term.
      *
      * The term is matched against everything a person is likely to have to
@@ -133,7 +149,7 @@ class Product extends Model
      */
     public function scopeSorted(Builder $query, ?string $sort, string $direction): void
     {
-        $column = self::SORTABLE[$sort] ?? 'updated_at';
+        $column = self::SORTABLE[$sort] ?? self::SORTABLE[self::DEFAULT_SORT];
         $direction = $direction === 'asc' ? 'asc' : 'desc';
 
         $query->orderBy($column, $direction)->orderBy('id', $direction);
