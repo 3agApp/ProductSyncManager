@@ -24,7 +24,3 @@ Schedule::command(PruneWebhookDeliveries::class)
 Schedule::command('queue:prune-failed', ['--hours' => 168])
     ->daily()
     ->description('Prune failed jobs older than a week');
-
-Schedule::command('horizon:snapshot')
-    ->everyFiveMinutes()
-    ->description('Record Horizon queue metrics');

@@ -71,28 +71,19 @@ A cron entry running the scheduler every minute:
 * * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-And Horizon, kept running by Supervisor. Queues run on Redis
-(`QUEUE_CONNECTION=redis`); worker processes and the 900-second timeout are set
-in `config/horizon.php`:
+And queue workers kept running by Supervisor. Queues run on Redis
+(`QUEUE_CONNECTION=redis`):
 
 ```
-php artisan horizon
+php artisan queue:work --sleep=3 --tries=3 --timeout=900 --memory=512 --max-time=3600 --max-jobs=1000
 ```
 
-Locally, `composer dev` already runs both — it starts the server, Horizon,
-the scheduler, logs and Vite. The dashboard is at `/horizon`; outside `local`
-only the emails in `HorizonServiceProvider` can open it.
+Locally, `composer dev` already runs both — it starts the server, a queue
+worker, the scheduler, logs and Vite.
 
-Horizon runs as `www-data`, and only that user may signal it. Deploys run as
-the deploy user and terminate Horizon through sudo, so the server needs this
-rule (`sudo visudo -f /etc/sudoers.d/horizon-terminate`, with your deploy user):
-
-```
-sourov ALL=(www-data) NOPASSWD: /usr/bin/php artisan horizon:terminate
-```
-
-Without it the deploy fails at `horizon:terminate`, after the new release is
-already live, and Horizon keeps running the previous release until restarted.
+Deploys restart the workers with `php artisan queue:restart`. The signal goes
+through the cache, so the deploy user needs no sudo; workers finish their
+current job and Supervisor starts them on the new release.
 
 ## Constraints worth knowing
 
@@ -140,9 +131,8 @@ URL if its previous address redirects.
 
 ## Near-real-time updates with webhooks
 
-Run `php artisan migrate` when deploying this feature and restart Horizon
-with `sudo -u www-data php artisan horizon:terminate`. Webhooks use the same
-queue as full syncs.
+Run `php artisan migrate` when deploying this feature and restart queue workers
+with `php artisan queue:restart`. Webhooks use the same queue worker as full syncs.
 Set `APP_URL` to the public HTTPS address of this app. The delivery URL must be
 reachable from the WooCommerce server; localhost cannot receive remote events.
 

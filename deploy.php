@@ -121,24 +121,18 @@ task('deploy:npm', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Restart Horizon
+| Restart Queue Workers
 |--------------------------------------------------------------------------
 */
 
-// Sync jobs run up to 900 seconds; horizon:terminate lets workers finish the
-// current job, then Supervisor starts Horizon again on the new release.
-// Horizon runs as www-data, and only that user may signal it, so the server
-// needs a sudoers rule allowing the deploy user exactly this command.
-task('horizon:terminate', function () {
-    writeln('🔄 Gracefully terminating Horizon...');
-    $output = run('cd {{release_path}} && sudo -n -u www-data /usr/bin/php artisan horizon:terminate');
-
-    // horizon:terminate exits 0 even when it cannot signal Horizon, which
-    // would leave the old release running behind a green deploy.
-    if (str_contains($output, 'Failed to kill')) {
-        throw error("Horizon was not terminated:\n".$output);
-    }
-})->desc('Gracefully terminate Horizon');
+// Sync jobs run up to 900 seconds; queue:restart lets workers finish the
+// current job, then Supervisor starts them again on the new release. The
+// signal travels through the cache, so the deploy user needs no rights over
+// the www-data worker processes.
+task('queue:restart', function () {
+    writeln('🔄 Gracefully restarting queue workers...');
+    run('cd {{release_path}} && php artisan queue:restart');
+})->desc('Gracefully restart queue workers');
 
 /*
 |--------------------------------------------------------------------------
@@ -150,6 +144,6 @@ before('deploy', 'build:assets');
 
 after('deploy:vendors', 'upload:assets');
 
-after('deploy:symlink', 'horizon:terminate');
+after('deploy:symlink', 'queue:restart');
 
 after('deploy:failed', 'deploy:unlock');
