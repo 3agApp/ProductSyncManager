@@ -270,7 +270,7 @@ test('a product is filed under many categories and a category holds many product
 
     $bags = $shop->categories()->where('slug', 'bags')->sole();
 
-    expect($shop->products()->first()->categories)->toHaveCount(2)
+    expect($shop->products()->oldest('id')->first()->categories)->toHaveCount(2)
         ->and($bags->products)->toHaveCount(2);
 });
 

@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $brand_id
  * @property int|null $remote_id
  * @property string $name
+ * @property string $name_sort
  * @property string $sku
  * @property string|null $gtin
  * @property string|null $description
@@ -61,6 +62,19 @@ class Product extends Model
     use HasFactory;
 
     /**
+     * Keep the name's sort key in step with the name on every save.
+     *
+     * Every write of a name goes through the model, the import included,
+     * so this is the one place the key is kept.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product) {
+            $product->name_sort = self::nameSortKey($product->name);
+        });
+    }
+
+    /**
      * Products at or below this stock level are considered low on stock.
      */
     public const int LOW_STOCK_THRESHOLD = 5;
@@ -74,7 +88,7 @@ class Product extends Model
      * @var array<string, string>
      */
     public const array SORTABLE = [
-        'name' => 'name',
+        'name' => 'name_sort',
         'price' => 'price',
         'stock' => 'stock',
         'updated' => 'updated_at',
@@ -94,6 +108,34 @@ class Product extends Model
     public static function defaultDirection(string $sort): string
     {
         return $sort === 'name' ? 'asc' : 'desc';
+    }
+
+    /**
+     * The longest name sort key stored; later characters never decide an order.
+     */
+    public const int NAME_SORT_LENGTH = 500;
+
+    /**
+     * Places each number in a name is padded to in its sort key.
+     */
+    private const int NAME_SORT_DIGITS = 20;
+
+    /**
+     * Get the key a name sorts by, so numbers in it order by their value.
+     *
+     * Every run of digits is padded with zeros, which puts "2 pens" before
+     * "10 pens". The key is lowercased so every database orders it the same
+     * way, whatever its collation.
+     */
+    public static function nameSortKey(string $name): string
+    {
+        $key = preg_replace_callback(
+            '/\d+/',
+            fn (array $digits) => str_pad(ltrim($digits[0], '0'), self::NAME_SORT_DIGITS, '0', STR_PAD_LEFT),
+            mb_strtolower($name),
+        );
+
+        return mb_substr((string) $key, 0, self::NAME_SORT_LENGTH);
     }
 
     /**

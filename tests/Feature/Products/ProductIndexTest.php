@@ -289,6 +289,39 @@ test('products are sorted by name from a to z by default', function () {
             ->where('filters.direction', 'asc'));
 });
 
+test('numbers in names sort by their value', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    foreach (['Apple 12', '10 Buntstifte', 'apple 3', '2 Buntstifte', 'Apple'] as $name) {
+        Product::factory()->for($shop)->create(['name' => $name]);
+    }
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.name', '2 Buntstifte')
+            ->where('products.data.1.name', '10 Buntstifte')
+            ->where('products.data.2.name', 'Apple')
+            ->where('products.data.3.name', 'apple 3')
+            ->where('products.data.4.name', 'Apple 12'));
+
+    $this->get(route('products.index', [$shop, 'direction' => 'desc']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.name', 'Apple 12')
+            ->where('products.data.4.name', '2 Buntstifte'));
+});
+
+test('renaming a product updates its sort key', function () {
+    $product = Product::factory()->create(['name' => 'Box 9']);
+
+    $product->update(['name' => 'Box 10']);
+
+    expect($product->refresh()->name_sort)->toBe(Product::nameSortKey('Box 10'))
+        ->and(Product::nameSortKey('Box 10'))->toBe('box 00000000000000000010');
+});
+
 test('a column chosen without a direction starts in its own default order', function (string $sort, string $direction) {
     $user = User::factory()->create();
 
