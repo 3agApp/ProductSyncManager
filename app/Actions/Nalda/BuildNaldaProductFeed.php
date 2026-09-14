@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\DB;
 class BuildNaldaProductFeed
 {
     /**
-     * The columns written, named as Nalda's product template names them.
+     * The header row, exactly as Nalda's product template has it.
      *
-     * Nalda recognises columns by these names, so the order is only for
-     * whoever opens the file.
+     * Every column is written, in the template's order, even those the
+     * catalog has no value for yet; those are left empty.
      */
     public const array COLUMNS = [
         'gtin',
@@ -29,13 +29,31 @@ class BuildNaldaProductFeed
         'return_days',
         'main_image_url',
         'brand',
+        'category',
+        'google_category',
         'seller_category',
         'description',
+        'length_mm',
+        'width_mm',
+        'height_mm',
+        'weight_g',
+        'shipping_length_mm',
+        'shipping_width_mm',
+        'shipping_height_mm',
+        'shipping_weight_g',
+        'volume_ml',
+        'size',
+        'colour',
         'image_2_url',
         'image_3_url',
         'image_4_url',
         'image_5_url',
         'delete_product',
+        'author',
+        'language',
+        'format',
+        'year',
+        'publisher',
     ];
 
     /**
@@ -166,27 +184,38 @@ class BuildNaldaProductFeed
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->first();
 
-        return [
-            $this->gtin($product),
-            $product->name,
-            $connection->country,
-            $connection->condition,
-            $this->decimal($product->price),
-            $this->decimal($connection->tax_rate),
-            $connection->currency,
-            $connection->delivery_time_days,
-            $listed ? $product->stock : 0,
-            $connection->return_days,
-            $product->image_url ?? '',
-            $product->brand->name ?? '',
-            $category ?? '',
-            $product->description ?: ($product->short_description ?? ''),
-            $gallery[0] ?? '',
-            $gallery[1] ?? '',
-            $gallery[2] ?? '',
-            $gallery[3] ?? '',
-            $listed ? '' : 'yes',
-        ];
+        return $this->row([
+            'gtin' => $this->gtin($product),
+            'title' => $product->name,
+            'country' => $connection->country,
+            'condition' => $connection->condition,
+            'price' => $this->decimal($product->price),
+            'tax' => $this->decimal($connection->tax_rate),
+            'currency' => $connection->currency,
+            'delivery_time_days' => $connection->delivery_time_days,
+            'stock' => $listed ? $product->stock : 0,
+            'return_days' => $connection->return_days,
+            'main_image_url' => $product->image_url ?? '',
+            'brand' => $product->brand->name ?? '',
+            'seller_category' => $category ?? '',
+            'description' => $product->description ?: ($product->short_description ?? ''),
+            'image_2_url' => $gallery[0] ?? '',
+            'image_3_url' => $gallery[1] ?? '',
+            'image_4_url' => $gallery[2] ?? '',
+            'image_5_url' => $gallery[3] ?? '',
+            'delete_product' => $listed ? '' : 'yes',
+        ]);
+    }
+
+    /**
+     * Lay the values out under the header, leaving every other column empty.
+     *
+     * @param  array<string, string|int>  $values
+     * @return array<int, string|int>
+     */
+    private function row(array $values): array
+    {
+        return array_values([...array_fill_keys(self::COLUMNS, ''), ...$values]);
     }
 
     /**
@@ -196,10 +225,7 @@ class BuildNaldaProductFeed
      */
     private function removalRow(NaldaConnection $connection, string $gtin): array
     {
-        $row = array_fill_keys(self::COLUMNS, '');
-
-        return array_values([
-            ...$row,
+        return $this->row([
             'gtin' => $gtin,
             'country' => $connection->country,
             'condition' => $connection->condition,

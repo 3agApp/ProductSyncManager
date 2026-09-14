@@ -53,7 +53,8 @@ test('a listed product is written with its details and the shop defaults', funct
 
     [$feed, $rows, $header] = buildNaldaFeed($connection);
 
-    expect($header)->toBe(BuildNaldaProductFeed::COLUMNS)
+    // Nalda's sample file header, column for column.
+    expect(implode(',', $header))->toBe('gtin,title,country,condition,price,tax,currency,delivery_time_days,stock,return_days,main_image_url,brand,category,google_category,seller_category,description,length_mm,width_mm,height_mm,weight_g,shipping_length_mm,shipping_width_mm,shipping_height_mm,shipping_weight_g,volume_ml,size,colour,image_2_url,image_3_url,image_4_url,image_5_url,delete_product,author,language,format,year,publisher')
         ->and($feed->listed)->toBe(1)
         ->and($feed->listedGtins)->toBe(['4002725988737'])
         ->and($rows['4002725988737'])->toMatchArray([
@@ -73,6 +74,9 @@ test('a listed product is written with its details and the shop defaults', funct
             'image_2_url' => 'https://example.com/2.jpg',
             'image_3_url' => 'https://example.com/3.jpg',
             'image_4_url' => '',
+            'category' => '',
+            'weight_g' => '',
+            'publisher' => '',
             'delete_product' => '',
         ]);
 });

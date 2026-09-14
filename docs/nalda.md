@@ -40,12 +40,12 @@ product when a row says so — `delete_product = yes`, `stock = 0` or
 `delivery_time_days = 0`. So every file contains **every product with a
 GTIN**:
 
-| Product                                         | Row                                         |
-| ----------------------------------------------- | ------------------------------------------- |
-| Listed                                          | full details, real stock (0 stays listed)   |
-| Excluded, draft or archived                     | full details, `stock = 0`, `delete_product = yes` |
-| A GTIN listed before that no product has now    | GTIN only, `stock = 0`, `delete_product = yes` |
-| No GTIN                                         | not written; counted as skipped             |
+| Product                                      | Row                                               |
+| -------------------------------------------- | ------------------------------------------------- |
+| Listed                                       | full details, real stock (0 stays listed)         |
+| Excluded, draft or archived                  | full details, `stock = 0`, `delete_product = yes` |
+| A GTIN listed before that no product has now | GTIN only, `stock = 0`, `delete_product = yes`    |
+| No GTIN                                      | not written; counted as skipped                   |
 
 The last row covers products deleted from this app, and products whose GTIN
 was changed or cleared. The GTINs listed by the last **successful** upload are
@@ -61,11 +61,17 @@ Produkte löschen** in the Seller Portal and then upload from here.
 
 ## Columns
 
-`gtin`, `title`, `country`, `condition`, `price`, `tax`, `currency`,
-`delivery_time_days`, `stock`, `return_days`, `main_image_url`, `brand`,
-`seller_category` (the first category path), `description` (falling back to
-the short description), `image_2_url` to `image_5_url` (the first four gallery
-images) and `delete_product`.
+The header row is exactly the one in Nalda's product template, all 37 columns
+in the same order. Columns the catalog has no value for yet — `category`,
+`google_category`, the dimensions and weights, `volume_ml`, `size`, `colour`
+and the book fields — are written empty.
+
+Filled from the catalog: `gtin`, `title`, `price`, `stock`, `main_image_url`,
+`brand`, `seller_category` (the first category path), `description` (falling
+back to the short description), `image_2_url` to `image_5_url` (the first four
+gallery images) and `delete_product`. Filled from the shop's Nalda settings:
+`country`, `condition`, `tax`, `currency`, `delivery_time_days` and
+`return_days`.
 
 Files are uploaded to the SFTP root as `products-YYYYMMDD-HHMMSS.csv`.
 
