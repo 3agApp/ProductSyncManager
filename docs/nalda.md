@@ -18,10 +18,24 @@ what Nalda lists.
 4. Choose the **default product behavior**: include all products, or exclude
    all products.
 5. Press **Test connection**, then **Upload now**. With **Upload after every
-   sync** on, a file is also uploaded each time a WooCommerce sync finishes.
+   sync** on, a file is also uploaded each time a WooCommerce sync finishes,
+   and five minutes after webhooks change products (see below).
 
 Owners and admins change the settings. Owners, admins and members can upload
 and download.
+
+## Uploads after webhooks
+
+With **Upload after every sync** on, a webhook that changes a product queues
+one upload for five minutes later. Changes arriving in those five minutes go
+out in the same file, so a store saving its whole catalog costs an upload
+every five minutes rather than one per product. The export history shows
+these as **Webhook**.
+
+An upload that is still queued builds its file when it runs, so it carries
+later changes. One that has already started may have read the catalog before
+them, so the waiting upload checks again every minute and sends another file
+once it finishes. Full syncs keep uploading as before.
 
 ## Which products are listed
 

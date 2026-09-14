@@ -1,6 +1,6 @@
 export type SyncRunStatus = 'queued' | 'running' | 'completed' | 'failed';
 
-export type SyncTrigger = 'manual' | 'scheduled';
+export type SyncTrigger = 'manual' | 'scheduled' | 'webhook';
 
 export type SyncFrequency = 'hourly' | 'six_hourly' | 'daily' | 'weekly';
 

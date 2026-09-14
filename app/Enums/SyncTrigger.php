@@ -6,6 +6,7 @@ enum SyncTrigger: string
 {
     case Manual = 'manual';
     case Scheduled = 'scheduled';
+    case Webhook = 'webhook';
 
     /**
      * Get the display label for the trigger.

@@ -484,7 +484,8 @@ export default function ShopNalda({
                                             <p className="text-muted-foreground text-sm">
                                                 Send a fresh product file to
                                                 Nalda each time a WooCommerce
-                                                sync finishes.
+                                                sync finishes, and a few minutes
+                                                after webhooks change products.
                                             </p>
                                         </div>
                                     </div>
