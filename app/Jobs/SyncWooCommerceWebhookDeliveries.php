@@ -161,6 +161,12 @@ class SyncWooCommerceWebhookDeliveries implements ShouldBeUnique, ShouldQueue
                 ->where('id', '<=', $upTo)
                 ->update(['processed_at' => now(), 'updated_at' => now()]);
         });
+
+        // Stock and prices on Nalda would otherwise wait for the next full
+        // sync. The upload is delayed so a burst of saves shares one file.
+        if ($shop->naldaConnection?->upload_after_sync) {
+            QueueNaldaUploadAfterWebhooks::dispatch($shop->id);
+        }
     }
 
     /**
