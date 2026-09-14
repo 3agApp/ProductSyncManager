@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Shops;
 
 use App\Enums\NaldaDefaultBehavior;
+use App\Enums\NaldaPriceMode;
 use App\Models\Shop;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -45,11 +46,14 @@ class SaveNaldaConnectionRequest extends FormRequest
         return [
             'sftp_username' => ['nullable', 'string', 'max:255'],
             'sftp_password' => ['nullable', 'string', 'max:255'],
+            // A bare name in the SFTP root: no folders, so it can never
+            // point anywhere else on the server.
+            'file_name' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*\.csv$/'],
             'default_behavior' => ['required', Rule::enum(NaldaDefaultBehavior::class)],
             'country' => ['required', 'string', 'alpha', 'size:2'],
             'currency' => ['required', 'string', 'alpha', 'size:3'],
             'condition' => ['required', 'string', 'max:32'],
-            'tax_rate' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:100'],
+            'price_mode' => ['required', Rule::enum(NaldaPriceMode::class)],
             'delivery_time_days' => ['required', 'integer', 'min:1', 'max:365'],
             'return_days' => ['required', 'integer', 'min:0', 'max:365'],
             'upload_after_sync' => ['required', 'boolean'],
@@ -82,6 +86,18 @@ class SaveNaldaConnectionRequest extends FormRequest
     }
 
     /**
+     * Get custom messages for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'file_name.regex' => __('The file name must end in .csv and use only letters, numbers, dots, dashes and underscores.'),
+        ];
+    }
+
+    /**
      * Get custom attributes for validator errors.
      *
      * @return array<string, string>
@@ -91,8 +107,9 @@ class SaveNaldaConnectionRequest extends FormRequest
         return [
             'sftp_username' => 'SFTP user',
             'sftp_password' => 'SFTP password',
+            'file_name' => 'file name',
             'default_behavior' => 'default product behavior',
-            'tax_rate' => 'tax rate',
+            'price_mode' => 'prices',
             'delivery_time_days' => 'delivery time',
             'return_days' => 'return period',
             'upload_after_sync' => 'upload after sync',

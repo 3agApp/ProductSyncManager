@@ -16,11 +16,14 @@ return new class extends Migration
             $table->foreignId('shop_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('sftp_username')->nullable();
             $table->text('sftp_password')->nullable();
+            $table->string('file_name', 100)->default('products.csv');
             $table->string('default_behavior')->default('include_all');
             $table->string('country', 2)->default('CH');
             $table->string('currency', 3)->default('CHF');
             $table->string('condition', 32)->default('new');
-            $table->decimal('tax_rate', 5, 2)->default(8.1);
+            // The tax rate itself comes from the shop's tax settings; this only
+            // says what to do with prices entered without VAT.
+            $table->string('price_mode', 16)->default('as_is');
             $table->unsignedSmallInteger('delivery_time_days')->default(3);
             $table->unsignedSmallInteger('return_days')->default(14);
             $table->boolean('upload_after_sync')->default(true);

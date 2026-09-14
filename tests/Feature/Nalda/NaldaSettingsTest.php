@@ -23,11 +23,12 @@ function naldaSettings(array $overrides = []): array
     return [
         'sftp_username' => 'nalda-seller-abc123',
         'sftp_password' => 'super-secret-password',
+        'file_name' => 'products.csv',
         'default_behavior' => 'include_all',
         'country' => 'ch',
         'currency' => 'chf',
         'condition' => 'new',
-        'tax_rate' => '8.1',
+        'price_mode' => 'as_is',
         'delivery_time_days' => 3,
         'return_days' => 14,
         'upload_after_sync' => '1',
@@ -58,7 +59,9 @@ test('the nalda page starts from the swiss defaults', function () {
             ->where('connection.isConfigured', false)
             ->where('connection.country', 'CH')
             ->where('connection.currency', 'CHF')
-            ->where('connection.taxRate', '8.1')
+            ->where('connection.priceMode', 'as_is')
+            ->where('shopTax.pricesIncludeTax', true)
+            ->where('shopTax.naldaTaxRate', '8.1')
             ->where('connection.deliveryTimeDays', 3)
             ->where('connection.returnDays', 14)
             ->where('connection.sftpHost', 'sftp.nalda.com')
@@ -136,11 +139,43 @@ test('the defaults are validated', function () {
     $this->actingAs($user)
         ->patch(route('shops.nalda.update', $user->currentShop), naldaSettings([
             'country' => 'CHE',
-            'tax_rate' => '-1',
+            'price_mode' => 'sometimes',
             'delivery_time_days' => 0,
             'default_behavior' => 'sometimes',
         ]))
-        ->assertSessionHasErrors(['country', 'tax_rate', 'delivery_time_days', 'default_behavior']);
+        ->assertSessionHasErrors(['country', 'price_mode', 'delivery_time_days', 'default_behavior']);
+});
+
+test('the file name stays a csv in the sftp root', function (string $fileName) {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('shops.nalda.update', $user->currentShop), naldaSettings(['file_name' => $fileName]))
+        ->assertSessionHasErrors('file_name');
+})->with(['../products.csv', 'feeds/products.csv', 'products.txt', '.csv', '']);
+
+test('a custom file name and price mode are saved', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $shop->update(['prices_include_tax' => false, 'tax_rate' => '2.5']);
+
+    $this->actingAs($user)
+        ->patch(route('shops.nalda.update', $shop), naldaSettings(['file_name' => 'toysonline_products.csv', 'price_mode' => 'add_tax']))
+        ->assertSessionHasNoErrors();
+
+    $connection = $shop->naldaConnection()->sole();
+
+    expect($connection->file_name)->toBe('toysonline_products.csv')
+        ->and($connection->price_mode->value)->toBe('add_tax');
+
+    $this->get(route('shops.nalda.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connection.fileName', 'toysonline_products.csv')
+            ->where('connection.priceMode', 'add_tax')
+            ->where('shopTax.pricesIncludeTax', false)
+            ->where('shopTax.taxRate', '2.5')
+            ->where('shopTax.naldaTaxRate', '2.6')
+            ->has('priceModes', 2));
 });
 
 test('a member cannot change the nalda settings', function () {

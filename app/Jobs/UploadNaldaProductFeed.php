@@ -108,7 +108,7 @@ class UploadNaldaProductFeed implements ShouldQueue
             $feed = $build->handle($connection, $stream);
             rewind($stream);
 
-            $fileName = 'products-'.now()->format('Ymd-His').'.csv';
+            $fileName = $connection->file_name;
 
             $this->export->update([
                 'file_name' => $fileName,

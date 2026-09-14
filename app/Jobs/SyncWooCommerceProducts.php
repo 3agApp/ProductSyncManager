@@ -129,6 +129,8 @@ class SyncWooCommerceProducts implements ShouldQueue
             $this->counters['skipped'] = $client->variableProductCount();
             $this->persistProgress();
 
+            $this->importTaxSettings($client, $shop);
+
             // The tree is read first so products can be filed under it as
             // they arrive, with the parent links the product payload omits.
             $this->categoryIds = $this->importCategories($client, $importCategories, $shop);
@@ -153,6 +155,30 @@ class SyncWooCommerceProducts implements ShouldQueue
             $this->persistProgress();
             $this->fail($exception);
         }
+    }
+
+    /**
+     * Copy the store's tax settings onto the shop.
+     *
+     * The credentials were already proven by the product count, so a refusal
+     * here means the key may read products but not settings. Tax settings
+     * are a convenience the shop can also set by hand, so that keeps what
+     * the shop has rather than failing the sync.
+     */
+    private function importTaxSettings(WooCommerceClient $client, Shop $shop): void
+    {
+        try {
+            $settings = [
+                'prices_include_tax' => $client->pricesIncludeTax(),
+                'tax_rate' => $client->standardTaxRate(),
+            ];
+        } catch (WooCommerceAuthenticationException|WooCommerceRequestException $exception) {
+            report($exception);
+
+            return;
+        }
+
+        $shop->update(array_filter($settings, fn (mixed $value) => $value !== null));
     }
 
     /**

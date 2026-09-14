@@ -22,6 +22,8 @@ use Illuminate\Support\Carbon;
  * @property string $slug
  * @property bool $is_personal
  * @property ShopType $type
+ * @property bool $prices_include_tax
+ * @property string $tax_rate
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -37,7 +39,7 @@ use Illuminate\Support\Carbon;
  * @property-read NaldaConnection|null $naldaConnection
  * @property-read Collection<int, NaldaExport> $naldaExports
  */
-#[Fillable(['name', 'slug', 'is_personal', 'type'])]
+#[Fillable(['name', 'slug', 'is_personal', 'type', 'prices_include_tax', 'tax_rate'])]
 class Shop extends Model
 {
     /** @use HasFactory<ShopFactory> */
@@ -196,6 +198,8 @@ class Shop extends Model
         return [
             'is_personal' => 'boolean',
             'type' => ShopType::class,
+            'prices_include_tax' => 'boolean',
+            'tax_rate' => 'decimal:2',
         ];
     }
 

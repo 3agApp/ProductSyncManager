@@ -3,6 +3,7 @@
 namespace App\Actions\Nalda;
 
 use App\Enums\NaldaDefaultBehavior;
+use App\Enums\NaldaPriceMode;
 use App\Models\NaldaConnection;
 use App\Models\Shop;
 
@@ -37,11 +38,12 @@ class SaveNaldaConnection
             $connection->verified_at = null;
         }
 
+        $connection->file_name = trim((string) ($data['file_name'] ?? '')) ?: NaldaConnection::DEFAULT_FILE_NAME;
         $connection->default_behavior = NaldaDefaultBehavior::from((string) $data['default_behavior']);
         $connection->country = strtoupper((string) $data['country']);
         $connection->currency = strtoupper((string) $data['currency']);
         $connection->condition = (string) $data['condition'];
-        $connection->tax_rate = (string) $data['tax_rate'];
+        $connection->price_mode = NaldaPriceMode::from((string) $data['price_mode']);
         $connection->delivery_time_days = (int) $data['delivery_time_days'];
         $connection->return_days = (int) $data['return_days'];
         $connection->upload_after_sync = (bool) ($data['upload_after_sync'] ?? false);

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\NaldaDefaultBehavior;
+use App\Enums\NaldaPriceMode;
 use App\Models\NaldaConnection;
 use App\Models\Shop;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -27,7 +28,7 @@ class NaldaConnectionFactory extends Factory
             'country' => 'CH',
             'currency' => 'CHF',
             'condition' => 'new',
-            'tax_rate' => '8.10',
+            'price_mode' => NaldaPriceMode::AsIs,
             'delivery_time_days' => 3,
             'return_days' => 14,
             'upload_after_sync' => true,

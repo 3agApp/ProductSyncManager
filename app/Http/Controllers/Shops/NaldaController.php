@@ -6,6 +6,7 @@ use App\Actions\Nalda\BuildNaldaProductFeed;
 use App\Actions\Nalda\SaveNaldaConnection;
 use App\Actions\Nalda\StartNaldaExport;
 use App\Enums\NaldaDefaultBehavior;
+use App\Enums\NaldaPriceMode;
 use App\Enums\SyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Shops\SaveNaldaConnectionRequest;
@@ -57,6 +58,12 @@ class NaldaController extends Controller
                 ->map(fn (NaldaExport $export) => $this->exportProps($export))
                 ->all(),
             'behaviors' => NaldaDefaultBehavior::options(),
+            'priceModes' => NaldaPriceMode::options(),
+            'shopTax' => fn () => [
+                'pricesIncludeTax' => $shop->prices_include_tax,
+                'taxRate' => rtrim(rtrim($shop->tax_rate, '0'), '.'),
+                'naldaTaxRate' => (new NaldaConnection)->setRelation('shop', $shop)->taxRate(),
+            ],
             'permissions' => $request->user()->toShopPermissions($shop),
         ]);
     }
@@ -184,11 +191,12 @@ class NaldaController extends Controller
                 'hasPassword' => false,
                 'isUsable' => false,
                 'verifiedAt' => null,
+                'fileName' => NaldaConnection::DEFAULT_FILE_NAME,
                 'defaultBehavior' => NaldaDefaultBehavior::IncludeAll->value,
                 'country' => 'CH',
                 'currency' => 'CHF',
                 'condition' => 'new',
-                'taxRate' => '8.1',
+                'priceMode' => NaldaPriceMode::AsIs->value,
                 'deliveryTimeDays' => 3,
                 'returnDays' => 14,
                 'uploadAfterSync' => true,
@@ -203,11 +211,12 @@ class NaldaController extends Controller
             'hasPassword' => filled($connection->sftp_username),
             'isUsable' => $connection->hasUsableCredentials(),
             'verifiedAt' => $connection->verified_at?->toISOString(),
+            'fileName' => $connection->file_name,
             'defaultBehavior' => $connection->default_behavior->value,
             'country' => $connection->country,
             'currency' => $connection->currency,
             'condition' => $connection->condition,
-            'taxRate' => rtrim(rtrim($connection->tax_rate, '0'), '.'),
+            'priceMode' => $connection->price_mode->value,
             'deliveryTimeDays' => $connection->delivery_time_days,
             'returnDays' => $connection->return_days,
             'uploadAfterSync' => $connection->upload_after_sync,

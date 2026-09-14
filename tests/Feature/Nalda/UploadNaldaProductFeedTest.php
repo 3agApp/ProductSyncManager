@@ -35,7 +35,7 @@ test('the job uploads the file and remembers what it listed', function () {
         ->withArgs(function (NaldaConnection $connection, string $fileName, $stream) use (&$uploaded) {
             $uploaded = stream_get_contents($stream);
 
-            return str_starts_with($fileName, 'products-') && str_ends_with($fileName, '.csv');
+            return $fileName === 'products.csv';
         });
 
     $export = $shop->naldaExports()->create(['trigger' => SyncTrigger::Manual, 'status' => SyncRunStatus::Queued]);

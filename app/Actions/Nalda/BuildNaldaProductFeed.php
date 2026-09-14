@@ -135,7 +135,7 @@ class BuildNaldaProductFeed
         $skipped = 0;
 
         $connection->shop->products()
-            ->select(['id', 'shop_id', 'gtin', 'status', 'nalda_listing'])
+            ->select(['id', 'shop_id', 'gtin', 'price', 'status', 'nalda_listing'])
             ->chunkById(self::CHUNK_SIZE, function (Collection $products) use ($connection, &$chosen, &$skipped) {
                 foreach ($products as $product) {
                     /** @var Product $product */
@@ -189,8 +189,8 @@ class BuildNaldaProductFeed
             'title' => $product->name,
             'country' => $connection->country,
             'condition' => $connection->condition,
-            'price' => $this->decimal($product->price),
-            'tax' => $this->decimal($connection->tax_rate),
+            'price' => $connection->price($product),
+            'tax' => $connection->taxRate(),
             'currency' => $connection->currency,
             'delivery_time_days' => $connection->delivery_time_days,
             'stock' => $listed ? $product->stock : 0,
@@ -229,7 +229,7 @@ class BuildNaldaProductFeed
             'gtin' => $gtin,
             'country' => $connection->country,
             'condition' => $connection->condition,
-            'tax' => $this->decimal($connection->tax_rate),
+            'tax' => $connection->taxRate(),
             'currency' => $connection->currency,
             'delivery_time_days' => $connection->delivery_time_days,
             'stock' => 0,
@@ -244,15 +244,5 @@ class BuildNaldaProductFeed
     private function gtin(Product $product): string
     {
         return trim((string) $product->gtin);
-    }
-
-    /**
-     * Format a decimal without trailing zeros, so 8.10 is written as 8.1.
-     */
-    private function decimal(string|float $value): string
-    {
-        $formatted = number_format((float) $value, 2, '.', '');
-
-        return str_contains($formatted, '.') ? rtrim(rtrim($formatted, '0'), '.') : $formatted;
     }
 }

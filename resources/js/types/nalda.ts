@@ -4,6 +4,19 @@ export type NaldaDefaultBehavior = 'include_all' | 'exclude_all';
 
 export type NaldaListing = 'default' | 'include' | 'exclude';
 
+export type NaldaPriceMode = 'as_is' | 'add_tax';
+
+export type NaldaPriceModeOption = {
+    value: NaldaPriceMode;
+    label: string;
+};
+
+export type ShopTax = {
+    pricesIncludeTax: boolean;
+    taxRate: string;
+    naldaTaxRate: string;
+};
+
 export type NaldaBehaviorOption = {
     value: NaldaDefaultBehavior;
     label: string;
@@ -22,11 +35,12 @@ export type NaldaConnection = {
     hasPassword: boolean;
     isUsable: boolean;
     verifiedAt: string | null;
+    fileName: string;
     defaultBehavior: NaldaDefaultBehavior;
     country: string;
     currency: string;
     condition: string;
-    taxRate: string;
+    priceMode: NaldaPriceMode;
     deliveryTimeDays: number;
     returnDays: number;
     uploadAfterSync: boolean;

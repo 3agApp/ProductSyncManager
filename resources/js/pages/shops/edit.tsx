@@ -45,7 +45,7 @@ import type {
 } from '@/types';
 
 type Props = {
-    shop: Shop;
+    shop: Shop & { pricesIncludeTax: boolean; taxRate: string };
     members: ShopMember[];
     invitations: ShopInvitation[];
     permissions: ShopPermissions;
@@ -164,6 +164,68 @@ export default function ShopEdit({
                                             </Select>
                                             <InputError message={errors.type} />
                                         </div>
+
+                                        <div className="grid gap-6 sm:grid-cols-2">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="prices_include_tax">
+                                                    Prices entered
+                                                </Label>
+                                                <Select
+                                                    name="prices_include_tax"
+                                                    defaultValue={
+                                                        shop.pricesIncludeTax
+                                                            ? '1'
+                                                            : '0'
+                                                    }
+                                                >
+                                                    <SelectTrigger
+                                                        id="prices_include_tax"
+                                                        data-test="shop-prices-include-tax"
+                                                        className="w-full"
+                                                    >
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="1">
+                                                            Including tax
+                                                        </SelectItem>
+                                                        <SelectItem value="0">
+                                                            Excluding tax
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <InputError
+                                                    message={
+                                                        errors.prices_include_tax
+                                                    }
+                                                />
+                                            </div>
+
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="tax_rate">
+                                                    Standard tax rate (%)
+                                                </Label>
+                                                <Input
+                                                    id="tax_rate"
+                                                    name="tax_rate"
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    step="0.01"
+                                                    min="0"
+                                                    max="100"
+                                                    data-test="shop-tax-rate"
+                                                    defaultValue={shop.taxRate}
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.tax_rate}
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="text-muted-foreground -mt-3 text-xs">
+                                            A WooCommerce sync replaces these
+                                            with the store's own tax settings.
+                                        </p>
 
                                         <div className="flex flex-wrap items-center gap-4">
                                             <Button

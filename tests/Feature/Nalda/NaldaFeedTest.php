@@ -81,6 +81,84 @@ test('a listed product is written with its details and the shop defaults', funct
         ]);
 });
 
+test('prices are always written with two decimals', function () {
+    [$shop, $connection] = naldaShop();
+
+    Product::factory()->for($shop)->create(['gtin' => '100', 'price' => '11.6']);
+    Product::factory()->for($shop)->create(['gtin' => '101', 'price' => '25']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    expect($rows['100']['price'])->toBe('11.60')
+        ->and($rows['101']['price'])->toBe('25.00')
+        ->and($rows['100']['tax'])->toBe('8.1');
+});
+
+test('the tax column is the accepted rate closest to the shop rate', function (string $shopRate, string $sent) {
+    $shop = Shop::factory()->create(['tax_rate' => $shopRate]);
+    $connection = NaldaConnection::factory()->for($shop)->create();
+
+    Product::factory()->for($shop)->create(['gtin' => '103']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    expect($rows['103']['tax'])->toBe($sent);
+})->with([
+    'standard' => ['8.1', '8.1'],
+    'old standard' => ['7.7', '8.1'],
+    'reduced' => ['2.6', '2.6'],
+    'old reduced' => ['2.5', '2.6'],
+    'none' => ['0', '8.1'],
+]);
+
+test('prices entered with tax are sent as they are, whatever the price mode', function () {
+    $shop = Shop::factory()->create(['prices_include_tax' => true, 'tax_rate' => '8.1']);
+    $connection = NaldaConnection::factory()->for($shop)->create(['price_mode' => 'add_tax']);
+
+    Product::factory()->for($shop)->create(['gtin' => '104', 'price' => '20.00']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    expect($rows['104']['price'])->toBe('20.00');
+});
+
+test('prices entered without tax get vat added and rounded to five centimes', function () {
+    $shop = Shop::factory()->create(['prices_include_tax' => false, 'tax_rate' => '8.1']);
+    $connection = NaldaConnection::factory()->for($shop)->create(['price_mode' => 'add_tax']);
+
+    Product::factory()->for($shop)->create(['gtin' => '105', 'price' => '20.00']);
+    Product::factory()->for($shop)->create(['gtin' => '106', 'price' => '9.99']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    // 20.00 * 1.081 = 21.62 and 9.99 * 1.081 = 10.799
+    expect($rows['105']['price'])->toBe('21.60')
+        ->and($rows['106']['price'])->toBe('10.80');
+});
+
+test('prices entered without tax can still be sent as they are', function () {
+    $shop = Shop::factory()->create(['prices_include_tax' => false, 'tax_rate' => '8.1']);
+    $connection = NaldaConnection::factory()->for($shop)->create(['price_mode' => 'as_is']);
+
+    Product::factory()->for($shop)->create(['gtin' => '107', 'price' => '20.00']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    expect($rows['107']['price'])->toBe('20.00');
+});
+
+test('a product without a price is removed from nalda', function () {
+    [$shop, $connection] = naldaShop();
+
+    Product::factory()->for($shop)->create(['gtin' => '102', 'price' => '0', 'stock' => 5]);
+
+    [$feed, $rows] = buildNaldaFeed($connection);
+
+    expect($feed->listed)->toBe(0)
+        ->and($rows['102']['delete_product'])->toBe('yes')
+        ->and($rows['102']['stock'])->toBe('0');
+});
+
 test('an out of stock product stays listed so nalda sees the stock drop', function () {
     [$shop, $connection] = naldaShop();
 

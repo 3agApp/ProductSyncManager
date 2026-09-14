@@ -13,7 +13,8 @@ what Nalda lists.
    user and password are stored per shop. The password is encrypted.
    Credentials are optional — without them the file can still be downloaded.
 3. Set the product defaults Nalda requires and the catalog does not store:
-   country, currency, condition, tax rate, delivery time and return period.
+   country, currency, condition, delivery time and return period. The tax
+   rate comes from the shop's tax settings (see below).
 4. Choose the **default product behavior**: include all products, or exclude
    all products.
 5. Press **Test connection**, then **Upload now**. With **Upload after every
@@ -30,6 +31,7 @@ on the product list. A product is listed when:
 
 - it has a GTIN, **and**
 - it is **Active**, **and**
+- its price is above 0, **and**
 - it is set to always include, or it follows the default and the default is
   include all.
 
@@ -43,7 +45,7 @@ GTIN**:
 | Product                                      | Row                                               |
 | -------------------------------------------- | ------------------------------------------------- |
 | Listed                                       | full details, real stock (0 stays listed)         |
-| Excluded, draft or archived                  | full details, `stock = 0`, `delete_product = yes` |
+| Excluded, draft, archived or priced 0        | full details, `stock = 0`, `delete_product = yes` |
 | A GTIN listed before that no product has now | GTIN only, `stock = 0`, `delete_product = yes`    |
 | No GTIN                                      | not written; counted as skipped                   |
 
@@ -73,7 +75,24 @@ gallery images) and `delete_product`. Filled from the shop's Nalda settings:
 `country`, `condition`, `tax`, `currency`, `delivery_time_days` and
 `return_days`.
 
-Files are uploaded to the SFTP root as `products-YYYYMMDD-HHMMSS.csv`.
+## Prices and tax
+
+Every shop has tax settings on its settings page: whether prices are entered
+**including or excluding tax**, and its **standard tax rate**. A WooCommerce
+sync copies both from the store (`woocommerce_prices_include_tax` and the
+standard-class rate, preferring a Swiss one); a key that may not read tax
+settings leaves what the shop has and the sync carries on.
+
+- `tax` is the rate Nalda accepts, `8.1` or `2.6`, closest to the shop's rate.
+- `price` is always written with two decimals (`11.60`). Nalda shows prices
+  with VAT included, so:
+    - when the shop's prices include tax, they are sent as they are;
+    - when they exclude tax, the Nalda page offers **Send prices as they are**
+      or **Add VAT to prices**, which applies the shop's rate and rounds to
+      0.05 CHF.
+
+Files are uploaded to the SFTP root under the file name set on the Nalda page
+(`products.csv` by default), replacing the previous upload.
 
 ## Production requirements
 
