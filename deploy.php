@@ -127,9 +127,17 @@ task('deploy:npm', function () {
 
 // Sync jobs run up to 900 seconds; horizon:terminate lets workers finish the
 // current job, then Supervisor starts Horizon again on the new release.
+// Horizon runs as www-data, and only that user may signal it, so the server
+// needs a sudoers rule allowing the deploy user exactly this command.
 task('horizon:terminate', function () {
     writeln('🔄 Gracefully terminating Horizon...');
-    run('cd {{release_path}} && php artisan horizon:terminate');
+    $output = run('cd {{release_path}} && sudo -n -u www-data /usr/bin/php artisan horizon:terminate');
+
+    // horizon:terminate exits 0 even when it cannot signal Horizon, which
+    // would leave the old release running behind a green deploy.
+    if (str_contains($output, 'Failed to kill')) {
+        throw error("Horizon was not terminated:\n".$output);
+    }
 })->desc('Gracefully terminate Horizon');
 
 /*
