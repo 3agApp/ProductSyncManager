@@ -1,0 +1,77 @@
+import type { SyncRunStatus } from './sync';
+
+export type TemuDefaultBehavior = 'include_all' | 'exclude_all';
+
+export type TemuListing = 'default' | 'include' | 'exclude';
+
+export type TemuProductStatus =
+    | 'pending'
+    | 'processing'
+    | 'draft'
+    | 'active'
+    | 'inactive'
+    | 'rejected'
+    | 'deleted'
+    | 'failed';
+
+export type TemuBehaviorOption = {
+    value: TemuDefaultBehavior;
+    label: string;
+};
+
+export type TemuListingOption = {
+    value: TemuListing;
+    label: string;
+};
+
+export type TemuConnection = {
+    isConfigured: boolean;
+    gateway: string;
+    appKey: string;
+    hasSecret: boolean;
+    hasToken: boolean;
+    isUsable: boolean;
+    verifiedAt: string | null;
+    mallId: number | null;
+    tokenExpiresAt: string | null;
+    tokenHasExpired: boolean;
+    defaultBehavior: TemuDefaultBehavior;
+    currency: string;
+    syncAfterSync: boolean;
+    lastSyncedAt: string | null;
+};
+
+export type TemuSyncRun = {
+    id: number;
+    status: SyncRunStatus;
+    statusLabel: string;
+    isActive: boolean;
+    triggerLabel: string;
+    createdProducts: number;
+    updatedProducts: number;
+    removedProducts: number;
+    failedProducts: number;
+    skippedProducts: number;
+    message: string | null;
+    durationInSeconds: number | null;
+    createdAtDiff: string | null;
+};
+
+export type TemuStatusCount = {
+    status: TemuProductStatus;
+    label: string;
+    count: number;
+};
+
+export type TemuProblem = {
+    id: number;
+    productId: number | null;
+    productName: string;
+    sku: string;
+    status: TemuProductStatus;
+    statusLabel: string;
+    temuStatus: string | null;
+    goodsId: number | null;
+    message: string | null;
+    checkedAtDiff: string | null;
+};

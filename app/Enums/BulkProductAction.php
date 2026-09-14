@@ -9,6 +9,7 @@ enum BulkProductAction: string
     case RemoveCategory = 'remove-category';
     case SetStatus = 'set-status';
     case SetNaldaListing = 'set-nalda-listing';
+    case SetTemuListing = 'set-temu-listing';
     case Delete = 'delete';
 
     /**
@@ -37,6 +38,7 @@ enum BulkProductAction: string
             self::RemoveCategory => __(':products removed from the category.', ['products' => $products]),
             self::SetStatus => __(':products updated.', ['products' => $products]),
             self::SetNaldaListing => __(':products updated for Nalda.', ['products' => $products]),
+            self::SetTemuListing => __(':products updated for Temu.', ['products' => $products]),
             self::Delete => __(':products deleted.', ['products' => $products]),
         };
     }

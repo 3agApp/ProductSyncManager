@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
+use App\Enums\TemuListing;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -32,12 +34,14 @@ use Illuminate\Support\Carbon;
  * @property int $stock
  * @property ProductStatus $status
  * @property NaldaListing $nalda_listing
+ * @property TemuListing $temu_listing
  * @property Carbon|null $last_synced_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Shop $shop
  * @property-read Brand|null $brand
  * @property-read Collection<int, Category> $categories
+ * @property-read TemuProduct|null $temuProduct
  */
 #[Fillable([
     'brand_id',
@@ -54,6 +58,7 @@ use Illuminate\Support\Carbon;
     'stock',
     'status',
     'nalda_listing',
+    'temu_listing',
     'last_synced_at',
 ])]
 class Product extends Model
@@ -228,6 +233,16 @@ class Product extends Model
     }
 
     /**
+     * Get what has been sent to Temu for the product, if anything.
+     *
+     * @return HasOne<TemuProduct, $this>
+     */
+    public function temuProduct(): HasOne
+    {
+        return $this->hasOne(TemuProduct::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -239,6 +254,7 @@ class Product extends Model
             'stock' => 'integer',
             'status' => ProductStatus::class,
             'nalda_listing' => NaldaListing::class,
+            'temu_listing' => TemuListing::class,
             'remote_id' => 'integer',
             'gallery_image_urls' => 'array',
             'last_synced_at' => 'datetime',

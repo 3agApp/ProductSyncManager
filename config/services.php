@@ -53,4 +53,12 @@ return [
         'sftp_timeout' => (int) env('NALDA_SFTP_TIMEOUT', 20),
     ],
 
+    'temu' => [
+        // Swiss, EU and UK stores are all served by the EU gateway. The app
+        // key, secret and access token belong to each shop's own
+        // self-developed app, so they are stored per shop and not here.
+        'base_url' => env('TEMU_BASE_URL', 'https://openapi-b-eu.temu.com/openapi/router'),
+        'timeout' => (int) env('TEMU_TIMEOUT', 30),
+    ],
+
 ];

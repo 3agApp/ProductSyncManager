@@ -58,6 +58,7 @@ test('the edit page renders the product being edited', function () {
                 'stock',
                 'status',
                 'naldaListing',
+                'temuListing',
             ]))
             ->has('statuses', 3));
 });

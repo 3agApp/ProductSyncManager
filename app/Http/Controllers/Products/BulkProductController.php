@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Products;
 use App\Enums\BulkProductAction;
 use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
+use App\Enums\TemuListing;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\BulkProductRequest;
 use App\Models\Shop;
@@ -38,6 +39,7 @@ class BulkProductController extends Controller
             BulkProductAction::RemoveCategory => $this->removeCategory($ids, (int) $request->validated('category_id')),
             BulkProductAction::SetStatus => $this->setStatus($currentShop, $ids, $request->validated('status')),
             BulkProductAction::SetNaldaListing => $this->setNaldaListing($currentShop, $ids, $request->validated('nalda_listing')),
+            BulkProductAction::SetTemuListing => $this->setTemuListing($currentShop, $ids, $request->validated('temu_listing')),
             BulkProductAction::Delete => $this->delete($currentShop, $ids),
         });
 
@@ -122,6 +124,18 @@ class BulkProductController extends Controller
     {
         return $shop->products()->whereIn('id', $ids)->update([
             'nalda_listing' => NaldaListing::from((string) $listing)->value,
+        ]);
+    }
+
+    /**
+     * Include every selected product on Temu, exclude it, or hand it back to the shop default.
+     *
+     * @param  array<int, int>  $ids
+     */
+    private function setTemuListing(Shop $shop, array $ids, mixed $listing): int
+    {
+        return $shop->products()->whereIn('id', $ids)->update([
+            'temu_listing' => TemuListing::from((string) $listing)->value,
         ]);
     }
 

@@ -1,0 +1,135 @@
+# Temu marketplace sync
+
+A shop can list its products on Temu through the shop's own **self-developed
+app** on Temu's open platform. Sync is **push only**: this app creates the
+products on Temu and keeps their stock, price and details in step with the
+catalog.
+
+## Setting a shop up
+
+1. The seller creates a self-developed app in Temu Seller Center
+   (**Open Platform → Authorization management**) and Temu reviews it.
+2. Settings → Shops → _shop_ → **Temu settings**.
+3. Enter the **app key** and **app secret** from that page. Once the app is
+   approved, the seller authorizes it and Temu shows an **access token**;
+   paste it in too. The secret and token are encrypted and never sent back to
+   the browser; leave the fields blank to keep what is saved.
+4. Press **Test connection**. It calls `bg.open.accesstoken.info.get`, which
+   changes nothing on Temu, and remembers the store id and the token's expiry
+   date. Temu tokens expire (about three months); the page warns when one has,
+   and a new one is pasted in the same way.
+5. Choose the **default product behavior**. New connections start at
+   **exclude all**, so one product can be set to **Always include** and
+   checked in Seller Center before the rest of the catalog goes out.
+6. Press **Sync now**. With **Sync after every WooCommerce sync** on, a sync
+   also runs each time a WooCommerce sync finishes, and five minutes after
+   webhooks change products (batched the same way as Nalda uploads).
+
+Owners and admins change the settings and test the connection. Owners, admins
+and members can start a sync.
+
+All requests go to Temu's EU gateway,
+`https://openapi-b-eu.temu.com/openapi/router`, which serves Switzerland, the
+EU and the UK. Set `TEMU_BASE_URL` for a store in another region.
+
+## Which products are listed
+
+Every product can be set to **Follow shop default**, **Always include** or
+**Always exclude** — on its edit page, or for many at once from the bulk bar.
+A product is listed when:
+
+- it is **Active**, **and**
+- its price is above 0, **and**
+- it has a main image, **and**
+- it is set to always include, or it follows the default and the default is
+  include all.
+
+## What a sync does
+
+Every product sent to Temu has a row in `temu_products` recording Temu's ids,
+where the product stands, and the stock, price and content last sent. A sync:
+
+1. **Reads back statuses** for every product already on Temu with
+   `bg.local.goods.list.query`, storing Temu's sub-status and the SKU id.
+2. **Walks the catalog**:
+
+| Product                                   | Request                                            |
+| ----------------------------------------- | -------------------------------------------------- |
+| Listed, not on Temu yet                   | `temu.local.goods.v3.add`                          |
+| Listed, stock changed                     | `bg.local.goods.stock.edit` (sets the exact stock) |
+| Listed, price changed                     | `bg.local.goods.priceorder.change.sku.price`       |
+| Listed, name, description, images changed | `bg.local.goods.partial.update`                    |
+| Listed again after being taken off sale   | `bg.local.goods.sale.status.set` with `onsale = 1` |
+| No longer listed                          | `bg.local.goods.sale.status.set` with `onsale = 0` |
+
+3. **Takes products deleted from the catalog off sale**. Their row outlives
+   the product for this.
+
+Only what changed since the last successful request is sent, so a run where
+nothing changed makes nothing but the status check.
+
+### Creating products
+
+The V3 add call takes what the catalog knows and lets Temu work out the rest:
+the category (from the names of the categories the product is filed under),
+required attributes, compliance and manufacturer details (from the name and
+description), and the variant structure. Temu downloads the images from their
+URLs. The product goes out with:
+
+- `externalGoodsId` `psm-<product id>` — stable even if the SKU is edited;
+- `externalSkuId` — the shop's SKU (or the goods id if the SKU is unusable);
+- the name, description (or short description), main and gallery images (up
+  to 10), the brand as a `Brand` attribute, and the GTIN as a barcode;
+- the price and stock, and package weight and size left at 0 so Temu uses its
+  defaults (100 g, 10 × 20 × 30 cm);
+- Temu's default fulfilment time and the store's default shipping template.
+
+A created product first shows as **Processing**. About ten minutes later Temu
+has either submitted it for review or kept it as a **Draft** because it needs
+something (a required attribute, an image it could not download). Drafts,
+rejected products and failed requests are listed under **Needs attention**
+with Temu's reason; fix them in Seller Center or in the catalog.
+
+Temu refuses updates while it is still processing, reviewing or pricing a
+product, and stock and price need the SKU id it only reports afterwards, so
+those changes wait. The scheduler syncs shops with products still processing
+every 15 minutes until they settle.
+
+A product Temu refused to create is not sent again until it is edited, so an
+unfixable product does not cost a request every run.
+
+### Prices
+
+Prices are sent exactly as the shop has them, in the currency on the Temu page
+(CHF by default, two decimals). On a listed product a new price is a
+**price change request**: Temu can review it, suggest another price, or ask the
+seller to confirm it in Seller Center, so it may take a while to show. A
+refused change is shown on the product under **Needs attention**.
+
+## Not covered yet
+
+- **Orders**: orders are not pulled from Temu.
+- **Variable products**: like the rest of the app, only simple products sync.
+- **Package dimensions**: Temu's defaults are used until the catalog stores
+  weight and size.
+- **Products deleted on Temu** are left alone; recreate them in Seller Center.
+
+## To confirm once the app is approved
+
+These come from Temu's public documentation and have not been tried against a
+live store yet:
+
+- that the self-developed app's permissions include `temu.local.goods.v3.add`
+  (the older `bg.local.goods.add` is listed in Temu's example token scope);
+- how Temu words credential and rate-limit errors — the client recognises them
+  from the message, since Temu does not document the gateway's codes;
+- whether a product without variations is accepted with an empty
+  `variations` list;
+- the `reason` Temu expects on a price change.
+
+## Production requirements
+
+Syncs run on the queue worker and share a lock with the shop's WooCommerce
+sync, so products are never sent from a half-synced catalog. The scheduler
+fails syncs that stall for more than two hours. See
+[product-sync.md](product-sync.md) for the cron entry and worker.

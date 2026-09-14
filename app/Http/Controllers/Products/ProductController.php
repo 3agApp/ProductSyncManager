@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Products;
 use App\Concerns\PresentsProducts;
 use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
+use App\Enums\TemuListing;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\SaveProductRequest;
 use App\Models\Brand;
@@ -193,6 +194,7 @@ class ProductController extends Controller
             'categories' => $this->categoryPaths($currentShop),
             'statuses' => ProductStatus::options(),
             'naldaListings' => NaldaListing::options(),
+            'temuListings' => TemuListing::options(),
         ]);
     }
 
@@ -235,9 +237,11 @@ class ProductController extends Controller
                 'stock' => $product->stock,
                 'status' => $product->status->value,
                 'naldaListing' => $product->nalda_listing->value,
+                'temuListing' => $product->temu_listing->value,
             ],
             'statuses' => ProductStatus::options(),
             'naldaListings' => NaldaListing::options(),
+            'temuListings' => TemuListing::options(),
         ]);
     }
 

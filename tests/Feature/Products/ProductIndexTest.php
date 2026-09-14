@@ -42,6 +42,7 @@ test('the products page lists products for the current shop only', function () {
                 'status',
                 'statusLabel',
                 'naldaListing',
+                'temuListing',
                 'updatedAt',
                 'updatedAtDiff',
             ])),

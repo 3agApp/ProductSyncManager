@@ -8,6 +8,7 @@ use App\Http\Controllers\Shops\ShopInvitationController;
 use App\Http\Controllers\Shops\ShopMemberController;
 use App\Http\Controllers\Shops\ShopSyncController;
 use App\Http\Controllers\Shops\SyncRunController;
+use App\Http\Controllers\Shops\TemuController;
 use App\Http\Middleware\EnsureShopMembership;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -72,6 +73,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('settings/shops/{shop}/nalda/products.csv', [NaldaController::class, 'download'])
             ->middleware('throttle:20,1')
             ->name('shops.nalda.download');
+
+        Route::get('settings/shops/{shop}/temu', [TemuController::class, 'edit'])->name('shops.temu.edit');
+        Route::patch('settings/shops/{shop}/temu', [TemuController::class, 'update'])->name('shops.temu.update');
+        Route::post('settings/shops/{shop}/temu/test', [TemuController::class, 'test'])
+            ->middleware('throttle:10,1')
+            ->name('shops.temu.test');
+        Route::post('settings/shops/{shop}/temu/syncs', [TemuController::class, 'sync'])
+            ->middleware('throttle:20,1')
+            ->name('shops.temu.syncs.store');
     });
 });
 

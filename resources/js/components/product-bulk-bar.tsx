@@ -25,11 +25,18 @@ import type {
     NaldaListingOption,
     ProductStatusOption,
     ShopPermissions,
+    TemuListingOption,
 } from '@/types';
 
 const NALDA_LISTINGS: NaldaListingOption[] = [
     { value: 'include', label: 'Always include on Nalda' },
     { value: 'exclude', label: 'Always exclude from Nalda' },
+    { value: 'default', label: 'Follow shop default' },
+];
+
+const TEMU_LISTINGS: TemuListingOption[] = [
+    { value: 'include', label: 'Always include on Temu' },
+    { value: 'exclude', label: 'Always exclude from Temu' },
     { value: 'default', label: 'Follow shop default' },
 ];
 
@@ -211,6 +218,34 @@ export default function ProductBulkBar({
                                                     action: 'set-nalda-listing',
                                                     nalda_listing:
                                                         listing.value,
+                                                })
+                                            }
+                                        >
+                                            {listing.label}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={processing}
+                                        data-test="bulk-temu"
+                                    >
+                                        <Store /> Temu
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {TEMU_LISTINGS.map((listing) => (
+                                        <DropdownMenuItem
+                                            key={listing.value}
+                                            onSelect={() =>
+                                                apply({
+                                                    action: 'set-temu-listing',
+                                                    temu_listing: listing.value,
                                                 })
                                             }
                                         >

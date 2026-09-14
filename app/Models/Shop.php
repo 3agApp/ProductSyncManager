@@ -38,6 +38,9 @@ use Illuminate\Support\Carbon;
  * @property-read ShopSyncSetting|null $syncSettings
  * @property-read NaldaConnection|null $naldaConnection
  * @property-read Collection<int, NaldaExport> $naldaExports
+ * @property-read TemuConnection|null $temuConnection
+ * @property-read Collection<int, TemuProduct> $temuProducts
+ * @property-read Collection<int, TemuSyncRun> $temuSyncRuns
  */
 #[Fillable(['name', 'slug', 'is_personal', 'type', 'prices_include_tax', 'tax_rate'])]
 class Shop extends Model
@@ -186,6 +189,36 @@ class Shop extends Model
     public function naldaExports(): HasMany
     {
         return $this->hasMany(NaldaExport::class);
+    }
+
+    /**
+     * Get the Temu marketplace settings for the shop.
+     *
+     * @return HasOne<TemuConnection, $this>
+     */
+    public function temuConnection(): HasOne
+    {
+        return $this->hasOne(TemuConnection::class);
+    }
+
+    /**
+     * Get what has been sent to Temu for the shop's products.
+     *
+     * @return HasMany<TemuProduct, $this>
+     */
+    public function temuProducts(): HasMany
+    {
+        return $this->hasMany(TemuProduct::class);
+    }
+
+    /**
+     * Get the syncs to Temu for the shop.
+     *
+     * @return HasMany<TemuSyncRun, $this>
+     */
+    public function temuSyncRuns(): HasMany
+    {
+        return $this->hasMany(TemuSyncRun::class);
     }
 
     /**
