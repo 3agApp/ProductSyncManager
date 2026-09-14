@@ -167,6 +167,10 @@ class SyncWooCommerceWebhookDeliveries implements ShouldBeUnique, ShouldQueue
         if ($shop->naldaConnection?->upload_after_sync) {
             QueueNaldaUploadAfterWebhooks::dispatch($shop->id);
         }
+
+        if ($shop->temuConnection?->sync_after_sync) {
+            QueueTemuSyncAfterWebhooks::dispatch($shop->id);
+        }
     }
 
     /**

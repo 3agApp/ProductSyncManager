@@ -24,6 +24,7 @@ import type {
     Product,
     ProductStatusOption,
     Shop,
+    TemuListingOption,
 } from '@/types';
 
 type Props = {
@@ -33,6 +34,7 @@ type Props = {
     categories: string[];
     statuses: ProductStatusOption[];
     naldaListings: NaldaListingOption[];
+    temuListings: TemuListingOption[];
 };
 
 type SectionProps = PropsWithChildren<{
@@ -60,6 +62,7 @@ export default function ProductForm({
     categories,
     statuses,
     naldaListings,
+    temuListings,
 }: Props) {
     const formRoute = product
         ? update.form([shop.slug, product.id])
@@ -306,7 +309,7 @@ export default function ProductForm({
 
                     <Section
                         title="Marketplaces"
-                        description="Whether the product is listed on Nalda. Only products with a GTIN are sent."
+                        description="Whether the product is listed on each marketplace. Nalda only takes products with a GTIN; Temu only takes active products with a price and an image."
                     >
                         <div className="grid gap-2 sm:max-w-xs">
                             <Label htmlFor="product-nalda-listing">Nalda</Label>
@@ -335,6 +338,33 @@ export default function ProductForm({
                                 </SelectContent>
                             </Select>
                             <InputError message={errors.nalda_listing} />
+                        </div>
+
+                        <div className="grid gap-2 sm:max-w-xs">
+                            <Label htmlFor="product-temu-listing">Temu</Label>
+                            <Select
+                                name="temu_listing"
+                                defaultValue={product?.temuListing ?? 'default'}
+                            >
+                                <SelectTrigger
+                                    id="product-temu-listing"
+                                    data-test="product-temu-listing"
+                                    className="w-full"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {temuListings.map((listing) => (
+                                        <SelectItem
+                                            key={listing.value}
+                                            value={listing.value}
+                                        >
+                                            {listing.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.temu_listing} />
                         </div>
                     </Section>
 

@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Actions\Nalda\StartNaldaExport;
 use App\Actions\Sync\ImportWooCommerceCategories;
 use App\Actions\Sync\ImportWooCommerceProducts;
+use App\Actions\Temu\StartTemuSync;
 use App\Enums\ProductStatus;
 use App\Models\Product;
 use App\Models\Shop;
@@ -146,6 +147,7 @@ class SyncWooCommerceProducts implements ShouldQueue
             $shop->syncSettings?->update(['last_run_at' => now()]);
 
             $this->exportToNalda($shop);
+            $this->syncToTemu($shop);
         } catch (WooCommerceRateLimitException $exception) {
             $this->persistProgress();
             $this->release($exception->retryAfter);
@@ -337,6 +339,25 @@ class SyncWooCommerceProducts implements ShouldQueue
 
         try {
             app(StartNaldaExport::class)->handle($shop, $this->syncRun->trigger, $this->syncRun->triggeredBy);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    /**
+     * Queue a sync of the freshly synced catalog to Temu, when the shop wants one.
+     *
+     * The sync itself has already succeeded, so nothing that goes wrong
+     * here may fail it.
+     */
+    private function syncToTemu(Shop $shop): void
+    {
+        if (! ($shop->temuConnection->sync_after_sync ?? false)) {
+            return;
+        }
+
+        try {
+            app(StartTemuSync::class)->handle($shop, $this->syncRun->trigger, $this->syncRun->triggeredBy);
         } catch (Throwable $exception) {
             report($exception);
         }

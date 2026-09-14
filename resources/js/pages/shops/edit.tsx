@@ -36,6 +36,7 @@ import { edit, index, update } from '@/routes/shops';
 import { update as updateMember } from '@/routes/shops/members';
 import { edit as editNalda } from '@/routes/shops/nalda';
 import { edit as editSync } from '@/routes/shops/sync';
+import { edit as editTemu } from '@/routes/shops/temu';
 import type {
     RoleOption,
     Shop,
@@ -283,6 +284,27 @@ export default function ShopEdit({
                                     data-test="shop-nalda-link"
                                 >
                                     <Store /> Nalda settings
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
+
+                {permissions.canRunSync ? (
+                    <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                            <Heading
+                                variant="small"
+                                title="Temu marketplace"
+                                description="List this shop's products on Temu through its self-developed app."
+                            />
+
+                            <Button variant="secondary" asChild>
+                                <Link
+                                    href={editTemu(shop.slug)}
+                                    data-test="shop-temu-link"
+                                >
+                                    <Store /> Temu settings
                                 </Link>
                             </Button>
                         </div>

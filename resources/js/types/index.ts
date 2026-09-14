@@ -6,4 +6,5 @@ export type * from './pagination';
 export type * from './products';
 export type * from './shops';
 export type * from './sync';
+export type * from './temu';
 export type * from './ui';

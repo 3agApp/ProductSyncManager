@@ -37,6 +37,7 @@ trait PresentsProducts
             'status' => $product->status->value,
             'statusLabel' => $product->status->label(),
             'naldaListing' => $product->nalda_listing->value,
+            'temuListing' => $product->temu_listing->value,
             'updatedAt' => $product->updated_at?->toISOString(),
             'updatedAtDiff' => $product->updated_at?->diffForHumans(),
         ];

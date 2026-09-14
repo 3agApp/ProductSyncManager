@@ -3,6 +3,7 @@ import ProductForm from '@/components/product-form';
 import { index as productsIndex } from '@/routes/products';
 import type {
     NaldaListingOption,
+    TemuListingOption,
     Product,
     ProductStatusOption,
     Shop,
@@ -15,6 +16,7 @@ type Props = {
     categories: string[];
     statuses: ProductStatusOption[];
     naldaListings: NaldaListingOption[];
+    temuListings: TemuListingOption[];
 };
 
 export default function ProductEdit({
@@ -24,6 +26,7 @@ export default function ProductEdit({
     categories,
     statuses,
     naldaListings,
+    temuListings,
 }: Props) {
     return (
         <>
@@ -45,6 +48,7 @@ export default function ProductEdit({
                         categories={categories}
                         statuses={statuses}
                         naldaListings={naldaListings}
+                        temuListings={temuListings}
                     />
                 </div>
             </div>

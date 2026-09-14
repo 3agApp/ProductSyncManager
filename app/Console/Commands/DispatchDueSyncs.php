@@ -4,15 +4,24 @@ namespace App\Console\Commands;
 
 use App\Actions\Sync\CalculateNextSyncRun;
 use App\Actions\Sync\StartSyncRun;
+use App\Actions\Temu\StartTemuSync;
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
+use App\Enums\TemuProductStatus;
 use App\Models\NaldaExport;
 use App\Models\ShopSyncSetting;
 use App\Models\SyncRun;
+use App\Models\TemuConnection;
+use App\Models\TemuSyncRun;
 use Illuminate\Console\Command;
 
 class DispatchDueSyncs extends Command
 {
+    /**
+     * Minutes between checks on Temu products that are still being processed.
+     */
+    private const int TEMU_CHECK_MINUTES = 15;
+
     /**
      * The name and signature of the console command.
      *
@@ -30,9 +39,10 @@ class DispatchDueSyncs extends Command
     /**
      * Execute the console command.
      */
-    public function handle(StartSyncRun $startSyncRun, CalculateNextSyncRun $calculateNextSyncRun): int
+    public function handle(StartSyncRun $startSyncRun, CalculateNextSyncRun $calculateNextSyncRun, StartTemuSync $startTemuSync): int
     {
         $this->reapStalledRuns();
+        $this->checkTemuProcessing($startTemuSync);
 
         $due = ShopSyncSetting::query()
             ->where('is_enabled', true)
@@ -78,5 +88,32 @@ class DispatchDueSyncs extends Command
             ->where('created_at', '<', now()->subMinutes(NaldaExport::ACTIVE_TIMEOUT_MINUTES))
             ->get()
             ->each(fn (NaldaExport $export) => $export->markFailed(__('The upload to Nalda timed out.')));
+
+        TemuSyncRun::query()
+            ->active()
+            ->where('created_at', '<', now()->subMinutes(TemuSyncRun::ACTIVE_TIMEOUT_MINUTES))
+            ->get()
+            ->each(fn (TemuSyncRun $run) => $run->markFailed(__('The Temu sync timed out.')));
+    }
+
+    /**
+     * Sync shops whose Temu products are still being processed.
+     *
+     * Temu creates, reviews and prices a product in the background, and
+     * stock and price can only be sent once it has, so a shop with products
+     * still in that state is synced again every so often until they settle.
+     */
+    private function checkTemuProcessing(StartTemuSync $start): void
+    {
+        $due = now()->subMinutes(self::TEMU_CHECK_MINUTES);
+
+        TemuConnection::query()
+            ->with('shop')
+            ->whereHas('shop.temuProducts', fn ($query) => $query
+                ->where('status', TemuProductStatus::Processing->value)
+                ->where(fn ($query) => $query->whereNull('checked_at')->orWhere('checked_at', '<', $due)))
+            ->whereDoesntHave('shop.temuSyncRuns', fn ($query) => $query->where('created_at', '>', $due))
+            ->get()
+            ->each(fn (TemuConnection $connection) => $start->handle($connection->shop, SyncTrigger::Scheduled));
     }
 }

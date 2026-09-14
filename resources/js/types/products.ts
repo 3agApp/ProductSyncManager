@@ -1,4 +1,5 @@
 import type { NaldaListing } from './nalda';
+import type { TemuListing } from './temu';
 
 export type ProductStatus = 'active' | 'draft' | 'archived';
 
@@ -20,6 +21,7 @@ export type Product = {
     status: ProductStatus;
     statusLabel: string;
     naldaListing: NaldaListing;
+    temuListing: TemuListing;
     updatedAt: string | null;
     updatedAtDiff: string | null;
 };
