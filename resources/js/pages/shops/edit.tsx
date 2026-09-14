@@ -222,10 +222,29 @@ export default function ShopEdit({
                                                     message={errors.tax_rate}
                                                 />
                                             </div>
+
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="currency">
+                                                    Currency
+                                                </Label>
+                                                <Input
+                                                    id="currency"
+                                                    name="currency"
+                                                    maxLength={3}
+                                                    className="uppercase"
+                                                    data-test="shop-currency"
+                                                    defaultValue={shop.currency}
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.currency}
+                                                />
+                                            </div>
                                         </div>
                                         <p className="text-muted-foreground -mt-3 text-xs">
                                             A WooCommerce sync replaces these
-                                            with the store's own tax settings.
+                                            with the store's own tax and
+                                            currency settings.
                                         </p>
 
                                         <div className="flex flex-wrap items-center gap-4">

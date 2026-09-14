@@ -13,13 +13,17 @@ class SaveShopRequest extends FormRequest
     /**
      * Prepare the data for validation.
      *
-     * The tax fields are only touched when submitted, so creating a shop
-     * or renaming one leaves them as they are.
+     * The tax and currency fields are only touched when submitted, so
+     * creating a shop or renaming one leaves them as they are.
      */
     protected function prepareForValidation(): void
     {
         if ($this->has('prices_include_tax')) {
             $this->merge(['prices_include_tax' => $this->boolean('prices_include_tax')]);
+        }
+
+        if ($this->has('currency')) {
+            $this->merge(['currency' => strtoupper(trim((string) $this->input('currency')))]);
         }
     }
 
@@ -35,6 +39,7 @@ class SaveShopRequest extends FormRequest
             'type' => ['sometimes', 'required', Rule::enum(ShopType::class)],
             'prices_include_tax' => ['sometimes', 'boolean'],
             'tax_rate' => ['sometimes', 'required', 'numeric', 'decimal:0,2', 'min:0', 'max:100'],
+            'currency' => ['sometimes', 'required', 'string', 'alpha', 'size:3'],
         ];
     }
 

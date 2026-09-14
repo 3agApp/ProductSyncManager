@@ -7,6 +7,7 @@ export type Shop = {
     name: string;
     slug: string;
     isPersonal: boolean;
+    currency: string;
     type?: ShopType;
     typeLabel?: string;
     role?: ShopRole;

@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { ExternalLink, Package } from 'lucide-react';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,8 @@ export default function ProductDetailModal({
     open,
     onOpenChange,
 }: Props) {
+    const { currentShop } = usePage().props;
+
     if (!product) {
         return null;
     }
@@ -89,7 +92,10 @@ export default function ProductDetailModal({
                     <div className="grid gap-4 sm:grid-cols-3">
                         <Field label="Price">
                             <span className="tabular-nums">
-                                {formatCurrency(product.price)}
+                                {formatCurrency(
+                                    product.price,
+                                    currentShop?.currency ?? 'CHF',
+                                )}
                             </span>
                         </Field>
                         <Field label="Stock">

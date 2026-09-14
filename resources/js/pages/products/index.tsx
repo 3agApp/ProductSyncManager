@@ -545,7 +545,10 @@ export default function ProductIndex({
                                             />
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums">
-                                            {formatCurrency(product.price)}
+                                            {formatCurrency(
+                                                product.price,
+                                                currentShop.currency,
+                                            )}
                                         </TableCell>
                                         <TableCell
                                             className="text-muted-foreground hidden lg:table-cell"

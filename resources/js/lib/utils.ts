@@ -11,11 +11,21 @@ export function toUrl(url: NonNullable<InertiaLinkProps['href']>): string {
     return typeof url === 'string' ? url : url.url;
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-});
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
 
-export function formatCurrency(value: number | string): string {
-    return currencyFormatter.format(Number(value));
+export function formatCurrency(
+    value: number | string,
+    currency: string,
+): string {
+    let formatter = currencyFormatters.get(currency);
+
+    if (!formatter) {
+        formatter = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency,
+        });
+        currencyFormatters.set(currency, formatter);
+    }
+
+    return formatter.format(Number(value));
 }

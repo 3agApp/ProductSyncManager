@@ -183,7 +183,7 @@ export default function ProductForm({
                                 <Label htmlFor="product-price">Price</Label>
                                 <div className="relative">
                                     <span className="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm">
-                                        $
+                                        {shop.currency}
                                     </span>
                                     <Input
                                         id="product-price"
@@ -195,7 +195,7 @@ export default function ProductForm({
                                         data-test="product-price"
                                         defaultValue={product?.price}
                                         placeholder="0.00"
-                                        className="pl-7"
+                                        className="pl-13"
                                         required
                                     />
                                 </div>

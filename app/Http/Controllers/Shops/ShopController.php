@@ -65,6 +65,7 @@ class ShopController extends Controller
                 'typeLabel' => $shop->type->label(),
                 'pricesIncludeTax' => $shop->prices_include_tax,
                 'taxRate' => rtrim(rtrim($shop->tax_rate, '0'), '.'),
+                'currency' => $shop->currency,
             ],
             'members' => $shop->members()->get()->map(function (User $member) {
                 /** @var Membership $membership */
@@ -107,7 +108,7 @@ class ShopController extends Controller
             $shop->update([
                 'name' => $request->validated('name'),
                 'type' => ShopType::tryFrom((string) $request->validated('type')) ?? $shop->type,
-                ...$request->safe()->only(['prices_include_tax', 'tax_rate']),
+                ...$request->safe()->only(['prices_include_tax', 'tax_rate', 'currency']),
             ]);
 
             return $shop;

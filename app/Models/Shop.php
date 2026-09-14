@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property ShopType $type
  * @property bool $prices_include_tax
  * @property string $tax_rate
+ * @property string $currency
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -42,11 +43,20 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, TemuProduct> $temuProducts
  * @property-read Collection<int, TemuSyncRun> $temuSyncRuns
  */
-#[Fillable(['name', 'slug', 'is_personal', 'type', 'prices_include_tax', 'tax_rate'])]
+#[Fillable(['name', 'slug', 'is_personal', 'type', 'prices_include_tax', 'tax_rate', 'currency'])]
 class Shop extends Model
 {
     /** @use HasFactory<ShopFactory> */
     use GeneratesUniqueShopSlugs, HasFactory, SoftDeletes;
+
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'currency' => 'CHF',
+    ];
 
     /**
      * Bootstrap the model and its traits.

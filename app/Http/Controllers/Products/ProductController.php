@@ -351,6 +351,7 @@ class ProductController extends Controller
             'name' => $shop->name,
             'slug' => $shop->slug,
             'isPersonal' => $shop->is_personal,
+            'currency' => $shop->currency,
         ];
     }
 }

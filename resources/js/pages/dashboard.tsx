@@ -101,7 +101,7 @@ export default function Dashboard({
         },
         {
             label: 'Inventory value',
-            value: formatCurrency(stats.inventoryValue),
+            value: formatCurrency(stats.inventoryValue, currentShop.currency),
             hint: 'Price × stock on hand',
             icon: CircleDollarSign,
         },
