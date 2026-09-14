@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Products;
 
 use App\Concerns\PresentsProducts;
+use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\SaveProductRequest;
@@ -189,6 +190,7 @@ class ProductController extends Controller
             'brands' => $this->brandNames($currentShop),
             'categories' => $this->categoryPaths($currentShop),
             'statuses' => ProductStatus::options(),
+            'naldaListings' => NaldaListing::options(),
         ]);
     }
 
@@ -230,8 +232,10 @@ class ProductController extends Controller
                 'price' => $product->price,
                 'stock' => $product->stock,
                 'status' => $product->status->value,
+                'naldaListing' => $product->nalda_listing->value,
             ],
             'statuses' => ProductStatus::options(),
+            'naldaListings' => NaldaListing::options(),
         ]);
     }
 

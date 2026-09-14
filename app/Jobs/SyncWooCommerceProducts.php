@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Nalda\StartNaldaExport;
 use App\Actions\Sync\ImportWooCommerceCategories;
 use App\Actions\Sync\ImportWooCommerceProducts;
 use App\Enums\ProductStatus;
@@ -128,6 +129,8 @@ class SyncWooCommerceProducts implements ShouldQueue
             $this->counters['skipped'] = $client->variableProductCount();
             $this->persistProgress();
 
+            $this->importTaxSettings($client, $shop);
+
             // The tree is read first so products can be filed under it as
             // they arrive, with the parent links the product payload omits.
             $this->categoryIds = $this->importCategories($client, $importCategories, $shop);
@@ -141,6 +144,8 @@ class SyncWooCommerceProducts implements ShouldQueue
 
             $this->syncRun->markCompleted();
             $shop->syncSettings?->update(['last_run_at' => now()]);
+
+            $this->exportToNalda($shop);
         } catch (WooCommerceRateLimitException $exception) {
             $this->persistProgress();
             $this->release($exception->retryAfter);
@@ -150,6 +155,30 @@ class SyncWooCommerceProducts implements ShouldQueue
             $this->persistProgress();
             $this->fail($exception);
         }
+    }
+
+    /**
+     * Copy the store's tax settings onto the shop.
+     *
+     * The credentials were already proven by the product count, so a refusal
+     * here means the key may read products but not settings. Tax settings
+     * are a convenience the shop can also set by hand, so that keeps what
+     * the shop has rather than failing the sync.
+     */
+    private function importTaxSettings(WooCommerceClient $client, Shop $shop): void
+    {
+        try {
+            $settings = [
+                'prices_include_tax' => $client->pricesIncludeTax(),
+                'tax_rate' => $client->standardTaxRate(),
+            ];
+        } catch (WooCommerceAuthenticationException|WooCommerceRequestException $exception) {
+            report($exception);
+
+            return;
+        }
+
+        $shop->update(array_filter($settings, fn (mixed $value) => $value !== null));
     }
 
     /**
@@ -292,6 +321,25 @@ class SyncWooCommerceProducts implements ShouldQueue
             ->where(fn ($query) => $query
                 ->whereNull('last_synced_at')
                 ->orWhere('last_synced_at', '<', $runStartedAt));
+    }
+
+    /**
+     * Queue an upload of the freshly synced catalog to Nalda, when the shop wants one.
+     *
+     * The sync itself has already succeeded, so nothing that goes wrong
+     * here may fail it.
+     */
+    private function exportToNalda(Shop $shop): void
+    {
+        if (! ($shop->naldaConnection->upload_after_sync ?? false)) {
+            return;
+        }
+
+        try {
+            app(StartNaldaExport::class)->handle($shop, $this->syncRun->trigger, $this->syncRun->triggeredBy);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Products;
 
 use App\Enums\BulkProductAction;
+use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\BulkProductRequest;
@@ -36,6 +37,7 @@ class BulkProductController extends Controller
             BulkProductAction::AddCategory => $this->addCategory($ids, (int) $request->validated('category_id')),
             BulkProductAction::RemoveCategory => $this->removeCategory($ids, (int) $request->validated('category_id')),
             BulkProductAction::SetStatus => $this->setStatus($currentShop, $ids, $request->validated('status')),
+            BulkProductAction::SetNaldaListing => $this->setNaldaListing($currentShop, $ids, $request->validated('nalda_listing')),
             BulkProductAction::Delete => $this->delete($currentShop, $ids),
         });
 
@@ -108,6 +110,18 @@ class BulkProductController extends Controller
     {
         return $shop->products()->whereIn('id', $ids)->update([
             'status' => ProductStatus::from((string) $status)->value,
+        ]);
+    }
+
+    /**
+     * Include every selected product on Nalda, exclude it, or hand it back to the shop default.
+     *
+     * @param  array<int, int>  $ids
+     */
+    private function setNaldaListing(Shop $shop, array $ids, mixed $listing): int
+    {
+        return $shop->products()->whereIn('id', $ids)->update([
+            'nalda_listing' => NaldaListing::from((string) $listing)->value,
         ]);
     }
 

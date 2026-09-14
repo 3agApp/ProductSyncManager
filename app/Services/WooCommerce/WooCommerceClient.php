@@ -279,6 +279,59 @@ class WooCommerceClient
     }
 
     /**
+     * Read whether the store's prices are entered with tax included.
+     *
+     * Null means the store gave no recognisable answer, so the caller keeps
+     * what it already has.
+     */
+    public function pricesIncludeTax(): ?bool
+    {
+        return match ($this->get('settings/tax/woocommerce_prices_include_tax', [])->json('value')) {
+            'yes' => true,
+            'no' => false,
+            default => null,
+        };
+    }
+
+    /**
+     * Read the store's standard tax rate, as a percentage with two decimals.
+     *
+     * A store can hold a rate per country; a Swiss rate is preferred, then
+     * one that applies to every country, then whichever comes first.
+     */
+    public function standardTaxRate(): ?string
+    {
+        $rates = $this->get('taxes', ['class' => 'standard', 'per_page' => 100])->json();
+
+        if (! is_array($rates)) {
+            return null;
+        }
+
+        $rates = array_values(array_filter(
+            $rates,
+            fn (mixed $rate) => is_array($rate) && is_numeric($rate['rate'] ?? null),
+        ));
+
+        usort($rates, fn (array $a, array $b) => $this->countryRank($a) <=> $this->countryRank($b));
+
+        return $rates === [] ? null : number_format((float) $rates[0]['rate'], 2, '.', '');
+    }
+
+    /**
+     * Rank a tax rate by how well its country fits a Swiss marketplace.
+     *
+     * @param  array<string, mixed>  $rate
+     */
+    private function countryRank(array $rate): int
+    {
+        return match (strtoupper((string) ($rate['country'] ?? ''))) {
+            'CH' => 0,
+            '' => 1,
+            default => 2,
+        };
+    }
+
+    /**
      * Get the number of importable products, verifying the credentials work.
      */
     public function ping(): int

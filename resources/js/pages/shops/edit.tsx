@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { ChevronDown, Mail, RefreshCw, UserPlus, X } from 'lucide-react';
+import { ChevronDown, Mail, RefreshCw, Store, UserPlus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import CancelInvitationModal from '@/components/cancel-invitation-modal';
 import DeleteShopModal from '@/components/delete-shop-modal';
@@ -34,6 +34,7 @@ import {
 import { useInitials } from '@/hooks/use-initials';
 import { edit, index, update } from '@/routes/shops';
 import { update as updateMember } from '@/routes/shops/members';
+import { edit as editNalda } from '@/routes/shops/nalda';
 import { edit as editSync } from '@/routes/shops/sync';
 import type {
     RoleOption,
@@ -44,7 +45,7 @@ import type {
 } from '@/types';
 
 type Props = {
-    shop: Shop;
+    shop: Shop & { pricesIncludeTax: boolean; taxRate: string };
     members: ShopMember[];
     invitations: ShopInvitation[];
     permissions: ShopPermissions;
@@ -164,6 +165,68 @@ export default function ShopEdit({
                                             <InputError message={errors.type} />
                                         </div>
 
+                                        <div className="grid gap-6 sm:grid-cols-2">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="prices_include_tax">
+                                                    Prices entered
+                                                </Label>
+                                                <Select
+                                                    name="prices_include_tax"
+                                                    defaultValue={
+                                                        shop.pricesIncludeTax
+                                                            ? '1'
+                                                            : '0'
+                                                    }
+                                                >
+                                                    <SelectTrigger
+                                                        id="prices_include_tax"
+                                                        data-test="shop-prices-include-tax"
+                                                        className="w-full"
+                                                    >
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="1">
+                                                            Including tax
+                                                        </SelectItem>
+                                                        <SelectItem value="0">
+                                                            Excluding tax
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <InputError
+                                                    message={
+                                                        errors.prices_include_tax
+                                                    }
+                                                />
+                                            </div>
+
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="tax_rate">
+                                                    Standard tax rate (%)
+                                                </Label>
+                                                <Input
+                                                    id="tax_rate"
+                                                    name="tax_rate"
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    step="0.01"
+                                                    min="0"
+                                                    max="100"
+                                                    data-test="shop-tax-rate"
+                                                    defaultValue={shop.taxRate}
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.tax_rate}
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="text-muted-foreground -mt-3 text-xs">
+                                            A WooCommerce sync replaces these
+                                            with the store's own tax settings.
+                                        </p>
+
                                         <div className="flex flex-wrap items-center gap-4">
                                             <Button
                                                 type="submit"
@@ -199,6 +262,27 @@ export default function ShopEdit({
                                     data-test="shop-sync-link"
                                 >
                                     <RefreshCw /> Sync settings
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
+
+                {permissions.canRunSync ? (
+                    <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                            <Heading
+                                variant="small"
+                                title="Nalda marketplace"
+                                description="List this shop's products on Nalda through its SFTP product upload."
+                            />
+
+                            <Button variant="secondary" asChild>
+                                <Link
+                                    href={editNalda(shop.slug)}
+                                    data-test="shop-nalda-link"
+                                >
+                                    <Store /> Nalda settings
                                 </Link>
                             </Button>
                         </div>

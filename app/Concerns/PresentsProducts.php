@@ -36,6 +36,7 @@ trait PresentsProducts
             'stock' => $product->stock,
             'status' => $product->status->value,
             'statusLabel' => $product->status->label(),
+            'naldaListing' => $product->nalda_listing->value,
             'updatedAt' => $product->updated_at?->toISOString(),
             'updatedAtDiff' => $product->updated_at?->diffForHumans(),
         ];

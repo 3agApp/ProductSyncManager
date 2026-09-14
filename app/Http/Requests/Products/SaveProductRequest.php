@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Products;
 
+use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
 use App\Models\Brand;
 use App\Models\Category;
@@ -114,6 +115,7 @@ class SaveProductRequest extends FormRequest
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
             'stock' => ['required', 'integer', 'min:0', 'max:1000000'],
             'status' => ['required', Rule::enum(ProductStatus::class)],
+            'nalda_listing' => ['sometimes', Rule::enum(NaldaListing::class)],
         ];
     }
 

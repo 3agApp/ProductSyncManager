@@ -22,6 +22,8 @@ use Illuminate\Support\Carbon;
  * @property string $slug
  * @property bool $is_personal
  * @property ShopType $type
+ * @property bool $prices_include_tax
+ * @property string $tax_rate
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -34,8 +36,10 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, SyncRun> $syncRuns
  * @property-read WooCommerceConnection|null $wooCommerceConnection
  * @property-read ShopSyncSetting|null $syncSettings
+ * @property-read NaldaConnection|null $naldaConnection
+ * @property-read Collection<int, NaldaExport> $naldaExports
  */
-#[Fillable(['name', 'slug', 'is_personal', 'type'])]
+#[Fillable(['name', 'slug', 'is_personal', 'type', 'prices_include_tax', 'tax_rate'])]
 class Shop extends Model
 {
     /** @use HasFactory<ShopFactory> */
@@ -165,6 +169,26 @@ class Shop extends Model
     }
 
     /**
+     * Get the Nalda marketplace settings for the shop.
+     *
+     * @return HasOne<NaldaConnection, $this>
+     */
+    public function naldaConnection(): HasOne
+    {
+        return $this->hasOne(NaldaConnection::class);
+    }
+
+    /**
+     * Get the product file uploads to Nalda for the shop.
+     *
+     * @return HasMany<NaldaExport, $this>
+     */
+    public function naldaExports(): HasMany
+    {
+        return $this->hasMany(NaldaExport::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -174,6 +198,8 @@ class Shop extends Model
         return [
             'is_personal' => 'boolean',
             'type' => ShopType::class,
+            'prices_include_tax' => 'boolean',
+            'tax_rate' => 'decimal:2',
         ];
     }
 

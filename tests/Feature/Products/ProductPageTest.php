@@ -57,6 +57,7 @@ test('the edit page renders the product being edited', function () {
                 'price',
                 'stock',
                 'status',
+                'naldaListing',
             ]))
             ->has('statuses', 3));
 });

@@ -19,7 +19,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { index as productsIndex } from '@/routes/products';
 import { store, update } from '@/routes/products';
-import type { Product, ProductStatusOption, Shop } from '@/types';
+import type {
+    NaldaListingOption,
+    Product,
+    ProductStatusOption,
+    Shop,
+} from '@/types';
 
 type Props = {
     shop: Shop;
@@ -27,6 +32,7 @@ type Props = {
     brands: string[];
     categories: string[];
     statuses: ProductStatusOption[];
+    naldaListings: NaldaListingOption[];
 };
 
 type SectionProps = PropsWithChildren<{
@@ -53,6 +59,7 @@ export default function ProductForm({
     brands,
     categories,
     statuses,
+    naldaListings,
 }: Props) {
     const formRoute = product
         ? update.form([shop.slug, product.id])
@@ -294,6 +301,40 @@ export default function ProductForm({
                                 />
                                 <InputError message={errors.categories} />
                             </div>
+                        </div>
+                    </Section>
+
+                    <Section
+                        title="Marketplaces"
+                        description="Whether the product is listed on Nalda. Only products with a GTIN are sent."
+                    >
+                        <div className="grid gap-2 sm:max-w-xs">
+                            <Label htmlFor="product-nalda-listing">Nalda</Label>
+                            <Select
+                                name="nalda_listing"
+                                defaultValue={
+                                    product?.naldaListing ?? 'default'
+                                }
+                            >
+                                <SelectTrigger
+                                    id="product-nalda-listing"
+                                    data-test="product-nalda-listing"
+                                    className="w-full"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {naldaListings.map((listing) => (
+                                        <SelectItem
+                                            key={listing.value}
+                                            value={listing.value}
+                                        >
+                                            {listing.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.nalda_listing} />
                         </div>
                     </Section>
 

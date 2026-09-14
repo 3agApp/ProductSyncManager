@@ -1,7 +1,12 @@
 import { Head } from '@inertiajs/react';
 import ProductForm from '@/components/product-form';
 import { index as productsIndex } from '@/routes/products';
-import type { Product, ProductStatusOption, Shop } from '@/types';
+import type {
+    NaldaListingOption,
+    Product,
+    ProductStatusOption,
+    Shop,
+} from '@/types';
 
 type Props = {
     shop: Shop;
@@ -9,6 +14,7 @@ type Props = {
     brands: string[];
     categories: string[];
     statuses: ProductStatusOption[];
+    naldaListings: NaldaListingOption[];
 };
 
 export default function ProductEdit({
@@ -17,6 +23,7 @@ export default function ProductEdit({
     brands,
     categories,
     statuses,
+    naldaListings,
 }: Props) {
     return (
         <>
@@ -37,6 +44,7 @@ export default function ProductEdit({
                         brands={brands}
                         categories={categories}
                         statuses={statuses}
+                        naldaListings={naldaListings}
                     />
                 </div>
             </div>

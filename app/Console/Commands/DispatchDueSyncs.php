@@ -6,6 +6,7 @@ use App\Actions\Sync\CalculateNextSyncRun;
 use App\Actions\Sync\StartSyncRun;
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
+use App\Models\NaldaExport;
 use App\Models\ShopSyncSetting;
 use App\Models\SyncRun;
 use Illuminate\Console\Command;
@@ -71,5 +72,11 @@ class DispatchDueSyncs extends Command
             ->where('created_at', '<', now()->subMinutes(SyncRun::ACTIVE_TIMEOUT_MINUTES))
             ->get()
             ->each(fn (SyncRun $run) => $run->markFailed(__('The sync timed out.')));
+
+        NaldaExport::query()
+            ->active()
+            ->where('created_at', '<', now()->subMinutes(NaldaExport::ACTIVE_TIMEOUT_MINUTES))
+            ->get()
+            ->each(fn (NaldaExport $export) => $export->markFailed(__('The upload to Nalda timed out.')));
     }
 }

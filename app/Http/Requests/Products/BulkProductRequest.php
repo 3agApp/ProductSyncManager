@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Products;
 
 use App\Enums\BulkProductAction;
+use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
 use App\Models\Shop;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -67,6 +68,10 @@ class BulkProductRequest extends FormRequest
             'status' => [
                 Rule::requiredIf($this->action() === BulkProductAction::SetStatus),
                 Rule::enum(ProductStatus::class),
+            ],
+            'nalda_listing' => [
+                Rule::requiredIf($this->action() === BulkProductAction::SetNaldaListing),
+                Rule::enum(NaldaListing::class),
             ],
         ];
     }
