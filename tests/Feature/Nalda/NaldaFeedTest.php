@@ -69,7 +69,8 @@ test('a listed product is written with its details and the shop defaults', funct
             'return_days' => '14',
             'main_image_url' => 'https://example.com/1.jpg',
             'brand' => 'Acme',
-            'seller_category' => 'Bags > Totes',
+            // Filed under the nested Totes only: its name, not its path.
+            'seller_category' => 'Totes',
             'description' => 'A sturdy tote.',
             'image_2_url' => 'https://example.com/2.jpg',
             'image_3_url' => 'https://example.com/3.jpg',
@@ -79,6 +80,18 @@ test('a listed product is written with its details and the shop defaults', funct
             'publisher' => '',
             'delete_product' => '',
         ]);
+});
+
+test('the seller category joins every category name, ordered by name', function () {
+    [$shop, $connection] = naldaShop();
+
+    Product::factory()->for($shop)->categorized('Toys > Puzzles', 'Games', 'Adventskalender')->create(['gtin' => '108']);
+    Product::factory()->for($shop)->create(['gtin' => '109']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    expect($rows['108']['seller_category'])->toBe('Adventskalender > Games > Puzzles')
+        ->and($rows['109']['seller_category'])->toBe('');
 });
 
 test('prices are always written with two decimals', function () {

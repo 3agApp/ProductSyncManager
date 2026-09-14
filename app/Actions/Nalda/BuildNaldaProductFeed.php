@@ -78,19 +78,18 @@ class BuildNaldaProductFeed
 
         fputcsv($stream, self::COLUMNS, escape: '');
 
-        $paths = Category::pathsFor($shop);
         $listedGtins = [];
         $removed = 0;
 
         $shop->products()
             ->whereIn('id', array_column($chosen, 'id'))
             ->with(['brand', 'categories'])
-            ->chunkById(self::CHUNK_SIZE, function (Collection $products) use ($connection, $stream, $paths, &$listedGtins, &$removed) {
+            ->chunkById(self::CHUNK_SIZE, function (Collection $products) use ($connection, $stream, &$listedGtins, &$removed) {
                 foreach ($products as $product) {
                     /** @var Product $product */
                     $listed = $connection->lists($product);
 
-                    fputcsv($stream, $this->productRow($connection, $product, $paths, $listed), escape: '');
+                    fputcsv($stream, $this->productRow($connection, $product, $listed), escape: '');
 
                     if ($listed) {
                         $listedGtins[] = $this->gtin($product);
@@ -172,17 +171,20 @@ class BuildNaldaProductFeed
      * An unlisted product keeps its details but goes out with no stock as
      * well as the delete flag, since Nalda takes either as a removal.
      *
-     * @param  array<int, string>  $paths
+     * The seller category is the name of every category the product is
+     * filed under, ordered by name and joined with " > ", the way the
+     * WooCommerce Nalda plugin writes it.
+     *
      * @return array<int, string|int>
      */
-    private function productRow(NaldaConnection $connection, Product $product, array $paths, bool $listed): array
+    private function productRow(NaldaConnection $connection, Product $product, bool $listed): array
     {
         $gallery = array_slice($product->gallery_image_urls ?? [], 0, 4);
 
         $category = $product->categories
-            ->map(fn (Category $category) => $paths[$category->id] ?? $category->name)
+            ->map(fn (Category $category) => $category->name)
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
-            ->first();
+            ->implode(' > ');
 
         return $this->row([
             'gtin' => $this->gtin($product),
@@ -197,7 +199,7 @@ class BuildNaldaProductFeed
             'return_days' => $connection->return_days,
             'main_image_url' => $product->image_url ?? '',
             'brand' => $product->brand->name ?? '',
-            'seller_category' => $category ?? '',
+            'seller_category' => $category,
             'description' => $product->description ?: ($product->short_description ?? ''),
             'image_2_url' => $gallery[0] ?? '',
             'image_3_url' => $gallery[1] ?? '',

@@ -69,7 +69,9 @@ in the same order. Columns the catalog has no value for yet — `category`,
 and the book fields — are written empty.
 
 Filled from the catalog: `gtin`, `title`, `price`, `stock`, `main_image_url`,
-`brand`, `seller_category` (the first category path), `description` (falling
+`brand`, `seller_category` (the names of every category the product is filed
+under, ordered by name and joined with `>`, as the WooCommerce Nalda plugin
+does), `description` (falling
 back to the short description), `image_2_url` to `image_5_url` (the first four
 gallery images) and `delete_product`. Filled from the shop's Nalda settings:
 `country`, `condition`, `tax`, `currency`, `delivery_time_days` and
