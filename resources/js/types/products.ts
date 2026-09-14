@@ -1,3 +1,5 @@
+import type { NaldaListing } from './nalda';
+
 export type ProductStatus = 'active' | 'draft' | 'archived';
 
 export type Product = {
@@ -17,6 +19,7 @@ export type Product = {
     stock: number;
     status: ProductStatus;
     statusLabel: string;
+    naldaListing: NaldaListing;
     updatedAt: string | null;
     updatedAtDiff: string | null;
 };

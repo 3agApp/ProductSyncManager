@@ -18,6 +18,7 @@ const PAGES = [
     { path: '/settings/appearance', heading: 'Appearance settings' },
     { path: `/settings/shops/${SHOP}`, heading: 'Shop settings' },
     { path: `/settings/shops/${SHOP}/sync`, heading: 'WooCommerce connection' },
+    { path: `/settings/shops/${SHOP}/nalda`, heading: 'Nalda marketplace' },
 ];
 
 for (const { path, heading } of PAGES) {

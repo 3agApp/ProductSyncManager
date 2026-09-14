@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -29,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property string $price
  * @property int $stock
  * @property ProductStatus $status
+ * @property NaldaListing $nalda_listing
  * @property Carbon|null $last_synced_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -50,6 +52,7 @@ use Illuminate\Support\Carbon;
     'price',
     'stock',
     'status',
+    'nalda_listing',
     'last_synced_at',
 ])]
 class Product extends Model
@@ -177,6 +180,7 @@ class Product extends Model
             'price' => 'decimal:2',
             'stock' => 'integer',
             'status' => ProductStatus::class,
+            'nalda_listing' => NaldaListing::class,
             'remote_id' => 'integer',
             'gallery_image_urls' => 'array',
             'last_synced_at' => 'datetime',

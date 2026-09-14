@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { ChevronDown, Mail, RefreshCw, UserPlus, X } from 'lucide-react';
+import { ChevronDown, Mail, RefreshCw, Store, UserPlus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import CancelInvitationModal from '@/components/cancel-invitation-modal';
 import DeleteShopModal from '@/components/delete-shop-modal';
@@ -34,6 +34,7 @@ import {
 import { useInitials } from '@/hooks/use-initials';
 import { edit, index, update } from '@/routes/shops';
 import { update as updateMember } from '@/routes/shops/members';
+import { edit as editNalda } from '@/routes/shops/nalda';
 import { edit as editSync } from '@/routes/shops/sync';
 import type {
     RoleOption,
@@ -199,6 +200,27 @@ export default function ShopEdit({
                                     data-test="shop-sync-link"
                                 >
                                     <RefreshCw /> Sync settings
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
+
+                {permissions.canRunSync ? (
+                    <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                            <Heading
+                                variant="small"
+                                title="Nalda marketplace"
+                                description="List this shop's products on Nalda through its SFTP product upload."
+                            />
+
+                            <Button variant="secondary" asChild>
+                                <Link
+                                    href={editNalda(shop.slug)}
+                                    data-test="shop-nalda-link"
+                                >
+                                    <Store /> Nalda settings
                                 </Link>
                             </Button>
                         </div>

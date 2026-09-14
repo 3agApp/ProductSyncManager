@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { FolderMinus, FolderPlus, Tag, Trash2, X } from 'lucide-react';
+import { FolderMinus, FolderPlus, Store, Tag, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,9 +22,16 @@ import {
 import { bulk } from '@/routes/products';
 import type {
     FilterOption,
+    NaldaListingOption,
     ProductStatusOption,
     ShopPermissions,
 } from '@/types';
+
+const NALDA_LISTINGS: NaldaListingOption[] = [
+    { value: 'include', label: 'Always include on Nalda' },
+    { value: 'exclude', label: 'Always exclude from Nalda' },
+    { value: 'default', label: 'Follow shop default' },
+];
 
 type Props = {
     shopSlug: string;
@@ -179,6 +186,35 @@ export default function ProductBulkBar({
                                             }
                                         >
                                             {status.label}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={processing}
+                                        data-test="bulk-nalda"
+                                    >
+                                        <Store /> Nalda
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {NALDA_LISTINGS.map((listing) => (
+                                        <DropdownMenuItem
+                                            key={listing.value}
+                                            onSelect={() =>
+                                                apply({
+                                                    action: 'set-nalda-listing',
+                                                    nalda_listing:
+                                                        listing.value,
+                                                })
+                                            }
+                                        >
+                                            {listing.label}
                                         </DropdownMenuItem>
                                     ))}
                                 </DropdownMenuContent>

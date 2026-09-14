@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Shops\NaldaController;
 use App\Http\Controllers\Shops\ShopController;
 use App\Http\Controllers\Shops\ShopInvitationController;
 use App\Http\Controllers\Shops\ShopMemberController;
@@ -59,6 +60,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/shops/{shop}/sync/runs', [SyncRunController::class, 'store'])
             ->middleware('throttle:20,1')
             ->name('shops.sync.runs.store');
+
+        Route::get('settings/shops/{shop}/nalda', [NaldaController::class, 'edit'])->name('shops.nalda.edit');
+        Route::patch('settings/shops/{shop}/nalda', [NaldaController::class, 'update'])->name('shops.nalda.update');
+        Route::post('settings/shops/{shop}/nalda/test', [NaldaController::class, 'test'])
+            ->middleware('throttle:10,1')
+            ->name('shops.nalda.test');
+        Route::post('settings/shops/{shop}/nalda/exports', [NaldaController::class, 'export'])
+            ->middleware('throttle:20,1')
+            ->name('shops.nalda.exports.store');
+        Route::get('settings/shops/{shop}/nalda/products.csv', [NaldaController::class, 'download'])
+            ->middleware('throttle:20,1')
+            ->name('shops.nalda.download');
     });
 });
 

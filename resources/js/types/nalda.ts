@@ -1,0 +1,49 @@
+import type { SyncRunStatus } from './sync';
+
+export type NaldaDefaultBehavior = 'include_all' | 'exclude_all';
+
+export type NaldaListing = 'default' | 'include' | 'exclude';
+
+export type NaldaBehaviorOption = {
+    value: NaldaDefaultBehavior;
+    label: string;
+};
+
+export type NaldaListingOption = {
+    value: NaldaListing;
+    label: string;
+};
+
+export type NaldaConnection = {
+    isConfigured: boolean;
+    sftpHost: string;
+    sftpPort: number;
+    sftpUsername: string;
+    hasPassword: boolean;
+    isUsable: boolean;
+    verifiedAt: string | null;
+    defaultBehavior: NaldaDefaultBehavior;
+    country: string;
+    currency: string;
+    condition: string;
+    taxRate: string;
+    deliveryTimeDays: number;
+    returnDays: number;
+    uploadAfterSync: boolean;
+    lastExportedAt: string | null;
+};
+
+export type NaldaExport = {
+    id: number;
+    status: SyncRunStatus;
+    statusLabel: string;
+    isActive: boolean;
+    triggerLabel: string;
+    listedProducts: number;
+    removedProducts: number;
+    skippedProducts: number;
+    fileName: string | null;
+    message: string | null;
+    durationInSeconds: number | null;
+    createdAtDiff: string | null;
+};

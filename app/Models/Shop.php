@@ -34,6 +34,8 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, SyncRun> $syncRuns
  * @property-read WooCommerceConnection|null $wooCommerceConnection
  * @property-read ShopSyncSetting|null $syncSettings
+ * @property-read NaldaConnection|null $naldaConnection
+ * @property-read Collection<int, NaldaExport> $naldaExports
  */
 #[Fillable(['name', 'slug', 'is_personal', 'type'])]
 class Shop extends Model
@@ -162,6 +164,26 @@ class Shop extends Model
     public function syncRuns(): HasMany
     {
         return $this->hasMany(SyncRun::class);
+    }
+
+    /**
+     * Get the Nalda marketplace settings for the shop.
+     *
+     * @return HasOne<NaldaConnection, $this>
+     */
+    public function naldaConnection(): HasOne
+    {
+        return $this->hasOne(NaldaConnection::class);
+    }
+
+    /**
+     * Get the product file uploads to Nalda for the shop.
+     *
+     * @return HasMany<NaldaExport, $this>
+     */
+    public function naldaExports(): HasMany
+    {
+        return $this->hasMany(NaldaExport::class);
     }
 
     /**

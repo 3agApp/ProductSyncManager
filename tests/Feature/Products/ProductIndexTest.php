@@ -41,6 +41,7 @@ test('the products page lists products for the current shop only', function () {
                 'stock',
                 'status',
                 'statusLabel',
+                'naldaListing',
                 'updatedAt',
                 'updatedAtDiff',
             ])),

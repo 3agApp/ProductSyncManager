@@ -45,4 +45,12 @@ return [
         'allow_private_hosts' => (bool) env('WOOCOMMERCE_ALLOW_PRIVATE_HOSTS', env('APP_ENV') === 'local'),
     ],
 
+    'nalda' => [
+        // Every seller uploads to the same server, so only the user and
+        // password are stored per shop and no address comes from a form.
+        'sftp_host' => env('NALDA_SFTP_HOST', 'sftp.nalda.com'),
+        'sftp_port' => (int) env('NALDA_SFTP_PORT', 2022),
+        'sftp_timeout' => (int) env('NALDA_SFTP_TIMEOUT', 20),
+    ],
+
 ];

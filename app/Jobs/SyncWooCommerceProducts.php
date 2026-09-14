@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Nalda\StartNaldaExport;
 use App\Actions\Sync\ImportWooCommerceCategories;
 use App\Actions\Sync\ImportWooCommerceProducts;
 use App\Enums\ProductStatus;
@@ -141,6 +142,8 @@ class SyncWooCommerceProducts implements ShouldQueue
 
             $this->syncRun->markCompleted();
             $shop->syncSettings?->update(['last_run_at' => now()]);
+
+            $this->exportToNalda($shop);
         } catch (WooCommerceRateLimitException $exception) {
             $this->persistProgress();
             $this->release($exception->retryAfter);
@@ -292,6 +295,25 @@ class SyncWooCommerceProducts implements ShouldQueue
             ->where(fn ($query) => $query
                 ->whereNull('last_synced_at')
                 ->orWhere('last_synced_at', '<', $runStartedAt));
+    }
+
+    /**
+     * Queue an upload of the freshly synced catalog to Nalda, when the shop wants one.
+     *
+     * The sync itself has already succeeded, so nothing that goes wrong
+     * here may fail it.
+     */
+    private function exportToNalda(Shop $shop): void
+    {
+        if (! ($shop->naldaConnection->upload_after_sync ?? false)) {
+            return;
+        }
+
+        try {
+            app(StartNaldaExport::class)->handle($shop, $this->syncRun->trigger, $this->syncRun->triggeredBy);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**
