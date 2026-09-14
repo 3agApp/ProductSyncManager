@@ -16,6 +16,7 @@ declare module '@inertiajs/core' {
             currentShop: Shop | null;
             shops: Shop[];
             shopTypes: ShopTypeOption[];
+            pendingInvitationsCount: number;
             [key: string]: unknown;
         };
     }

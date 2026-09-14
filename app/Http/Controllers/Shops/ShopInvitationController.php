@@ -10,13 +10,39 @@ use App\Models\Shop;
 use App\Models\ShopInvitation;
 use App\Notifications\Shops\ShopInvitation as ShopInvitationNotification;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ShopInvitationController extends Controller
 {
+    /**
+     * List the invitations waiting on the authenticated user.
+     */
+    public function index(Request $request): Response
+    {
+        return Inertia::render('invitations/index', [
+            'invitations' => ShopInvitation::query()
+                ->pendingFor($request->user()->email)
+                ->with(['inviter', 'shop'])
+                ->latest()
+                ->get()
+                ->map(fn (ShopInvitation $invitation) => [
+                    'code' => $invitation->code,
+                    'inviterName' => $invitation->inviter->name,
+                    'roleLabel' => $invitation->role->label(),
+                    'expiresAt' => $invitation->expires_at?->toIso8601String(),
+                    'shop' => [
+                        'name' => $invitation->shop->name,
+                        'slug' => $invitation->shop->slug,
+                    ],
+                ]),
+        ]);
+    }
+
     /**
      * Store a newly created invitation.
      */
@@ -89,6 +115,8 @@ class ShopInvitationController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation declined.')]);
 
-        return to_route('dashboard');
+        $morePending = ShopInvitation::query()->pendingFor($request->user()->email)->exists();
+
+        return to_route($morePending ? 'invitations.index' : 'dashboard');
     }
 }

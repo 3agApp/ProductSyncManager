@@ -57,6 +57,10 @@ Route::prefix('{current_shop}')
         Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
     });
 
+Route::get('invitations', [ShopInvitationController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('invitations.index');
+
 Route::middleware(['auth'])->group(function () {
     Route::post('invitations/{invitation}/accept', [ShopInvitationController::class, 'accept'])->name('invitations.accept');
     Route::delete('invitations/{invitation}', [ShopInvitationController::class, 'decline'])->name('invitations.decline');

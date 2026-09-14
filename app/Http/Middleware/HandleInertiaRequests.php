@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\ShopType;
+use App\Models\ShopInvitation;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -48,6 +49,9 @@ class HandleInertiaRequests extends Middleware
             'currentShop' => fn () => $user?->currentShop ? $user->toUserShop($user->currentShop) : null,
             'shops' => fn () => $user?->toUserShops(includeCurrent: true) ?? [],
             'shopTypes' => ShopType::options(),
+            'pendingInvitationsCount' => fn () => $user
+                ? ShopInvitation::query()->pendingFor($user->email)->count()
+                : 0,
         ];
     }
 }
