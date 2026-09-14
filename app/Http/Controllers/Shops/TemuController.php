@@ -48,7 +48,7 @@ class TemuController extends Controller
                 'slug' => $shop->slug,
                 'isPersonal' => $shop->is_personal,
             ],
-            'connection' => fn () => $this->connectionProps($shop->temuConnection),
+            'connection' => fn () => $this->connectionProps($shop, $shop->temuConnection),
             'statusCounts' => fn () => $this->statusCounts($shop),
             'problems' => fn () => $shop->temuProducts()
                 ->whereIn('status', array_map(
@@ -165,7 +165,7 @@ class TemuController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function connectionProps(?TemuConnection $connection): array
+    private function connectionProps(Shop $shop, ?TemuConnection $connection): array
     {
         $gateway = (string) config('services.temu.base_url');
 
@@ -182,7 +182,7 @@ class TemuController extends Controller
                 'tokenExpiresAt' => null,
                 'tokenHasExpired' => false,
                 'defaultBehavior' => TemuDefaultBehavior::ExcludeAll->value,
-                'currency' => 'CHF',
+                'currency' => $shop->currency,
                 'syncAfterSync' => true,
                 'lastSyncedAt' => null,
             ];
@@ -202,7 +202,7 @@ class TemuController extends Controller
             'tokenExpiresAt' => $connection->token_expires_at?->toISOString(),
             'tokenHasExpired' => $connection->tokenHasExpired(),
             'defaultBehavior' => $connection->default_behavior->value,
-            'currency' => $connection->currency,
+            'currency' => $shop->currency,
             'syncAfterSync' => $connection->sync_after_sync,
             'lastSyncedAt' => $connection->last_synced_at?->toISOString(),
         ];

@@ -60,6 +60,7 @@ class NaldaController extends Controller
             'behaviors' => NaldaDefaultBehavior::options(),
             'priceModes' => NaldaPriceMode::options(),
             'shopTax' => fn () => [
+                'currency' => $shop->currency,
                 'pricesIncludeTax' => $shop->prices_include_tax,
                 'taxRate' => rtrim(rtrim($shop->tax_rate, '0'), '.'),
                 'naldaTaxRate' => (new NaldaConnection)->setRelation('shop', $shop)->taxRate(),
@@ -194,7 +195,6 @@ class NaldaController extends Controller
                 'fileName' => NaldaConnection::DEFAULT_FILE_NAME,
                 'defaultBehavior' => NaldaDefaultBehavior::IncludeAll->value,
                 'country' => 'CH',
-                'currency' => 'CHF',
                 'condition' => 'new',
                 'priceMode' => NaldaPriceMode::AsIs->value,
                 'deliveryTimeDays' => 3,
@@ -214,7 +214,6 @@ class NaldaController extends Controller
             'fileName' => $connection->file_name,
             'defaultBehavior' => $connection->default_behavior->value,
             'country' => $connection->country,
-            'currency' => $connection->currency,
             'condition' => $connection->condition,
             'priceMode' => $connection->price_mode->value,
             'deliveryTimeDays' => $connection->delivery_time_days,

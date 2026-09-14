@@ -213,7 +213,7 @@ test('shop invitations can be declined by the invited user', function () {
         ->actingAs($invitedUser)
         ->delete(route('invitations.decline', $invitation));
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('invitations.index'));
 
     $this->assertDatabaseMissing('shop_invitations', [
         'id' => $invitation->id,

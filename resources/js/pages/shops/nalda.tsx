@@ -340,15 +340,18 @@ export default function ShopNalda({
                                                 maxLength={2}
                                                 error={errors.country}
                                             />
-                                            <Field
-                                                id="currency"
-                                                label="Currency"
-                                                defaultValue={
-                                                    connection.currency
-                                                }
-                                                maxLength={3}
-                                                error={errors.currency}
-                                            />
+                                            <div className="grid gap-2">
+                                                <Label>Currency</Label>
+                                                <p
+                                                    className="flex h-9 items-center text-sm"
+                                                    data-test="nalda-currency"
+                                                >
+                                                    {shopTax.currency}
+                                                </p>
+                                                <p className="text-muted-foreground text-xs">
+                                                    From the shop's settings.
+                                                </p>
+                                            </div>
                                             <Field
                                                 id="condition"
                                                 label="Condition"

@@ -15,7 +15,6 @@ import {
     Tags,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import PendingInvitationsModal from '@/components/pending-invitations-modal';
 import ProductDetailModal from '@/components/product-detail-modal';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { ProductStockLevel } from '@/components/product-stock-level';
@@ -31,7 +30,6 @@ import {
 } from '@/routes/products';
 import type {
     ActiveSyncRun,
-    DashboardInvitation,
     Product,
     ProductStats,
     ShopPermissions,
@@ -42,7 +40,6 @@ type Props = {
     recentProducts: Product[];
     lowStockThreshold: number;
     permissions: ShopPermissions;
-    pendingInvitations?: DashboardInvitation[];
     activeSyncRun?: ActiveSyncRun | null;
 };
 
@@ -60,13 +57,9 @@ export default function Dashboard({
     recentProducts,
     lowStockThreshold,
     permissions,
-    pendingInvitations = [],
     activeSyncRun = null,
 }: Props) {
     const { currentShop } = usePage().props;
-    const [showInvitations, setShowInvitations] = useState(
-        pendingInvitations.length > 0,
-    );
     const [detailOpen, setDetailOpen] = useState(false);
     const [productToView, setProductToView] = useState<Product | null>(null);
 
@@ -158,11 +151,6 @@ export default function Dashboard({
     return (
         <>
             <Head title="Dashboard" />
-            <PendingInvitationsModal
-                invitations={pendingInvitations}
-                open={pendingInvitations.length > 0 && showInvitations}
-                onOpenChange={setShowInvitations}
-            />
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Temu\BuildTemuProductPayload;
 use App\Enums\ProductStatus;
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
@@ -369,3 +370,52 @@ test('temu sub-status codes map to statuses', function (int $code, TemuProductSt
     [6002, TemuProductStatus::Deleted],
     [9999, TemuProductStatus::Processing],
 ]);
+
+test('prices go to temu in the shop\'s currency', function () {
+    $shop = Shop::factory()->create(['currency' => 'EUR']);
+    TemuConnection::factory()->for($shop)->create();
+    temuReadyProduct($shop);
+
+    $calls = [];
+    fakeTemuGateway(['temu.local.goods.v3.add' => ['goodsId' => 601000000000009]], $calls);
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    expect(temuCallsOf($calls, 'temu.local.goods.v3.add')[0]['skuList'][0]['price']['basePrice']['currency'])->toBe('EUR');
+});
+
+test('a run that runs out of time hands the rest to its next attempt', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create();
+    temuReadyProduct($shop, ['sku' => 'FIRST']);
+    temuReadyProduct($shop, ['sku' => 'SECOND']);
+
+    $calls = [];
+    fakeTemuGateway([
+        'temu.local.goods.v3.add' => function (array $data) {
+            // Each creation takes fourteen minutes, so the second product
+            // falls past the attempt's working time.
+            test()->travel(14)->minutes();
+
+            return Http::response(['success' => true, 'errorCode' => 1000000, 'result' => ['goodsId' => random_int(600000000000000, 699999999999999)]]);
+        },
+    ], $calls);
+
+    $run = queuedTemuRun($shop);
+    $job = (new SyncTemuProducts($run))->withFakeQueueInteractions();
+    $job->handle(app(BuildTemuProductPayload::class));
+
+    $job->assertReleased();
+
+    expect(temuCallsOf($calls, 'temu.local.goods.v3.add'))->toHaveCount(1)
+        ->and($run->refresh()->status)->toBe(SyncRunStatus::Running)
+        ->and($run->created_products)->toBe(1);
+
+    // The next attempt skips the product already created and sends the other.
+    $calls = [];
+    (new SyncTemuProducts($run))->withFakeQueueInteractions()->handle(app(BuildTemuProductPayload::class));
+
+    expect(temuCallsOf($calls, 'temu.local.goods.v3.add'))->toHaveCount(1)
+        ->and($run->refresh()->status)->toBe(SyncRunStatus::Completed)
+        ->and($run->created_products)->toBe(2);
+});

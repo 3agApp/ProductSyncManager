@@ -20,7 +20,6 @@ use Illuminate\Support\Carbon;
  * @property string $file_name
  * @property NaldaDefaultBehavior $default_behavior
  * @property string $country
- * @property string $currency
  * @property string $condition
  * @property NaldaPriceMode $price_mode
  * @property int $delivery_time_days
@@ -38,7 +37,6 @@ use Illuminate\Support\Carbon;
     'file_name',
     'default_behavior',
     'country',
-    'currency',
     'condition',
     'price_mode',
     'delivery_time_days',

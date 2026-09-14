@@ -89,6 +89,6 @@ class ShopInvitationController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation declined.')]);
 
-        return to_route('dashboard');
+        return to_route('invitations.index');
     }
 }

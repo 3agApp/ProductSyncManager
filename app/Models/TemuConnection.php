@@ -18,7 +18,6 @@ use Illuminate\Support\Carbon;
  * @property string|null $app_secret
  * @property string|null $access_token
  * @property TemuDefaultBehavior $default_behavior
- * @property string $currency
  * @property bool $sync_after_sync
  * @property int|null $mall_id
  * @property Carbon|null $token_expires_at
@@ -33,7 +32,6 @@ use Illuminate\Support\Carbon;
     'app_secret',
     'access_token',
     'default_behavior',
-    'currency',
     'sync_after_sync',
     'mall_id',
     'token_expires_at',
@@ -70,6 +68,14 @@ class TemuConnection extends Model
             && (float) $product->price > 0
             && filled($product->image_url)
             && $product->temu_listing->includes($this->default_behavior);
+    }
+
+    /**
+     * Get the currency prices are sent in, which is the shop's own.
+     */
+    public function currency(): string
+    {
+        return $this->shop->currency;
     }
 
     /**

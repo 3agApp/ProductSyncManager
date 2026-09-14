@@ -26,7 +26,6 @@ class NaldaConnectionFactory extends Factory
             'sftp_password' => fake()->password(16, 24),
             'default_behavior' => NaldaDefaultBehavior::IncludeAll,
             'country' => 'CH',
-            'currency' => 'CHF',
             'condition' => 'new',
             'price_mode' => NaldaPriceMode::AsIs,
             'delivery_time_days' => 3,

@@ -30,7 +30,6 @@ function temuSettings(array $overrides = []): array
         'app_secret' => 'secret-for-tests',
         'access_token' => 'token-for-tests',
         'default_behavior' => 'exclude_all',
-        'currency' => 'chf',
         'sync_after_sync' => '1',
         ...$overrides,
     ];
@@ -87,7 +86,7 @@ test('an owner can save the temu settings, with the secret and token encrypted',
         ->and($connection->access_token)->toBe('token-for-tests')
         ->and($raw->app_secret)->not->toBe('secret-for-tests')
         ->and($raw->access_token)->not->toBe('token-for-tests')
-        ->and($connection->currency)->toBe('CHF')
+        ->and($connection->currency())->toBe('CHF')
         ->and($connection->default_behavior)->toBe(TemuDefaultBehavior::ExcludeAll)
         ->and($connection->hasUsableCredentials())->toBeTrue();
 
@@ -170,10 +169,9 @@ test('the settings are validated', function () {
     $this->actingAs($user)
         ->patch(route('shops.temu.update', $user->currentShop), temuSettings([
             'app_key' => 'not a key!',
-            'currency' => 'SWISS',
             'default_behavior' => 'sometimes',
         ]))
-        ->assertSessionHasErrors(['app_key', 'currency', 'default_behavior']);
+        ->assertSessionHasErrors(['app_key', 'default_behavior']);
 });
 
 test('a member cannot change the temu settings or test the connection', function () {

@@ -12,6 +12,7 @@ export type NaldaPriceModeOption = {
 };
 
 export type ShopTax = {
+    currency: string;
     pricesIncludeTax: boolean;
     taxRate: string;
     naldaTaxRate: string;
@@ -38,7 +39,6 @@ export type NaldaConnection = {
     fileName: string;
     defaultBehavior: NaldaDefaultBehavior;
     country: string;
-    currency: string;
     condition: string;
     priceMode: NaldaPriceMode;
     deliveryTimeDays: number;

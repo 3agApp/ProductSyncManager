@@ -57,7 +57,7 @@ class BuildTemuProductPayload
                 'price' => [
                     'basePrice' => [
                         'amount' => $connection->price($product),
-                        'currency' => $connection->currency,
+                        'currency' => $connection->currency(),
                     ],
                 ],
                 'quantity' => $this->stock($product),

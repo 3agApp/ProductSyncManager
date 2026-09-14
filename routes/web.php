@@ -3,6 +3,7 @@
 use App\Http\Controllers\Catalog\BrandController;
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\Products\BulkProductController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Shops\ShopInvitationController;
@@ -58,6 +59,7 @@ Route::prefix('{current_shop}')
     });
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('invitations', [InvitationController::class, 'index'])->name('invitations.index');
     Route::post('invitations/{invitation}/accept', [ShopInvitationController::class, 'accept'])->name('invitations.accept');
     Route::delete('invitations/{invitation}', [ShopInvitationController::class, 'decline'])->name('invitations.decline');
 });

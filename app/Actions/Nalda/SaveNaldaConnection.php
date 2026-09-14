@@ -41,7 +41,6 @@ class SaveNaldaConnection
         $connection->file_name = trim((string) ($data['file_name'] ?? '')) ?: NaldaConnection::DEFAULT_FILE_NAME;
         $connection->default_behavior = NaldaDefaultBehavior::from((string) $data['default_behavior']);
         $connection->country = strtoupper((string) $data['country']);
-        $connection->currency = strtoupper((string) $data['currency']);
         $connection->condition = (string) $data['condition'];
         $connection->price_mode = NaldaPriceMode::from((string) $data['price_mode']);
         $connection->delivery_time_days = (int) $data['delivery_time_days'];

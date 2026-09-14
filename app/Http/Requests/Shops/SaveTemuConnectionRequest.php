@@ -28,7 +28,6 @@ class SaveTemuConnectionRequest extends FormRequest
         $this->merge([
             'sync_after_sync' => $this->boolean('sync_after_sync'),
             'app_key' => trim((string) $this->input('app_key')),
-            'currency' => strtoupper(trim((string) $this->input('currency'))),
         ]);
     }
 
@@ -47,7 +46,6 @@ class SaveTemuConnectionRequest extends FormRequest
             'app_secret' => ['nullable', 'string', 'max:255'],
             'access_token' => ['nullable', 'string', 'max:1024'],
             'default_behavior' => ['required', Rule::enum(TemuDefaultBehavior::class)],
-            'currency' => ['required', 'string', 'alpha', 'size:3'],
             'sync_after_sync' => ['required', 'boolean'],
         ];
     }

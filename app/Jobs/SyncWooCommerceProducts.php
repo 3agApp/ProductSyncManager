@@ -160,7 +160,7 @@ class SyncWooCommerceProducts implements ShouldQueue
     }
 
     /**
-     * Copy the store's tax settings onto the shop.
+     * Copy the store's tax settings and currency onto the shop.
      *
      * The credentials were already proven by the product count, so a refusal
      * here means the key may read products but not settings. Tax settings
@@ -173,6 +173,7 @@ class SyncWooCommerceProducts implements ShouldQueue
             $settings = [
                 'prices_include_tax' => $client->pricesIncludeTax(),
                 'tax_rate' => $client->standardTaxRate(),
+                'currency' => $client->currency(),
             ];
         } catch (WooCommerceAuthenticationException|WooCommerceRequestException $exception) {
             report($exception);

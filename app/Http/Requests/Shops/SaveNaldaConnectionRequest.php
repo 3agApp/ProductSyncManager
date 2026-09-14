@@ -29,7 +29,6 @@ class SaveNaldaConnectionRequest extends FormRequest
         $this->merge([
             'upload_after_sync' => $this->boolean('upload_after_sync'),
             'country' => strtoupper(trim((string) $this->input('country'))),
-            'currency' => strtoupper(trim((string) $this->input('currency'))),
         ]);
     }
 
@@ -51,7 +50,6 @@ class SaveNaldaConnectionRequest extends FormRequest
             'file_name' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*\.csv$/'],
             'default_behavior' => ['required', Rule::enum(NaldaDefaultBehavior::class)],
             'country' => ['required', 'string', 'alpha', 'size:2'],
-            'currency' => ['required', 'string', 'alpha', 'size:3'],
             'condition' => ['required', 'string', 'max:32'],
             'price_mode' => ['required', Rule::enum(NaldaPriceMode::class)],
             'delivery_time_days' => ['required', 'integer', 'min:1', 'max:365'],

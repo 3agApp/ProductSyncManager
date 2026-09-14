@@ -25,7 +25,6 @@ class TemuConnectionFactory extends Factory
             'app_secret' => fake()->regexify('[a-f0-9]{40}'),
             'access_token' => 'upl'.fake()->regexify('[a-z0-9]{56}'),
             'default_behavior' => TemuDefaultBehavior::IncludeAll,
-            'currency' => 'CHF',
             'sync_after_sync' => true,
         ];
     }

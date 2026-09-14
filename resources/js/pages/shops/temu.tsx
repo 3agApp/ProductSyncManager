@@ -365,23 +365,16 @@ export default function ShopTemu({
                                             </div>
 
                                             <div className="grid content-start gap-2">
-                                                <Label htmlFor="currency">
-                                                    Currency
-                                                </Label>
-                                                <Input
-                                                    id="currency"
-                                                    name="currency"
-                                                    maxLength={3}
-                                                    required
-                                                    className="w-24 uppercase"
+                                                <Label>Currency</Label>
+                                                <p
+                                                    className="flex h-9 items-center text-sm"
                                                     data-test="temu-currency"
-                                                    defaultValue={
-                                                        connection.currency
-                                                    }
-                                                />
-                                                <InputError
-                                                    message={errors.currency}
-                                                />
+                                                >
+                                                    {connection.currency}
+                                                </p>
+                                                <p className="text-muted-foreground text-xs">
+                                                    From the shop's settings.
+                                                </p>
                                             </div>
                                         </div>
 

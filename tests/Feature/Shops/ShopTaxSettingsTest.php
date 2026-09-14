@@ -58,3 +58,28 @@ test('the tax rate is validated', function (mixed $rate) {
         ->patch(route('shops.update', $shop), ['name' => $shop->name, 'tax_rate' => $rate])
         ->assertSessionHasErrors('tax_rate');
 })->with(['-1', '101', '8.123', 'eight', '']);
+
+test('an owner can change the currency', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    expect($shop->refresh()->currency)->toBe('CHF');
+
+    $this->actingAs($user)
+        ->patch(route('shops.update', $shop), ['name' => $shop->name, 'currency' => 'eur'])
+        ->assertSessionHasNoErrors();
+
+    expect($shop->refresh()->currency)->toBe('EUR');
+
+    $this->get(route('shops.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page->where('shop.currency', 'EUR'));
+});
+
+test('the currency is validated', function (string $currency) {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this->actingAs($user)
+        ->patch(route('shops.update', $shop), ['name' => $shop->name, 'currency' => $currency])
+        ->assertSessionHasErrors('currency');
+})->with(['', 'EURO', 'C1F']);

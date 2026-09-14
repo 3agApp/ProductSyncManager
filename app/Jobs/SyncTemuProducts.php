@@ -38,8 +38,17 @@ class SyncTemuProducts implements ShouldQueue
 
     /**
      * The number of seconds the job may run before timing out.
+     *
+     * Kept at the workers' own timeout, below the queue's retry_after, so a
+     * long run is never handed to a second worker while the first is still
+     * going. A run that needs longer stops early and continues instead.
      */
-    public int $timeout = 3600;
+    public int $timeout = 900;
+
+    /**
+     * Seconds a single attempt works before handing the rest to the next one.
+     */
+    private const int WORK_SECONDS = 780;
 
     /**
      * The number of unhandled exceptions to allow before failing.
@@ -75,6 +84,11 @@ class SyncTemuProducts implements ShouldQueue
     ];
 
     private TemuClient $client;
+
+    /**
+     * When this attempt stops sending and releases the job to carry on.
+     */
+    private int $deadline = 0;
 
     public function __construct(public TemuSyncRun $run)
     {
@@ -129,11 +143,19 @@ class SyncTemuProducts implements ShouldQueue
 
         $this->run->markRunning();
         $this->client = new TemuClient($connection);
+        $this->deadline = now()->getTimestamp() + self::WORK_SECONDS;
 
         try {
             $this->refreshStatuses($connection);
             $this->syncCatalog($connection, $payloads);
             $this->removeDeletedProducts();
+        } catch (TemuSyncOutOfTime) {
+            // Every product sent so far is recorded, so the next attempt
+            // skips what already matches and picks up where this one left off.
+            $this->persistProgress();
+            $this->release(1);
+
+            return;
         } catch (TemuException $exception) {
             $this->persistProgress();
 
@@ -230,6 +252,7 @@ class SyncTemuProducts implements ShouldQueue
             ->chunkById(self::CHUNK_SIZE, function (Collection $products) use ($connection, $payloads) {
                 foreach ($products as $product) {
                     /** @var Product $product */
+                    $this->stopIfOutOfTime();
                     $this->syncProduct($connection, $payloads, $product);
                 }
 
@@ -397,7 +420,7 @@ class SyncTemuProducts implements ShouldQueue
                 'reason' => self::PRICE_REASON,
                 'skuChangePriceBaseDTOList' => [[
                     'skuId' => $record->sku_id,
-                    'newSupplierPrice' => ['amount' => $price, 'currency' => $connection->currency],
+                    'newSupplierPrice' => ['amount' => $price, 'currency' => $connection->currency()],
                 ]],
             ]],
         ]);
@@ -492,17 +515,34 @@ class SyncTemuProducts implements ShouldQueue
     }
 
     /**
+     * Stop the attempt once its working time is used up.
+     *
+     * @throws TemuSyncOutOfTime
+     */
+    private function stopIfOutOfTime(): void
+    {
+        if (now()->getTimestamp() >= $this->deadline) {
+            throw new TemuSyncOutOfTime;
+        }
+    }
+
+    /**
      * Write the counters to the run.
+     *
+     * A continued run starts counting from zero again, so the counters are
+     * only ever raised, never lowered.
      */
     private function persistProgress(): void
     {
         $this->run->update([
-            'created_products' => $this->counters['created'],
-            'updated_products' => $this->counters['updated'],
-            'removed_products' => $this->counters['removed'],
-            'failed_products' => $this->counters['failed'],
-            'skipped_products' => $this->counters['skipped'],
+            'created_products' => $this->run->created_products + $this->counters['created'],
+            'updated_products' => $this->run->updated_products + $this->counters['updated'],
+            'removed_products' => $this->run->removed_products + $this->counters['removed'],
+            'failed_products' => $this->run->failed_products + $this->counters['failed'],
+            'skipped_products' => $this->run->skipped_products + $this->counters['skipped'],
         ]);
+
+        $this->counters = array_fill_keys(array_keys($this->counters), 0);
     }
 
     /**

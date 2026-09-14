@@ -26,7 +26,6 @@ function naldaSettings(array $overrides = []): array
         'file_name' => 'products.csv',
         'default_behavior' => 'include_all',
         'country' => 'ch',
-        'currency' => 'chf',
         'condition' => 'new',
         'price_mode' => 'as_is',
         'delivery_time_days' => 3,
@@ -58,7 +57,7 @@ test('the nalda page starts from the swiss defaults', function () {
             ->component('shops/nalda')
             ->where('connection.isConfigured', false)
             ->where('connection.country', 'CH')
-            ->where('connection.currency', 'CHF')
+            ->where('shopTax.currency', 'CHF')
             ->where('connection.priceMode', 'as_is')
             ->where('shopTax.pricesIncludeTax', true)
             ->where('shopTax.naldaTaxRate', '8.1')
@@ -87,7 +86,6 @@ test('an owner can save the nalda settings, with the password encrypted', functi
     expect($connection->sftp_password)->toBe('super-secret-password')
         ->and($raw->sftp_password)->not->toBe('super-secret-password')
         ->and($connection->country)->toBe('CH')
-        ->and($connection->currency)->toBe('CHF')
         ->and($connection->default_behavior)->toBe(NaldaDefaultBehavior::IncludeAll)
         ->and($connection->upload_after_sync)->toBeTrue();
 

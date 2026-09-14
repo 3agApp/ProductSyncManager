@@ -7,9 +7,7 @@ use App\Enums\ProductStatus;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
-use App\Models\ShopInvitation;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -47,7 +45,6 @@ class DashboardController extends Controller
                 ->all(),
             'lowStockThreshold' => Product::LOW_STOCK_THRESHOLD,
             'permissions' => $request->user()->toShopPermissions($currentShop),
-            'pendingInvitations' => $this->pendingInvitations($request),
             'activeSyncRun' => fn () => $this->activeSyncRun($currentShop),
         ]);
     }
@@ -81,33 +78,5 @@ class DashboardController extends Controller
             'brands' => $shop->brands()->count(),
             'categories' => $shop->categories()->count(),
         ];
-    }
-
-    /**
-     * Get the pending shop invitations for the authenticated user.
-     *
-     * @return Collection<int, array{code: string, inviterName: string, shop: array{name: string, slug: string}}>
-     */
-    private function pendingInvitations(Request $request): Collection
-    {
-        $email = strtolower($request->user()->email);
-
-        return ShopInvitation::query()
-            ->with(['inviter', 'shop'])
-            ->whereRaw('LOWER(email) = ?', [$email])
-            ->whereNull('accepted_at')
-            ->where(fn ($query) => $query
-                ->whereNull('expires_at')
-                ->orWhere('expires_at', '>=', now()))
-            ->latest()
-            ->get()
-            ->map(fn (ShopInvitation $invitation) => [
-                'code' => $invitation->code,
-                'inviterName' => $invitation->inviter->name,
-                'shop' => [
-                    'name' => $invitation->shop->name,
-                    'slug' => $invitation->shop->slug,
-                ],
-            ]);
     }
 }

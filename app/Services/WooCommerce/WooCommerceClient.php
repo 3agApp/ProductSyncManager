@@ -294,6 +294,21 @@ class WooCommerceClient
     }
 
     /**
+     * Read the store's currency, as a three-letter code.
+     *
+     * Null means the store gave no recognisable answer, so the caller keeps
+     * what it already has.
+     */
+    public function currency(): ?string
+    {
+        $currency = $this->get('settings/general/woocommerce_currency', [])->json('value');
+
+        return is_string($currency) && preg_match('/^[A-Za-z]{3}$/', $currency) === 1
+            ? strtoupper($currency)
+            : null;
+    }
+
+    /**
      * Read the store's standard tax rate, as a percentage with two decimals.
      *
      * A store can hold a rate per country; a Swiss rate is preferred, then

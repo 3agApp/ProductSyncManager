@@ -100,8 +100,9 @@ unfixable product does not cost a request every run.
 
 ### Prices
 
-Prices are sent exactly as the shop has them, in the currency on the Temu page
-(CHF by default, two decimals). On a listed product a new price is a
+Prices are sent exactly as the shop has them, in the shop's currency (set on
+the shop's settings page and copied from WooCommerce on every sync, CHF by
+default), with two decimals. It must be the currency of the Temu site. On a listed product a new price is a
 **price change request**: Temu can review it, suggest another price, or ask the
 seller to confirm it in Seller Center, so it may take a while to show. A
 refused change is shown on the product under **Needs attention**.

@@ -46,7 +46,11 @@ import type {
 } from '@/types';
 
 type Props = {
-    shop: Shop & { pricesIncludeTax: boolean; taxRate: string };
+    shop: Shop & {
+        pricesIncludeTax: boolean;
+        taxRate: string;
+        currency: string;
+    };
     members: ShopMember[];
     invitations: ShopInvitation[];
     permissions: ShopPermissions;
@@ -166,7 +170,7 @@ export default function ShopEdit({
                                             <InputError message={errors.type} />
                                         </div>
 
-                                        <div className="grid gap-6 sm:grid-cols-2">
+                                        <div className="grid gap-6 sm:grid-cols-3">
                                             <div className="grid gap-2">
                                                 <Label htmlFor="prices_include_tax">
                                                     Prices entered
@@ -222,10 +226,30 @@ export default function ShopEdit({
                                                     message={errors.tax_rate}
                                                 />
                                             </div>
+
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="currency">
+                                                    Currency
+                                                </Label>
+                                                <Input
+                                                    id="currency"
+                                                    name="currency"
+                                                    maxLength={3}
+                                                    className="uppercase"
+                                                    data-test="shop-currency"
+                                                    defaultValue={shop.currency}
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.currency}
+                                                />
+                                            </div>
                                         </div>
                                         <p className="text-muted-foreground -mt-3 text-xs">
                                             A WooCommerce sync replaces these
-                                            with the store's own tax settings.
+                                            with the store's own tax and
+                                            currency settings. Nalda and Temu
+                                            send prices in this currency.
                                         </p>
 
                                         <div className="flex flex-wrap items-center gap-4">

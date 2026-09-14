@@ -41,9 +41,11 @@ export type ShopInvitationContext = {
     shopName: string;
 };
 
-export type DashboardInvitation = {
+export type PendingInvitation = {
     code: string;
     inviterName: string;
+    roleLabel: string;
+    expiresAtDiff: string | null;
     shop: {
         name: string;
         slug: string;

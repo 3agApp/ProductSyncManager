@@ -21,10 +21,14 @@ beforeEach(function () {
  *
  * @param  array<int, array<string, mixed>>  $taxes
  */
-function fakeTaxStore(?string $pricesIncludeTax, array $taxes, int $settingsStatus = 200): void
+function fakeTaxStore(?string $pricesIncludeTax, array $taxes, int $settingsStatus = 200, ?string $currency = 'CHF'): void
 {
-    Http::fake(function (Request $request) use ($pricesIncludeTax, $taxes, $settingsStatus) {
+    Http::fake(function (Request $request) use ($pricesIncludeTax, $taxes, $settingsStatus, $currency) {
         $url = $request->url();
+
+        if (str_contains($url, 'settings/general/woocommerce_currency')) {
+            return Http::response(['id' => 'woocommerce_currency', 'value' => $currency], $settingsStatus);
+        }
 
         if (str_contains($url, 'settings/tax/woocommerce_prices_include_tax')) {
             return Http::response(['id' => 'woocommerce_prices_include_tax', 'value' => $pricesIncludeTax], $settingsStatus);
@@ -90,4 +94,24 @@ test('unrecognisable tax answers leave the shop unchanged', function () {
 
     expect($shop->prices_include_tax)->toBeFalse()
         ->and($shop->tax_rate)->toBe('2.60');
+});
+
+test('a sync copies the store\'s currency onto the shop', function () {
+    fakeTaxStore('yes', [], currency: 'eur');
+
+    $shop = Shop::factory()->create(['currency' => 'CHF']);
+
+    syncTaxShop($shop);
+
+    expect($shop->refresh()->currency)->toBe('EUR');
+});
+
+test('an unrecognisable currency leaves the shop\'s own', function () {
+    fakeTaxStore('yes', [], currency: 'Swiss francs');
+
+    $shop = Shop::factory()->create(['currency' => 'CHF']);
+
+    syncTaxShop($shop);
+
+    expect($shop->refresh()->currency)->toBe('CHF');
 });

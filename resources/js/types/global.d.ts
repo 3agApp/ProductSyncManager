@@ -14,6 +14,7 @@ declare module '@inertiajs/core' {
             auth: Auth;
             sidebarOpen: boolean;
             currentShop: Shop | null;
+            pendingInvitationsCount: number;
             shops: Shop[];
             shopTypes: ShopTypeOption[];
             [key: string]: unknown;

@@ -13,8 +13,8 @@ what Nalda lists.
    user and password are stored per shop. The password is encrypted.
    Credentials are optional — without them the file can still be downloaded.
 3. Set the product defaults Nalda requires and the catalog does not store:
-   country, currency, condition, delivery time and return period. The tax
-   rate comes from the shop's tax settings (see below).
+   country, condition, delivery time and return period. The tax rate and
+   currency come from the shop's settings (see below).
 4. Choose the **default product behavior**: include all products, or exclude
    all products.
 5. Press **Test connection**, then **Upload now**. With **Upload after every
@@ -88,7 +88,7 @@ under, ordered by name and joined with `>`, as the WooCommerce Nalda plugin
 does), `description` (falling
 back to the short description), `image_2_url` to `image_5_url` (the first four
 gallery images) and `delete_product`. Filled from the shop's Nalda settings:
-`country`, `condition`, `tax`, `currency`, `delivery_time_days` and
+`country`, `condition`, `tax`, `delivery_time_days` and
 `return_days`.
 
 ## Prices and tax
@@ -96,7 +96,8 @@ gallery images) and `delete_product`. Filled from the shop's Nalda settings:
 Every shop has tax settings on its settings page: whether prices are entered
 **including or excluding tax**, and its **standard tax rate**. A WooCommerce
 sync copies both from the store (`woocommerce_prices_include_tax` and the
-standard-class rate, preferring a Swiss one); a key that may not read tax
+standard-class rate, preferring a Swiss one), and its **currency**
+(`woocommerce_currency`); a key that may not read tax
 settings leaves what the shop has and the sync carries on.
 
 - `tax` is the rate Nalda accepts, `8.1` or `2.6`, closest to the shop's rate.

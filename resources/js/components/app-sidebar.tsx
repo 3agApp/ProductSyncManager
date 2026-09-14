@@ -1,5 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
-import { FolderTree, LayoutGrid, Package, Settings2, Tags } from 'lucide-react';
+import {
+    FolderTree,
+    LayoutGrid,
+    Mail,
+    Package,
+    Settings2,
+    Tags,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -16,12 +23,13 @@ import {
 import { dashboard } from '@/routes';
 import { index as brandsIndex } from '@/routes/brands';
 import { index as categoriesIndex } from '@/routes/categories';
+import { index as invitationsIndex } from '@/routes/invitations';
 import { index as productsIndex } from '@/routes/products';
 import { edit as editShop } from '@/routes/shops';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
-    const { currentShop } = usePage().props;
+    const { currentShop, pendingInvitationsCount } = usePage().props;
     const dashboardUrl = currentShop ? dashboard(currentShop.slug) : '/';
 
     const mainNavItems: NavItem[] = [
@@ -55,6 +63,17 @@ export function AppSidebar() {
                 icon: Settings2,
             },
         );
+    }
+
+    // Only shown while something is waiting, so it does not sit empty in
+    // everyone's menu.
+    if (pendingInvitationsCount > 0) {
+        mainNavItems.push({
+            title: 'Invitations',
+            href: invitationsIndex(),
+            icon: Mail,
+            badge: pendingInvitationsCount,
+        });
     }
 
     return (
