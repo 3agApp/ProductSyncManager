@@ -50,6 +50,51 @@ test('renaming a shop leaves its tax settings alone', function () {
         ->and($shop->tax_rate)->toBe('2.60');
 });
 
+test('a shop starts in swiss francs and shares its currency with every page', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    expect($shop->refresh()->currency)->toBe('CHF');
+
+    $this->actingAs($user)
+        ->get(route('shops.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('shop.currency', 'CHF')
+            ->where('currentShop.currency', 'CHF'));
+});
+
+test('the product form prices in the shop\'s currency', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $shop->update(['currency' => 'EUR']);
+
+    $this->actingAs($user)
+        ->get(route('products.create', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('shop.currency', 'EUR')
+            ->where('currentShop.currency', 'EUR'));
+});
+
+test('an owner can change the currency', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this->actingAs($user)
+        ->patch(route('shops.update', $shop), ['name' => $shop->name, 'currency' => ' eur '])
+        ->assertSessionHasNoErrors();
+
+    expect($shop->refresh()->currency)->toBe('EUR');
+});
+
+test('the currency is validated', function (string $currency) {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this->actingAs($user)
+        ->patch(route('shops.update', $shop), ['name' => $shop->name, 'currency' => $currency])
+        ->assertSessionHasErrors('currency');
+})->with(['', 'CH', 'CHFR', '12$']);
+
 test('the tax rate is validated', function (mixed $rate) {
     $user = User::factory()->create();
     $shop = $user->currentShop;

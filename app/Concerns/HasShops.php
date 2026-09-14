@@ -154,6 +154,7 @@ trait HasShops
             name: $shop->name,
             slug: $shop->slug,
             isPersonal: $shop->is_personal,
+            currency: $shop->currency,
             role: $role?->value,
             roleLabel: $role?->label(),
             isCurrent: $this->isCurrentShop($shop),

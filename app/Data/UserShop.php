@@ -9,6 +9,7 @@ readonly class UserShop
         public string $name,
         public string $slug,
         public bool $isPersonal,
+        public string $currency,
         public ?string $role,
         public ?string $roleLabel,
         public ?bool $isCurrent = null,

@@ -91,3 +91,22 @@ test('unrecognisable tax answers leave the shop unchanged', function () {
     expect($shop->prices_include_tax)->toBeFalse()
         ->and($shop->tax_rate)->toBe('2.60');
 });
+
+test('a sync copies the store\'s currency onto the shop', function (mixed $storeCurrency, string $expected) {
+    Http::fake(function (Request $request) use ($storeCurrency) {
+        if (str_contains($request->url(), 'settings/general/woocommerce_currency')) {
+            return Http::response(['id' => 'woocommerce_currency', 'value' => $storeCurrency], 200);
+        }
+
+        return Http::response([], 200, ['X-WP-Total' => '0', 'X-WP-TotalPages' => '1']);
+    });
+
+    $shop = Shop::factory()->create(['currency' => 'USD']);
+
+    expect(syncTaxShop($shop)->status)->toBe(SyncRunStatus::Completed)
+        ->and($shop->refresh()->currency)->toBe($expected);
+})->with([
+    'a valid code' => ['chf', 'CHF'],
+    'an unreadable value keeps the shop\'s own' => ['Swiss franc', 'USD'],
+    'no value keeps the shop\'s own' => [null, 'USD'],
+]);
