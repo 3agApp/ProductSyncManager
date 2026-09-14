@@ -121,16 +121,16 @@ task('deploy:npm', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Restart Queue Workers
+| Restart Horizon
 |--------------------------------------------------------------------------
 */
 
-// Sync jobs run up to 900 seconds; queue:restart lets workers finish the
-// current job before picking up the new release.
-task('queue:restart', function () {
-    writeln('🔄 Gracefully restarting queue workers...');
-    run('cd {{release_path}} && php artisan queue:restart');
-})->desc('Gracefully restart queue workers');
+// Sync jobs run up to 900 seconds; horizon:terminate lets workers finish the
+// current job, then Supervisor starts Horizon again on the new release.
+task('horizon:terminate', function () {
+    writeln('🔄 Gracefully terminating Horizon...');
+    run('cd {{release_path}} && php artisan horizon:terminate');
+})->desc('Gracefully terminate Horizon');
 
 /*
 |--------------------------------------------------------------------------
@@ -142,6 +142,6 @@ before('deploy', 'build:assets');
 
 after('deploy:vendors', 'upload:assets');
 
-after('deploy:symlink', 'queue:restart');
+after('deploy:symlink', 'horizon:terminate');
 
 after('deploy:failed', 'deploy:unlock');

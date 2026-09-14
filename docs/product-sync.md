@@ -71,14 +71,17 @@ A cron entry running the scheduler every minute:
 * * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-And a supervised queue worker:
+And Horizon, kept running by Supervisor. Queues run on Redis
+(`QUEUE_CONNECTION=redis`); worker processes and the 900-second timeout are set
+in `config/horizon.php`:
 
 ```
-php artisan queue:work --tries=3 --timeout=900
+php artisan horizon
 ```
 
-Locally, `composer dev` already runs both — it starts the server, a queue
-worker, the scheduler, logs and Vite.
+Locally, `composer dev` already runs both — it starts the server, Horizon,
+the scheduler, logs and Vite. The dashboard is at `/horizon`; outside `local`
+only the emails in `HorizonServiceProvider` can open it.
 
 ## Constraints worth knowing
 
@@ -126,8 +129,8 @@ URL if its previous address redirects.
 
 ## Near-real-time updates with webhooks
 
-Run `php artisan migrate` when deploying this feature and restart queue workers
-with `php artisan queue:restart`. Webhooks use the same queue worker as full syncs.
+Run `php artisan migrate` when deploying this feature and restart Horizon
+with `php artisan horizon:terminate`. Webhooks use the same queue as full syncs.
 Set `APP_URL` to the public HTTPS address of this app. The delivery URL must be
 reachable from the WooCommerce server; localhost cannot receive remote events.
 
