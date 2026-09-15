@@ -67,16 +67,6 @@ trait HasShops
     }
 
     /**
-     * Get the user's personal shop.
-     */
-    public function personalShop(): ?Shop
-    {
-        return $this->ownedShops()
-            ->where('shops.is_personal', true)
-            ->first();
-    }
-
-    /**
      * Switch to the given shop.
      */
     public function switchShop(Shop $shop): bool
@@ -91,6 +81,22 @@ trait HasShops
         URL::defaults(['current_shop' => $shop->slug]);
 
         return true;
+    }
+
+    /**
+     * Switch to the first remaining shop, or clear the current shop when the
+     * user no longer belongs to any.
+     */
+    public function switchToFallbackShop(?Shop $excluding = null): void
+    {
+        if ($shop = $this->fallbackShop($excluding)) {
+            $this->switchShop($shop);
+
+            return;
+        }
+
+        $this->update(['current_shop_id' => null]);
+        $this->setRelation('currentShop', null);
     }
 
     /**
@@ -153,7 +159,6 @@ trait HasShops
             id: $shop->id,
             name: $shop->name,
             slug: $shop->slug,
-            isPersonal: $shop->is_personal,
             currency: $shop->currency,
             role: $role?->value,
             roleLabel: $role?->label(),

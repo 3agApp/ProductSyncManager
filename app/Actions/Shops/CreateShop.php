@@ -13,13 +13,12 @@ class CreateShop
     /**
      * Create a new shop and add the user as owner.
      */
-    public function handle(User $user, string $name, ShopType $type = ShopType::Wordpress, bool $isPersonal = false): Shop
+    public function handle(User $user, string $name, ShopType $type = ShopType::Wordpress): Shop
     {
-        return DB::transaction(function () use ($user, $name, $type, $isPersonal) {
+        return DB::transaction(function () use ($user, $name, $type) {
             $shop = Shop::create([
                 'name' => $name,
                 'type' => $type,
-                'is_personal' => $isPersonal,
             ]);
 
             $membership = $shop->memberships()->create([

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import CreateShopModal from '@/components/create-shop-modal';
 import Heading from '@/components/heading';
 import LeaveShopModal from '@/components/leave-shop-modal';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -51,8 +50,7 @@ export default function ShopsIndex({ shops }: Props) {
 
                 <div className="space-y-3">
                     {shops.map((shop) => {
-                        const canLeaveShop =
-                            !shop.isPersonal && shop.role !== 'owner';
+                        const canLeaveShop = shop.role !== 'owner';
 
                         return (
                             <div
@@ -66,11 +64,6 @@ export default function ShopsIndex({ shops }: Props) {
                                             <span className="font-medium break-words">
                                                 {shop.name}
                                             </span>
-                                            {shop.isPersonal ? (
-                                                <Badge variant="secondary">
-                                                    Personal
-                                                </Badge>
-                                            ) : null}
                                         </div>
                                         <span className="text-muted-foreground text-sm">
                                             {shop.roleLabel}

@@ -20,7 +20,6 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string $slug
- * @property bool $is_personal
  * @property ShopType $type
  * @property bool $prices_include_tax
  * @property string $tax_rate
@@ -43,7 +42,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, TemuProduct> $temuProducts
  * @property-read Collection<int, TemuSyncRun> $temuSyncRuns
  */
-#[Fillable(['name', 'slug', 'is_personal', 'type', 'prices_include_tax', 'tax_rate', 'currency'])]
+#[Fillable(['name', 'slug', 'type', 'prices_include_tax', 'tax_rate', 'currency'])]
 class Shop extends Model
 {
     /** @use HasFactory<ShopFactory> */
@@ -239,7 +238,6 @@ class Shop extends Model
     protected function casts(): array
     {
         return [
-            'is_personal' => 'boolean',
             'type' => ShopType::class,
             'prices_include_tax' => 'boolean',
             'tax_rate' => 'decimal:2',

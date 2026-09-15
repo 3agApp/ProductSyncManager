@@ -6,6 +6,7 @@ use App\Enums\ShopRole;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -44,7 +45,7 @@ class UserFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function ($user) {
-            $shop = Shop::factory()->personal()->create([
+            $shop = Shop::factory()->create([
                 'name' => $user->name."'s Shop",
             ]);
 
@@ -54,6 +55,14 @@ class UserFactory extends Factory
 
             $user->switchShop($shop);
         });
+    }
+
+    /**
+     * Indicate that the user does not belong to a shop, as after registering.
+     */
+    public function withoutShop(): static
+    {
+        return $this->newInstance(['afterCreating' => new Collection]);
     }
 
     /**

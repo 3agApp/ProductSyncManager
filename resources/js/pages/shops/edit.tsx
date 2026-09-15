@@ -506,7 +506,7 @@ export default function ShopEdit({
                     </div>
                 ) : null}
 
-                {permissions.canDeleteShop && !shop.isPersonal ? (
+                {permissions.canDeleteShop ? (
                     <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                         <Heading
                             variant="small"
@@ -556,7 +556,7 @@ export default function ShopEdit({
                 onOpenChange={setCancelInvitationDialogOpen}
             />
 
-            {permissions.canDeleteShop && !shop.isPersonal ? (
+            {permissions.canDeleteShop ? (
                 <DeleteShopModal
                     shop={shop}
                     open={deleteDialogOpen}

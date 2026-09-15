@@ -8,7 +8,6 @@ readonly class UserShop
         public int $id,
         public string $name,
         public string $slug,
-        public bool $isPersonal,
         public string $currency,
         public ?string $role,
         public ?string $roleLabel,

@@ -20,7 +20,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { dashboard, onboarding } from '@/routes';
 import { index as brandsIndex } from '@/routes/brands';
 import { index as categoriesIndex } from '@/routes/categories';
 import { index as invitationsIndex } from '@/routes/invitations';
@@ -30,7 +30,9 @@ import type { NavItem } from '@/types';
 
 export function AppSidebar() {
     const { currentShop, pendingInvitationsCount } = usePage().props;
-    const dashboardUrl = currentShop ? dashboard(currentShop.slug) : '/';
+    const dashboardUrl = currentShop
+        ? dashboard(currentShop.slug)
+        : onboarding();
 
     const mainNavItems: NavItem[] = [
         {

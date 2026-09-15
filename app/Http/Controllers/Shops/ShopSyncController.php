@@ -43,7 +43,6 @@ class ShopSyncController extends Controller
                 'id' => $shop->id,
                 'name' => $shop->name,
                 'slug' => $shop->slug,
-                'isPersonal' => $shop->is_personal,
                 'type' => $shop->type->value,
                 'typeLabel' => $shop->type->label(),
             ],

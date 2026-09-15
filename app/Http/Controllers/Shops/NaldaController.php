@@ -43,7 +43,6 @@ class NaldaController extends Controller
                 'id' => $shop->id,
                 'name' => $shop->name,
                 'slug' => $shop->slug,
-                'isPersonal' => $shop->is_personal,
             ],
             'connection' => fn () => $this->connectionProps($shop->naldaConnection),
             'catalog' => fn () => [

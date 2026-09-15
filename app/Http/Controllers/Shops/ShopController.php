@@ -60,7 +60,6 @@ class ShopController extends Controller
                 'id' => $shop->id,
                 'name' => $shop->name,
                 'slug' => $shop->slug,
-                'isPersonal' => $shop->is_personal,
                 'type' => $shop->type->value,
                 'typeLabel' => $shop->type->label(),
                 'pricesIncludeTax' => $shop->prices_include_tax,
@@ -140,21 +139,17 @@ class ShopController extends Controller
 
         $user = $request->user();
 
-        $fallbackShop = $user->isCurrentShop($shop)
-            ? $user->fallbackShop($shop)
-            : null;
-
         $shop->memberships()
             ->where('user_id', $user->id)
             ->delete();
 
-        if ($fallbackShop) {
-            $user->switchShop($fallbackShop);
+        if ($user->isCurrentShop($shop)) {
+            $user->switchToFallbackShop($shop);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('You left the shop ":name"', ['name' => $shop->name])]);
 
-        return to_route('shops.index');
+        return to_route($user->currentShop ? 'shops.index' : 'onboarding');
     }
 
     /**
@@ -163,26 +158,23 @@ class ShopController extends Controller
     public function destroy(DeleteShopRequest $request, Shop $shop): RedirectResponse
     {
         $user = $request->user();
-        $fallbackShop = $user->isCurrentShop($shop)
-            ? $user->fallbackShop($shop)
-            : null;
 
         DB::transaction(function () use ($user, $shop) {
             User::where('current_shop_id', $shop->id)
                 ->where('id', '!=', $user->id)
-                ->each(fn (User $affectedUser) => $affectedUser->switchShop($affectedUser->personalShop()));
+                ->each(fn (User $affectedUser) => $affectedUser->switchToFallbackShop($shop));
 
             $shop->invitations()->delete();
             $shop->memberships()->delete();
             $shop->delete();
         });
 
-        if ($fallbackShop) {
-            $user->switchShop($fallbackShop);
+        if ($user->isCurrentShop($shop)) {
+            $user->switchToFallbackShop($shop);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Shop deleted.')]);
 
-        return to_route('shops.index');
+        return to_route($user->currentShop ? 'shops.index' : 'onboarding');
     }
 }
