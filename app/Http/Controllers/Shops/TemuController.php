@@ -46,7 +46,6 @@ class TemuController extends Controller
                 'id' => $shop->id,
                 'name' => $shop->name,
                 'slug' => $shop->slug,
-                'isPersonal' => $shop->is_personal,
             ],
             'connection' => fn () => $this->connectionProps($shop->temuConnection),
             'statusCounts' => fn () => $this->statusCounts($shop),

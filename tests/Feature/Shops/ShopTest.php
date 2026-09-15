@@ -28,25 +28,7 @@ test('shops can be created', function () {
 
     $this->assertDatabaseHas('shops', [
         'name' => 'Test Shop',
-        'is_personal' => false,
     ]);
-});
-
-test('personal shop returns the shop owned by the user', function () {
-    $otherUser = User::factory()->create();
-    $user = User::factory()->make();
-    $user->save();
-
-    $otherUser->personalShop()->members()->attach($user, [
-        'role' => ShopRole::Member->value,
-    ]);
-
-    $personalShop = Shop::factory()->personal()->create();
-    $personalShop->members()->attach($user, [
-        'role' => ShopRole::Owner->value,
-    ]);
-
-    expect($personalShop->is($user->personalShop()))->toBeTrue();
 });
 
 test('shop slug uses next available suffix', function () {
@@ -192,13 +174,9 @@ test('deleting current shop switches to alphabetically first remaining shop', fu
     expect($user->fresh()->current_shop_id)->toEqual($alphaShop->id);
 });
 
-test('deleting current shop falls back to personal shop when alphabetically first', function () {
+test('deleting the only shop clears the current shop and sends the owner to onboarding', function () {
     $user = User::factory()->create();
-    $personalShop = $user->personalShop();
-    $shop = Shop::factory()->create(['name' => 'Zulu Shop']);
-    $shop->members()->attach($user, ['role' => ShopRole::Owner->value]);
-
-    $user->update(['current_shop_id' => $shop->id]);
+    $shop = $user->currentShop;
 
     $response = $this
         ->actingAs($user)
@@ -206,22 +184,20 @@ test('deleting current shop falls back to personal shop when alphabetically firs
             'name' => $shop->name,
         ]);
 
-    $response->assertRedirect();
+    $response->assertRedirect(route('onboarding'));
 
     $this->assertSoftDeleted('shops', [
         'id' => $shop->id,
     ]);
 
-    expect($user->fresh()->current_shop_id)->toEqual($personalShop->id);
+    expect($user->fresh()->current_shop_id)->toBeNull();
 });
 
 test('deleting non current shop leaves current shop unchanged', function () {
     $user = User::factory()->create();
-    $personalShop = $user->personalShop();
+    $currentShop = $user->currentShop;
     $shop = Shop::factory()->create();
     $shop->members()->attach($user, ['role' => ShopRole::Owner->value]);
-
-    $user->update(['current_shop_id' => $personalShop->id]);
 
     $response = $this
         ->actingAs($user)
@@ -235,10 +211,10 @@ test('deleting non current shop leaves current shop unchanged', function () {
         'id' => $shop->id,
     ]);
 
-    expect($user->fresh()->current_shop_id)->toEqual($personalShop->id);
+    expect($user->fresh()->current_shop_id)->toEqual($currentShop->id);
 });
 
-test('members can leave non personal shops', function () {
+test('members can leave shops', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $shop = Shop::factory()->create();
@@ -282,17 +258,21 @@ test('leaving current shop switches to alphabetically first remaining shop', fun
     expect($member->fresh()->current_shop_id)->toEqual($alphaShop->id);
 });
 
-test('personal shops cannot be left', function () {
-    $user = User::factory()->create();
-    $personalShop = $user->personalShop();
+test('leaving the only shop clears the current shop and sends the member to onboarding', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->withoutShop()->create();
+    $shop = $owner->currentShop;
+
+    $shop->members()->attach($member, ['role' => ShopRole::Member->value]);
+    $member->update(['current_shop_id' => $shop->id]);
 
     $response = $this
-        ->actingAs($user)
-        ->delete(route('shops.leave', $personalShop));
+        ->actingAs($member)
+        ->delete(route('shops.leave', $shop));
 
-    $response->assertForbidden();
+    $response->assertRedirect(route('onboarding'));
 
-    expect($user->fresh()->belongsToShop($personalShop))->toBeTrue();
+    expect($member->fresh()->current_shop_id)->toBeNull();
 });
 
 test('shop owners cannot leave their shop', function () {
@@ -321,16 +301,20 @@ test('users cannot leave shops they dont belong to', function () {
     $response->assertForbidden();
 });
 
-test('deleting shop switches other affected users to their personal shop', function () {
+test('deleting shop switches other affected users to a remaining shop', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
+    $memberShop = $member->currentShop;
+    $stranded = User::factory()->withoutShop()->create();
 
     $shop = Shop::factory()->create();
     $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
     $shop->members()->attach($member, ['role' => ShopRole::Member->value]);
+    $shop->members()->attach($stranded, ['role' => ShopRole::Member->value]);
 
     $owner->update(['current_shop_id' => $shop->id]);
     $member->update(['current_shop_id' => $shop->id]);
+    $stranded->update(['current_shop_id' => $shop->id]);
 
     $response = $this
         ->actingAs($owner)
@@ -338,28 +322,10 @@ test('deleting shop switches other affected users to their personal shop', funct
             'name' => $shop->name,
         ]);
 
-    $response->assertRedirect();
+    $response->assertRedirect(route('shops.index'));
 
-    expect($member->fresh()->current_shop_id)->toEqual($member->personalShop()->id);
-});
-
-test('personal shops cannot be deleted', function () {
-    $user = User::factory()->create();
-
-    $personalShop = $user->personalShop();
-
-    $response = $this
-        ->actingAs($user)
-        ->delete(route('shops.destroy', $personalShop), [
-            'name' => $personalShop->name,
-        ]);
-
-    $response->assertForbidden();
-
-    $this->assertDatabaseHas('shops', [
-        'id' => $personalShop->id,
-        'deleted_at' => null,
-    ]);
+    expect($member->fresh()->current_shop_id)->toEqual($memberShop->id)
+        ->and($stranded->fresh()->current_shop_id)->toBeNull();
 });
 
 test('shops cannot be deleted by non owners', function () {

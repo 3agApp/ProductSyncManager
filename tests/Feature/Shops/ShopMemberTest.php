@@ -110,10 +110,10 @@ test('shop member role cannot be set to owner', function () {
     expect($shop->members()->where('user_id', $member->id)->first()->pivot->role->value)->toEqual(ShopRole::Member->value);
 });
 
-test('removed member current shop is set to personal shop', function () {
+test('removed member current shop is set to a remaining shop', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
-    $personalShop = $member->personalShop();
+    $memberShop = $member->currentShop;
     $shop = Shop::factory()->create();
 
     $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
@@ -125,5 +125,20 @@ test('removed member current shop is set to personal shop', function () {
         ->actingAs($owner)
         ->delete(route('shops.members.destroy', [$shop, $member]));
 
-    expect($member->fresh()->current_shop_id)->toEqual($personalShop->id);
+    expect($member->fresh()->current_shop_id)->toEqual($memberShop->id);
+});
+
+test('removed member without another shop has no current shop', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->withoutShop()->create();
+    $shop = $owner->currentShop;
+
+    $shop->members()->attach($member, ['role' => ShopRole::Member->value]);
+    $member->update(['current_shop_id' => $shop->id]);
+
+    $this
+        ->actingAs($owner)
+        ->delete(route('shops.members.destroy', [$shop, $member]));
+
+    expect($member->fresh()->current_shop_id)->toBeNull();
 });

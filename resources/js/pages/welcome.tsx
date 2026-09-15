@@ -14,7 +14,7 @@ import AppLogoIcon from '@/components/app-logo-icon';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { ProductStockLevel } from '@/components/product-stock-level';
 import { Button } from '@/components/ui/button';
-import { dashboard, home, login, register } from '@/routes';
+import { dashboard, home, login, onboarding, register } from '@/routes';
 import type { ProductStatus } from '@/types';
 
 const features = [
@@ -89,7 +89,9 @@ const statusLabels: Record<ProductStatus, string> = {
 
 export default function Welcome() {
     const { auth, currentShop, name } = usePage().props;
-    const dashboardUrl = currentShop ? dashboard(currentShop.slug) : '/';
+    const dashboardUrl = currentShop
+        ? dashboard(currentShop.slug)
+        : onboarding();
 
     return (
         <>

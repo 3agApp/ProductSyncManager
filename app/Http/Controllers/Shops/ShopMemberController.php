@@ -46,7 +46,7 @@ class ShopMemberController extends Controller
             ->delete();
 
         if ($user->isCurrentShop($shop)) {
-            $user->switchShop($user->personalShop());
+            $user->switchToFallbackShop($shop);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Member removed.')]);

@@ -6,7 +6,6 @@ export type Shop = {
     id: number;
     name: string;
     slug: string;
-    isPersonal: boolean;
     currency: string;
     type?: ShopType;
     typeLabel?: string;

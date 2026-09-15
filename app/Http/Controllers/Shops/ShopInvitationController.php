@@ -117,6 +117,10 @@ class ShopInvitationController extends Controller
 
         $morePending = ShopInvitation::query()->pendingFor($request->user()->email)->exists();
 
-        return to_route($morePending ? 'invitations.index' : 'dashboard');
+        if ($morePending) {
+            return to_route('invitations.index');
+        }
+
+        return to_route($request->user()->currentShop ? 'dashboard' : 'onboarding');
     }
 }

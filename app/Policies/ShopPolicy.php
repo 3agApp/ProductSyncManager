@@ -45,8 +45,7 @@ class ShopPolicy
      */
     public function leave(User $user, Shop $shop): bool
     {
-        return ! $shop->is_personal
-            && $user->belongsToShop($shop)
+        return $user->belongsToShop($shop)
             && ! $user->ownsShop($shop);
     }
 
@@ -111,6 +110,6 @@ class ShopPolicy
      */
     public function delete(User $user, Shop $shop): bool
     {
-        return ! $shop->is_personal && $user->hasShopPermission($shop, ShopPermission::DeleteShop);
+        return $user->hasShopPermission($shop, ShopPermission::DeleteShop);
     }
 }

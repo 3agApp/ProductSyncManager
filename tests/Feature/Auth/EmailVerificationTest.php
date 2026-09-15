@@ -15,7 +15,7 @@ test('email verification screen can be rendered', function () {
 
 test('email can be verified', function () {
     $user = User::factory()->unverified()->create();
-    $shop = $user->personalShop();
+    $shop = $user->currentShop;
 
     Event::fake();
 
@@ -30,6 +30,19 @@ test('email can be verified', function () {
     Event::assertDispatched(Verified::class);
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     $response->assertRedirect("/{$shop->slug}/dashboard?verified=1");
+});
+
+test('verifying email without a shop redirects to onboarding', function () {
+    $user = User::factory()->unverified()->withoutShop()->create();
+
+    $verificationUrl = URL::temporarySignedRoute(
+        'verification.verify',
+        now()->addMinutes(60),
+        ['id' => $user->id, 'hash' => sha1($user->email)],
+    );
+
+    $this->actingAs($user)->get($verificationUrl)
+        ->assertRedirect(route('onboarding', absolute: false).'?verified=1');
 });
 
 test('email is not verified with invalid hash', function () {
@@ -79,7 +92,7 @@ test('verified user is redirected to dashboard from verification prompt', functi
 
 test('already verified user visiting verification link is redirected without firing event again', function () {
     $user = User::factory()->create();
-    $shop = $user->personalShop();
+    $shop = $user->currentShop;
 
     Event::fake();
 

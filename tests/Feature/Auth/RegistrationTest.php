@@ -44,5 +44,9 @@ test('new users can register', function () {
     $this->assertAuthenticated();
 
     $user = User::where('email', 'test@example.com')->first();
-    $response->assertRedirect(route('dashboard'));
+
+    expect($user->shops()->exists())->toBeFalse()
+        ->and($user->current_shop_id)->toBeNull();
+
+    $response->assertRedirect(route('onboarding'));
 });

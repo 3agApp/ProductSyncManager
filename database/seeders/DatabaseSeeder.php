@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        $products = Product::factory()->for($user->personalShop());
+        $products = Product::factory()->for($user->currentShop);
 
         $products->count(16)->branded()->categorized()->create();
         $products->count(4)->draft()->branded()->categorized()->create();

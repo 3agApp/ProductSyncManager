@@ -3,6 +3,7 @@
 use App\Http\Controllers\Catalog\BrandController;
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Products\BulkProductController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Shops\ShopInvitationController;
@@ -30,6 +31,10 @@ Route::post('webhooks/woocommerce/{connection}', WooCommerceWebhookController::c
     ->name('woocommerce.webhook');
 
 Route::inertia('/', 'welcome')->name('home');
+
+Route::get('onboarding', OnboardingController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('onboarding');
 
 Route::prefix('{current_shop}')
     ->middleware(['auth', 'verified', EnsureShopMembership::class])
