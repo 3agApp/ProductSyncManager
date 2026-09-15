@@ -101,6 +101,16 @@ class Shop extends Model
     }
 
     /**
+     * Get the owner's membership of this shop.
+     *
+     * @return HasOne<Membership, $this>
+     */
+    public function ownerMembership(): HasOne
+    {
+        return $this->hasOne(Membership::class)->where('role', ShopRole::Owner->value);
+    }
+
+    /**
      * Get all memberships for this shop.
      *
      * @return HasMany<Membership, $this>

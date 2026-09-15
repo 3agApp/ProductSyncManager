@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Shops;
 
 use App\Actions\Shops\CreateShop;
+use App\Actions\Shops\DeleteShop;
 use App\Enums\ShopRole;
 use App\Enums\ShopType;
 use App\Http\Controllers\Controller;
@@ -155,23 +156,11 @@ class ShopController extends Controller
     /**
      * Delete the specified shop.
      */
-    public function destroy(DeleteShopRequest $request, Shop $shop): RedirectResponse
+    public function destroy(DeleteShopRequest $request, Shop $shop, DeleteShop $deleteShop): RedirectResponse
     {
-        $user = $request->user();
+        $deleteShop->handle($shop);
 
-        DB::transaction(function () use ($user, $shop) {
-            User::where('current_shop_id', $shop->id)
-                ->where('id', '!=', $user->id)
-                ->each(fn (User $affectedUser) => $affectedUser->switchToFallbackShop($shop));
-
-            $shop->invitations()->delete();
-            $shop->memberships()->delete();
-            $shop->delete();
-        });
-
-        if ($user->isCurrentShop($shop)) {
-            $user->switchToFallbackShop($shop);
-        }
+        $user = $request->user()->refresh();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Shop deleted.')]);
 

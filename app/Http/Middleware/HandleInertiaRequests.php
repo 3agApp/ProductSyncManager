@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\ShopType;
 use App\Models\ShopInvitation;
+use App\Support\Impersonation;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -44,7 +45,9 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $user,
+                'isAdmin' => (bool) $user?->isAdmin(),
             ],
+            'impersonating' => fn () => app(Impersonation::class)->isImpersonating(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'currentShop' => fn () => $user?->currentShop ? $user->toUserShop($user->currentShop) : null,
             'shops' => fn () => $user?->toUserShops(includeCurrent: true) ?? [],
