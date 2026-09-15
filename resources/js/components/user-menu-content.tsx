@@ -1,5 +1,5 @@
-import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { LogOut, Settings, ShieldCheck } from 'lucide-react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -18,6 +18,7 @@ type Props = {
 
 export function UserMenuContent({ user }: Props) {
     const cleanup = useMobileNavigation();
+    const { auth } = usePage().props;
 
     const handleLogout = () => {
         cleanup();
@@ -44,6 +45,19 @@ export function UserMenuContent({ user }: Props) {
                         Settings
                     </Link>
                 </DropdownMenuItem>
+                {auth.isAdmin ? (
+                    <DropdownMenuItem asChild>
+                        {/* The admin panel is not part of the Inertia app, so use a plain link. */}
+                        <a
+                            className="block w-full cursor-pointer"
+                            href="/admin"
+                            data-test="admin-panel-link"
+                        >
+                            <ShieldCheck className="mr-2" />
+                            Admin panel
+                        </a>
+                    </DropdownMenuItem>
+                ) : null}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

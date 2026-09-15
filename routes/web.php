@@ -3,6 +3,7 @@
 use App\Http\Controllers\Catalog\BrandController;
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Products\BulkProductController;
 use App\Http\Controllers\Products\ProductController;
@@ -31,6 +32,10 @@ Route::post('webhooks/woocommerce/{connection}', WooCommerceWebhookController::c
     ->name('woocommerce.webhook');
 
 Route::inertia('/', 'welcome')->name('home');
+
+Route::delete('impersonation', [ImpersonationController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('impersonation.destroy');
 
 Route::get('onboarding', OnboardingController::class)
     ->middleware(['auth', 'verified'])
