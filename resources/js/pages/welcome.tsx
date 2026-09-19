@@ -116,10 +116,17 @@ export default function Welcome() {
                         ) : (
                             <>
                                 <Button variant="ghost" asChild>
-                                    <Link href={login()}>Log in</Link>
+                                    <a href={login.url()} data-test="sso-login">
+                                        Log in
+                                    </a>
                                 </Button>
                                 <Button asChild>
-                                    <Link href={register()}>Get started</Link>
+                                    <a
+                                        href={register.url()}
+                                        data-test="sso-get-started"
+                                    >
+                                        Get started
+                                    </a>
                                 </Button>
                             </>
                         )}
@@ -142,18 +149,29 @@ export default function Welcome() {
                         </p>
                         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                             <Button size="lg" asChild>
-                                <Link
-                                    href={auth.user ? dashboardUrl : register()}
-                                >
-                                    {auth.user
-                                        ? 'Open dashboard'
-                                        : 'Start for free'}
-                                    <ArrowRight />
-                                </Link>
+                                {auth.user ? (
+                                    <Link href={dashboardUrl}>
+                                        Open dashboard
+                                        <ArrowRight />
+                                    </Link>
+                                ) : (
+                                    <a
+                                        href={register.url()}
+                                        data-test="sso-start"
+                                    >
+                                        Start for free
+                                        <ArrowRight />
+                                    </a>
+                                )}
                             </Button>
                             {auth.user ? null : (
                                 <Button size="lg" variant="outline" asChild>
-                                    <Link href={login()}>Log in</Link>
+                                    <a
+                                        href={login.url()}
+                                        data-test="sso-login-secondary"
+                                    >
+                                        Log in
+                                    </a>
                                 </Button>
                             )}
                         </div>

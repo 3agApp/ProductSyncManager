@@ -72,13 +72,13 @@ test('creating a first shop makes it the current shop', function () {
         ->and($user->fresh()->ownsShop($shop))->toBeTrue();
 });
 
-test('users without a shop are sent to onboarding after logging in', function () {
-    $user = User::factory()->withoutShop()->create();
+test('users without a shop are sent to onboarding after signing in', function () {
+    $user = User::factory()->withoutShop()->create(['sso_id' => 'oidc-sub-onboarding']);
 
-    $this->post(route('login.store'), [
-        'email' => $user->email,
-        'password' => 'password',
-    ])->assertRedirect(route('onboarding'));
+    signInThroughAccounts(['sub' => 'oidc-sub-onboarding', 'email' => $user->email]);
+
+    $this->get(route('auth.accounts.callback', ['code' => 'code', 'state' => 'state']))
+        ->assertRedirect(route('onboarding'));
 });
 
 test('declining the last invitation without a shop returns to onboarding', function () {

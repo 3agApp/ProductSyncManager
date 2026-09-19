@@ -5,7 +5,6 @@ namespace Tests;
 use App\Services\Network\HostResolver;
 use Closure;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Laravel\Fortify\Features;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -20,13 +19,6 @@ abstract class TestCase extends BaseTestCase
 
         // Tests never touch real DNS.
         $this->resolveHostsTo([self::PUBLIC_ADDRESS]);
-    }
-
-    protected function skipUnlessFortifyHas(string $feature, ?string $message = null): void
-    {
-        if (! Features::enabled($feature)) {
-            $this->markTestSkipped($message ?? "Fortify feature [{$feature}] is not enabled.");
-        }
     }
 
     /**
