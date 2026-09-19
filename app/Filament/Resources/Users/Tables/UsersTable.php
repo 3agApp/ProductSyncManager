@@ -30,12 +30,9 @@ class UsersTable
                 IconColumn::make('email_verified_at')
                     ->label('Verified')
                     ->boolean(),
-                IconColumn::make('two_factor_confirmed_at')
-                    ->label('2FA')
-                    ->boolean(),
-                TextColumn::make('passkeys_count')
-                    ->label('Passkeys')
-                    ->sortable()
+                IconColumn::make('sso_id')
+                    ->label('SSO linked')
+                    ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('shops_count')
                     ->label('Shops')
@@ -49,8 +46,8 @@ class UsersTable
                 TernaryFilter::make('email_verified_at')
                     ->label('Email verified')
                     ->nullable(),
-                TernaryFilter::make('two_factor_confirmed_at')
-                    ->label('Two-factor enabled')
+                TernaryFilter::make('sso_id')
+                    ->label('Linked to 3AG Accounts')
                     ->nullable(),
                 Filter::make('without_shop')
                     ->label('Without a shop')
@@ -61,7 +58,6 @@ class UsersTable
                 ActionGroup::make([
                     EditAction::make(),
                     UserActions::impersonate(),
-                    UserActions::resetTwoFactor(),
                     UserActions::delete(),
                 ]),
             ]);

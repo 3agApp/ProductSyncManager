@@ -3,12 +3,10 @@
 namespace App\Filament\Resources\Users;
 
 use App\Actions\Users\DeleteUser;
-use App\Actions\Users\ResetTwoFactorAuthentication;
 use App\Models\User;
 use App\Support\Impersonation;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -35,27 +33,6 @@ class UserActions
                 app(Impersonation::class)->start($admin, $record);
 
                 return redirect()->route('onboarding');
-            });
-    }
-
-    public static function resetTwoFactor(): Action
-    {
-        return Action::make('resetTwoFactor')
-            ->label('Reset 2FA & passkeys')
-            ->icon(Heroicon::OutlinedKey)
-            ->color('warning')
-            ->requiresConfirmation()
-            ->modalDescription('Turns off two-factor authentication and removes every passkey, so the user can sign in with just their password.')
-            ->visible(fn (User $record): bool => $record->two_factor_confirmed_at !== null
-                || $record->two_factor_secret !== null
-                || $record->passkeys()->exists())
-            ->action(function (User $record): void {
-                app(ResetTwoFactorAuthentication::class)->handle($record);
-
-                Notification::make()
-                    ->title('Two-factor authentication and passkeys reset')
-                    ->success()
-                    ->send();
             });
     }
 

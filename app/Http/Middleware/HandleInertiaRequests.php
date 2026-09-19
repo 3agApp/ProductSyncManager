@@ -55,6 +55,7 @@ class HandleInertiaRequests extends Middleware
             'pendingInvitationsCount' => fn () => $user
                 ? ShopInvitation::query()->pendingFor($user->email)->count()
                 : 0,
+            'accountsUrl' => rtrim((string) config('oidc.connections.accounts.base_url'), '/'),
         ];
     }
 }

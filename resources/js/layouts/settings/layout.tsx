@@ -1,4 +1,4 @@
-import { UserRound, ShieldCheck, Store, Palette } from 'lucide-react';
+import { UserRound, Store, Palette } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
 import Heading from '@/components/heading';
@@ -7,7 +7,6 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit } from '@/routes/profile';
-import { edit as editSecurity } from '@/routes/security';
 import { index as shops } from '@/routes/shops';
 import type { NavItem } from '@/types';
 
@@ -16,11 +15,6 @@ const sidebarNavItems: NavItem[] = [
         title: 'Profile',
         href: edit(),
         icon: UserRound,
-    },
-    {
-        title: 'Security',
-        href: editSecurity(),
-        icon: ShieldCheck,
     },
     {
         title: 'Shops',

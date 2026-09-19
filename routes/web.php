@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Auth\AccountsSsoController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Catalog\BrandController;
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\DashboardController;
@@ -32,6 +35,20 @@ Route::post('webhooks/woocommerce/{connection}', WooCommerceWebhookController::c
     ->name('woocommerce.webhook');
 
 Route::inertia('/', 'welcome')->name('home');
+
+Route::middleware('guest')->group(function () {
+    Route::get('login', LoginController::class)->name('login');
+    Route::get('register', LoginController::class)->name('register');
+
+    Route::get('auth/accounts/redirect', [AccountsSsoController::class, 'redirect'])
+        ->name('auth.accounts.redirect');
+    Route::get('auth/accounts/callback', [AccountsSsoController::class, 'callback'])
+        ->name('auth.accounts.callback');
+});
+
+Route::post('logout', LogoutController::class)
+    ->middleware('auth')
+    ->name('logout');
 
 Route::delete('impersonation', [ImpersonationController::class, 'destroy'])
     ->middleware('auth')

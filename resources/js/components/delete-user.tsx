@@ -1,9 +1,7 @@
 import { Form } from '@inertiajs/react';
-import { useRef } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,11 +12,10 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function DeleteUser() {
-    const passwordInput = useRef<HTMLInputElement>(null);
-
     return (
         <div className="space-y-6">
             <Heading
@@ -49,9 +46,9 @@ export default function DeleteUser() {
                         </DialogTitle>
                         <DialogDescription>
                             Once your account is deleted, all of its resources
-                            and data will also be permanently deleted. Please
-                            enter your password to confirm you would like to
-                            permanently delete your account.
+                            and data will also be permanently deleted. Type{' '}
+                            <span className="font-semibold">DELETE</span> to
+                            confirm.
                         </DialogDescription>
 
                         <Form
@@ -59,29 +56,26 @@ export default function DeleteUser() {
                             options={{
                                 preserveScroll: true,
                             }}
-                            onError={() => passwordInput.current?.focus()}
                             resetOnSuccess
                             className="space-y-6"
                         >
                             {({ resetAndClearErrors, processing, errors }) => (
                                 <>
                                     <div className="grid gap-2">
-                                        <Label
-                                            htmlFor="password"
-                                            className="sr-only"
-                                        >
-                                            Password
+                                        <Label htmlFor="confirmation">
+                                            Type DELETE to confirm
                                         </Label>
 
-                                        <PasswordInput
-                                            id="password"
-                                            name="password"
-                                            ref={passwordInput}
-                                            placeholder="Password"
-                                            autoComplete="current-password"
+                                        <Input
+                                            id="confirmation"
+                                            name="confirmation"
+                                            autoComplete="off"
+                                            data-test="confirm-delete-input"
                                         />
 
-                                        <InputError message={errors.password} />
+                                        <InputError
+                                            message={errors.confirmation}
+                                        />
                                     </div>
 
                                     <DialogFooter className="gap-2">

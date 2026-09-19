@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /*
@@ -44,7 +45,45 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Answer the Accounts endpoints the OIDC client calls, and put the session in
+ * the state a redirect would have left it in.
+ *
+ * Pass a null claim to drop it from the userinfo response, or an 'endpoints'
+ * key to reshape the discovery document.
+ *
+ * @param  array<string, mixed>  $claims
+ */
+function fakeAccounts(array $claims = [], array $endpoints = []): void
 {
-    // ..
+    Http::fake([
+        'accounts.test/.well-known/openid-configuration' => Http::response([
+            'issuer' => 'https://accounts.test',
+            'authorization_endpoint' => 'https://accounts.test/oauth/authorize',
+            'token_endpoint' => 'https://accounts.test/oauth/token',
+            'userinfo_endpoint' => 'https://accounts.test/oauth/userinfo',
+            ...$endpoints,
+        ]),
+        'accounts.test/oauth/token' => Http::response(['access_token' => 'an-access-token']),
+        'accounts.test/oauth/userinfo' => Http::response(array_filter([
+            'sub' => 'oidc-sub-42',
+            'email' => 'signer@example.com',
+            'name' => 'The Signer',
+            ...$claims,
+        ], fn (mixed $value) => $value !== null)),
+    ]);
+}
+
+/**
+ * Put the session in the state the redirect leaves it in, so a callback with
+ * ?state=state&code=code is treated as the answer to it.
+ */
+function signInThroughAccounts(array $claims = []): void
+{
+    fakeAccounts($claims);
+
+    test()->withSession([
+        'accounts_oidc_state' => 'state',
+        'accounts_oidc_verifier' => 'a-verifier',
+    ]);
 }

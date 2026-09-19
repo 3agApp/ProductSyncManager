@@ -23,8 +23,8 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        // There is no panel login page: the admin signs in through the app
-        // (with two-factor and passkeys), and guests are sent to its login.
+        // There is no panel login page: the admin signs in through the app,
+        // which hands off to 3AG Accounts, and guests are sent to its login.
         return $panel
             ->default()
             ->id('admin')

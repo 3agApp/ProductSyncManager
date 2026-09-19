@@ -26,13 +26,10 @@ class UserInfolist
                             ->label('Email verified')
                             ->dateTime()
                             ->placeholder('Not verified'),
-                        IconEntry::make('two_factor_enabled')
-                            ->label('Two-factor authentication')
-                            ->state(fn (User $record): bool => $record->two_factor_confirmed_at !== null)
+                        IconEntry::make('sso_linked')
+                            ->label('Linked to 3AG Accounts')
+                            ->state(fn (User $record): bool => filled($record->sso_id))
                             ->boolean(),
-                        TextEntry::make('passkeys_count')
-                            ->label('Passkeys')
-                            ->state(fn (User $record): int => $record->passkeys()->count()),
                         TextEntry::make('currentShop.name')
                             ->label('Current shop')
                             ->placeholder('None'),
