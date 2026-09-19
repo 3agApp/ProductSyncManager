@@ -32,9 +32,11 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Shop> $shops
  */
 #[Fillable(['name', 'email', 'password', 'current_shop_id', 'sso_id'])]
-// two_factor_* are the columns Fortify left behind. Nothing reads them any
-// more, but they outlive the feature in the database, and every page shares
-// this model as the 'auth.user' prop -- so they stay hidden until dropped.
+// The two_factor_* columns are dropped, so these three entries match nothing
+// and cost nothing. They stay as a backstop: every page shares this model as
+// the 'auth.user' prop, and a database that still has the columns -- one mid
+// -deploy, or restored from a backup taken before the drop -- would otherwise
+// put an encrypted 2FA secret back in the page JSON.
 #[Hidden(['password', 'remember_token', 'sso_id', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at'])]
 class User extends Authenticatable implements FilamentUser
 {
