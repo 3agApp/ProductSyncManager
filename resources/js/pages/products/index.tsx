@@ -695,7 +695,7 @@ export default function ProductIndex({
                     {products.total > 0 ? (
                         <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
                             <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-3">
-                                <p>
+                                <p data-test="product-count">
                                     Showing{' '}
                                     <span className="text-foreground font-medium">
                                         {products.from}–{products.to}
