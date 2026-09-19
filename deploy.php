@@ -12,7 +12,7 @@ require 'recipe/laravel.php';
 
 // The repository is private. `github-productsync` is an SSH alias in the
 // server's ~/.ssh/config that uses this repo's read-only deploy key.
-set('repository', 'git@github-productsync:SourovCodes/ProductSyncManager.git');
+set('repository', 'git@github-productsync:3agApp/ProductSyncManager.git');
 set('branch', getenv('DEPLOY_BRANCH') ?: 'main');
 set('keep_releases', 2);
 
