@@ -10,6 +10,7 @@ use App\Http\Responses\RegisterResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Http\Responses\VerifyEmailResponse;
 use App\Models\ShopInvitation;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -46,6 +47,22 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configureGuestRedirect();
+    }
+
+    /**
+     * Say where an already signed in visitor to a guest page belongs.
+     *
+     * Laravel's default is route('dashboard') with no parameters, and this
+     * application's dashboard is nested under a tenant, so the default blew
+     * up for anyone who had not joined one yet: opening /login or /register
+     * while signed in with no tenant raised a missing parameter error rather
+     * than redirecting. The bare /dashboard path works whatever they have,
+     * forwarding to their tenant's dashboard or to onboarding.
+     */
+    private function configureGuestRedirect(): void
+    {
+        RedirectIfAuthenticated::redirectUsing(fn (): string => route('dashboard.redirect'));
     }
 
     /**
