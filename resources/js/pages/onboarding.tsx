@@ -24,10 +24,8 @@ export default function Onboarding() {
 
             <div className="workspace-page">
                 <div className="mx-auto w-full max-w-xl space-y-6">
-                    <div className="min-w-0 space-y-2">
-                        <h1 className="text-3xl font-semibold tracking-tight">
-                            Create your first shop
-                        </h1>
+                    <div className="page-heading">
+                        <h1 className="page-title">Create your first shop</h1>
                         <p className="text-muted-foreground text-sm">
                             A shop holds your products, categories and brands,
                             and connects to your storefront. You can add more
