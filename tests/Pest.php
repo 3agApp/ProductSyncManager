@@ -49,7 +49,8 @@ expect()->extend('toBeOne', function () {
  * Answer the Accounts endpoints the OIDC client calls, and put the session in
  * the state a redirect would have left it in.
  *
- * Pass a null claim to drop it from the userinfo response, or an 'endpoints'
+ * Pass a null claim to drop it from the userinfo response -- which is how to
+ * model an issuer that sends no email_verified at all -- or an 'endpoints'
  * key to reshape the discovery document.
  *
  * @param  array<string, mixed>  $claims
@@ -68,6 +69,7 @@ function fakeAccounts(array $claims = [], array $endpoints = []): void
         'accounts.test/oauth/userinfo' => Http::response(array_filter([
             'sub' => 'oidc-sub-42',
             'email' => 'signer@example.com',
+            'email_verified' => true,
             'name' => 'The Signer',
             ...$claims,
         ], fn (mixed $value) => $value !== null)),

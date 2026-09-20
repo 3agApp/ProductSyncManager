@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
+use Inertia\Testing\AssertableInertia as Assert;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -12,42 +14,35 @@ test('profile page is displayed', function () {
     $response->assertOk();
 });
 
-test('profile information can be updated', function () {
-    $user = User::factory()->create();
+test('the profile page shows the identity accounts holds, read only', function () {
+    $user = User::factory()->create(['name' => 'Ada Lovelace', 'email' => 'ada@3ag.local']);
 
-    $response = $this
-        ->actingAs($user)
-        ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('profile.edit'));
-
-    $user->refresh();
-
-    expect($user->name)->toBe('Test User');
-    expect($user->email)->toBe('test@example.com');
-    expect($user->email_verified_at)->toBeNull();
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('settings/profile')
+            ->where('auth.user.name', 'Ada Lovelace')
+            ->where('auth.user.email', 'ada@3ag.local'),
+        );
 });
 
-test('email verification status is unchanged when the email address is unchanged', function () {
-    $user = User::factory()->create();
+test('there is no route left to edit the profile with', function () {
+    expect(Route::has('profile.update'))->toBeFalse();
 
-    $response = $this
-        ->actingAs($user)
-        ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => $user->email,
-        ]);
+    $this->actingAs(User::factory()->create())
+        ->patch('/settings/profile', ['name' => 'Someone Else', 'email' => 'someone-else@3ag.local'])
+        ->assertMethodNotAllowed();
+});
 
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('profile.edit'));
+test('the email address a user signs in with cannot be changed from here', function () {
+    $user = User::factory()->create(['email' => 'ada@3ag.local']);
 
-    expect($user->refresh()->email_verified_at)->not->toBeNull();
+    $this->actingAs($user)
+        ->post('/settings/profile', ['name' => 'Someone Else', 'email' => 'victim@3ag.local'])
+        ->assertMethodNotAllowed();
+
+    expect($user->fresh()->email)->toBe('ada@3ag.local');
 });
 
 test('user can delete their account', function () {

@@ -192,6 +192,43 @@ test('accounts without an email address cannot sign in', function () {
     expect(User::query()->count())->toBe(0);
 });
 
+test('an address Accounts reports as unverified is refused', function () {
+    signInThroughAccounts(['email_verified' => false]);
+
+    $this->get(route('auth.accounts.callback', ['code' => 'the-code', 'state' => 'state']))
+        ->assertRedirect('/')
+        ->assertInertiaFlash('toast.type', 'error');
+
+    $this->assertGuest();
+
+    expect(User::query()->count())->toBe(0);
+});
+
+test('an unverified address cannot take over an account that already exists', function () {
+    $victim = User::factory()->create(['email' => 'signer@example.com', 'sso_id' => null]);
+
+    signInThroughAccounts(['email_verified' => false]);
+
+    $this->get(route('auth.accounts.callback', ['code' => 'the-code', 'state' => 'state']));
+
+    $this->assertGuest();
+
+    expect($victim->fresh()->sso_id)->toBeNull();
+});
+
+test('an issuer that sends no email_verified claim is still trusted', function () {
+    // The claim is optional in OIDC, so a missing one means the issuer did
+    // not say -- not that it said no. Refusing here would lock every user
+    // out of the app the moment Accounts stopped sending it.
+    signInThroughAccounts(['email_verified' => null]);
+
+    $this->get(route('auth.accounts.callback', ['code' => 'the-code', 'state' => 'state']));
+
+    expect(User::query()->where('email', 'signer@example.com')->exists())->toBeTrue();
+
+    $this->assertAuthenticated();
+});
+
 test('a nameless account falls back to the local part of the email', function () {
     signInThroughAccounts(['name' => null]);
 
