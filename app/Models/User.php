@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Concerns\HasShops;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
