@@ -154,13 +154,11 @@ export default function Dashboard({
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0 space-y-2">
+                    <div className="page-heading">
                         <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
                             Shop overview
                         </p>
-                        <h1 className="text-3xl font-semibold tracking-tight">
-                            Dashboard
-                        </h1>
+                        <h1 className="page-title">Dashboard</h1>
                         <p className="text-muted-foreground text-sm">
                             Your catalog, inventory and latest changes in one
                             place.

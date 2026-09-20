@@ -195,6 +195,9 @@ trait HasShops
         );
     }
 
+    /**
+     * Get the shop to fall back on, ignoring the one being left.
+     */
     public function fallbackShop(?Shop $excluding = null): ?Shop
     {
         return $this->shops()

@@ -28,10 +28,8 @@ export default function InvitationsIndex({ invitations }: Props) {
             <Head title="Invitations" />
 
             <div className="workspace-page">
-                <div className="min-w-0 space-y-2">
-                    <h1 className="text-3xl font-semibold tracking-tight">
-                        Invitations
-                    </h1>
+                <div className="page-heading">
+                    <h1 className="page-title">Invitations</h1>
                     <p className="text-muted-foreground text-sm">
                         Accept or decline the shops you have been invited to
                         join.
