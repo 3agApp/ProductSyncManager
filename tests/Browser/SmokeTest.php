@@ -2,6 +2,7 @@
 
 use App\Models\Product;
 use App\Models\User;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Every page a signed in user can reach should render.
@@ -53,4 +54,25 @@ it('opens the edit page for a product from the row menu', function () {
         ->click('@product-edit')
         ->assertSee('Edit product')
         ->assertNoJavaScriptErrors();
+});
+
+it('holds an unverified user at the verification prompt until they verify', function () {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user);
+
+    visit(route('dashboard', $user->currentShop))
+        ->assertPathIs('/email/verify')
+        ->assertSee('Resend verification email')
+        ->assertNoJavaScriptErrors();
+
+    // The link the verification mail carries.
+    visit(URL::temporarySignedRoute('verification.verify', now()->addHour(), [
+        'id' => $user->id,
+        'hash' => sha1($user->email),
+    ]))
+        ->assertPathIs("/{$user->currentShop->slug}/dashboard")
+        ->assertNoJavaScriptErrors();
+
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
 });
