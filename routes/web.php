@@ -3,6 +3,7 @@
 use App\Http\Controllers\Catalog\BrandController;
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Products\BulkProductController;
@@ -38,11 +39,17 @@ Route::delete('impersonation', [ImpersonationController::class, 'destroy'])
     ->name('impersonation.destroy');
 
 Route::get('onboarding', OnboardingController::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'verified'])
     ->name('onboarding');
 
+// Every real dashboard is under a shop. This is the bare path Fortify
+// redirects to from config('fortify.home').
+Route::get('dashboard', DashboardRedirectController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.redirect');
+
 Route::prefix('{current_shop}')
-    ->middleware(['auth', EnsureShopMembership::class])
+    ->middleware(['auth', 'verified', EnsureShopMembership::class])
     ->scopeBindings()
     ->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -68,10 +75,12 @@ Route::prefix('{current_shop}')
     });
 
 Route::get('invitations', [ShopInvitationController::class, 'index'])
-    ->middleware(['auth'])
+    ->middleware(['auth', 'verified'])
     ->name('invitations.index');
 
-Route::middleware(['auth'])->group(function () {
+// Accepting an invitation joins an account to a shop that was
+// invited by email, so the address has to be proven before it is used.
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('invitations/{invitation}/accept', [ShopInvitationController::class, 'accept'])->name('invitations.accept');
     Route::delete('invitations/{invitation}', [ShopInvitationController::class, 'decline'])->name('invitations.decline');
 });
