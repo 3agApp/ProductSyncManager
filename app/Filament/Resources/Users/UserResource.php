@@ -49,7 +49,7 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->withCount('shops');
+        return parent::getEloquentQuery()->withCount(['shops', 'passkeys']);
     }
 
     public static function getRelations(): array

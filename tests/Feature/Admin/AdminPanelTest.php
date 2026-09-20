@@ -14,6 +14,7 @@ use App\Models\Shop;
 use App\Models\User;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Testing\TestAction;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
 use Livewire\Livewire;
 
@@ -88,14 +89,16 @@ describe('users', function () {
             ->assertCanNotSeeTableRecords([$bob]);
     });
 
-    test('a user can be edited', function () {
+    test('a user can be edited without changing their password', function () {
         $user = User::factory()->unverified()->create();
+        $password = $user->password;
 
         Livewire::test(EditUser::class, ['record' => $user->getKey()])
             ->fillForm([
                 'name' => 'Renamed',
                 'email' => 'renamed@example.com',
                 'email_verified_at' => '2026-09-01 10:00:00',
+                'password' => '',
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -104,7 +107,19 @@ describe('users', function () {
 
         expect($user->name)->toBe('Renamed')
             ->and($user->email)->toBe('renamed@example.com')
-            ->and($user->email_verified_at)->not->toBeNull();
+            ->and($user->email_verified_at)->not->toBeNull()
+            ->and($user->password)->toBe($password);
+    });
+
+    test('a user can be given a new password', function () {
+        $user = User::factory()->create();
+
+        Livewire::test(EditUser::class, ['record' => $user->getKey()])
+            ->fillForm(['password' => 'a-new-Password-123'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        expect(Hash::check('a-new-Password-123', $user->fresh()->password))->toBeTrue();
     });
 
     test('deleting a user hands on the shops they own', function () {
@@ -146,6 +161,24 @@ describe('users', function () {
         Livewire::test(ViewUser::class, ['record' => $this->admin->getKey()])
             ->assertActionHidden(DeleteAction::class)
             ->assertActionHidden('impersonate');
+    });
+
+    test('two-factor authentication and passkeys can be reset', function () {
+        $user = User::factory()->withTwoFactor()->create();
+        $user->passkeys()->create([
+            'name' => 'Laptop',
+            'credential_id' => 'credential-1',
+            'credential' => ['id' => 'credential-1'],
+        ]);
+
+        Livewire::test(ViewUser::class, ['record' => $user->getKey()])
+            ->callAction('resetTwoFactor');
+
+        $user->refresh();
+
+        expect($user->two_factor_secret)->toBeNull()
+            ->and($user->two_factor_confirmed_at)->toBeNull()
+            ->and($user->passkeys()->count())->toBe(0);
     });
 });
 

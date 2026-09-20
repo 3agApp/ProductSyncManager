@@ -2,23 +2,23 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Concerns\PasswordValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProfileDeleteRequest extends FormRequest
 {
+    use PasswordValidationRules;
+
     /**
      * Get the validation rules that apply to the request.
-     *
-     * There is no local password left to confirm with, so the user types the
-     * word instead.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'confirmation' => ['required', 'string', 'in:DELETE'],
+            'password' => $this->currentPasswordRules(),
         ];
     }
 }

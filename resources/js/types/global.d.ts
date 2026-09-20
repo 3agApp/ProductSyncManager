@@ -1,6 +1,12 @@
 import type { Auth } from '@/types/auth';
 import type { Shop, ShopTypeOption } from '@/types/shops';
 
+declare module 'react' {
+    interface InputHTMLAttributes<T> {
+        passwordrules?: string;
+    }
+}
+
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
@@ -12,7 +18,6 @@ declare module '@inertiajs/core' {
             shops: Shop[];
             shopTypes: ShopTypeOption[];
             pendingInvitationsCount: number;
-            accountsUrl: string;
             [key: string]: unknown;
         };
     }

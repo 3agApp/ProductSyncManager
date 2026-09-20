@@ -15,6 +15,7 @@ class ViewUser extends ViewRecord
     {
         return [
             UserActions::impersonate(),
+            UserActions::resetTwoFactor(),
             EditAction::make(),
             UserActions::delete(),
         ];

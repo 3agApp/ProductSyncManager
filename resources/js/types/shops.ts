@@ -36,6 +36,11 @@ export type ShopInvitation = {
     created_at: string;
 };
 
+export type ShopInvitationContext = {
+    code: string;
+    shopName: string;
+};
+
 export type PendingInvitation = {
     code: string;
     inviterName: string;

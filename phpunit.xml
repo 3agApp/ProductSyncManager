@@ -24,12 +24,6 @@
         <!-- Filament's panel boots with every test, which outgrows PHP's default 128M over the full suite. -->
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
-        <!-- The Accounts connection is always configured under test; the tests
-             fake the issuer's HTTP endpoints rather than its address. -->
-        <env name="ACCOUNTS_URL" value="https://accounts.test"/>
-        <env name="ACCOUNTS_CLIENT_ID" value="test-client-id"/>
-        <env name="ACCOUNTS_CLIENT_SECRET" value="test-client-secret"/>
-        <env name="ACCOUNTS_REDIRECT_URI" value="http://localhost/auth/accounts/callback"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
