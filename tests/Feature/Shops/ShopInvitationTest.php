@@ -330,3 +330,28 @@ test('expired invitations cannot be accepted', function () {
 
     expect($invitedUser->fresh()->belongsToShop($shop))->toBeFalse();
 });
+
+test('an invitation can be accepted by someone who belongs to no shop yet', function () {
+    // The ordinary path for a new hire: invited, signed up, no shop.
+    // to_route('dashboard') needs a current_shop, so this only works because
+    // accepting switches them into it first.
+    $owner = User::factory()->create();
+    $invitedUser = User::factory()->withoutShop()->create(['email' => 'invited@example.com']);
+    $shop = Shop::factory()->create();
+
+    $shop->members()->attach($owner, ['role' => ShopRole::Owner->value]);
+
+    $invitation = ShopInvitation::factory()->create([
+        'shop_id' => $shop->id,
+        'email' => 'invited@example.com',
+        'role' => ShopRole::Member,
+        'invited_by' => $owner->id,
+    ]);
+
+    $this
+        ->actingAs($invitedUser)
+        ->post(route('invitations.accept', $invitation))
+        ->assertRedirect(route('dashboard', $shop));
+
+    expect($invitedUser->fresh()->currentShop->id)->toBe($shop->id);
+});
