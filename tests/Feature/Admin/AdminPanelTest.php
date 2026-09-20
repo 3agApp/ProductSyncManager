@@ -107,7 +107,7 @@ describe('users', function () {
             ->and($user->email_verified_at)->not->toBeNull();
     });
 
-    test('deleting a user deletes the shops they own', function () {
+    test('deleting a user hands on the shops they own', function () {
         $user = User::factory()->create();
         $ownedShop = $user->currentShop;
 
@@ -122,10 +122,24 @@ describe('users', function () {
             ->callAction(DeleteAction::class);
 
         $this->assertModelMissing($user);
-        $this->assertSoftDeleted($ownedShop);
+        // The member is still working in it, so the shop stays and they take
+        // it on. Removing one account should not take a catalogue with it.
+        $this->assertNotSoftDeleted($ownedShop);
         $this->assertNotSoftDeleted($otherShop);
 
-        expect($member->fresh()->current_shop_id)->toBe($member->ownedShops()->first()->id);
+        expect($ownedShop->fresh()->owner()?->id)->toBe($member->id)
+            ->and($member->fresh()->current_shop_id)->toBe($ownedShop->id);
+    });
+
+    test('deleting a user winds up a shop nobody else is in', function () {
+        $user = User::factory()->create();
+        $ownedShop = $user->currentShop;
+
+        Livewire::test(ViewUser::class, ['record' => $user->getKey()])
+            ->callAction(DeleteAction::class);
+
+        $this->assertModelMissing($user);
+        $this->assertSoftDeleted($ownedShop);
     });
 
     test('the admin cannot delete or impersonate themselves', function () {
