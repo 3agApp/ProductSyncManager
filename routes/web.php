@@ -38,11 +38,11 @@ Route::delete('impersonation', [ImpersonationController::class, 'destroy'])
     ->name('impersonation.destroy');
 
 Route::get('onboarding', OnboardingController::class)
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('onboarding');
 
 Route::prefix('{current_shop}')
-    ->middleware(['auth', 'verified', EnsureShopMembership::class])
+    ->middleware(['auth', EnsureShopMembership::class])
     ->scopeBindings()
     ->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -68,7 +68,7 @@ Route::prefix('{current_shop}')
     });
 
 Route::get('invitations', [ShopInvitationController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('invitations.index');
 
 Route::middleware(['auth'])->group(function () {
