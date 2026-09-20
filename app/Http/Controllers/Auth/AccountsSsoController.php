@@ -62,6 +62,15 @@ class AccountsSsoController extends Controller
             return $this->failed(__('3AG Accounts did not return an email address.'));
         }
 
+        // Accounts will not issue a code for an unverified address, so this
+        // should never fire. It is here because the address is what decides
+        // which invitations the signer can accept and which pre-existing
+        // account they adopt below, and that is too much to rest on the
+        // identity provider alone holding its end up.
+        if ($accountsUser->emailVerified === false) {
+            return $this->failed(__('Your 3AG Accounts email address is not verified yet. Verify it and sign in again.'));
+        }
+
         $user = $this->link($accountsUser, Str::lower($email));
 
         Auth::login($user, remember: true);

@@ -1,10 +1,8 @@
-import { Form, Head, usePage } from '@inertiajs/react';
-import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import { Head, usePage } from '@inertiajs/react';
+import { ExternalLink } from 'lucide-react';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
 import type { Auth } from '@/types';
@@ -14,6 +12,14 @@ type PageProps = {
     accountsUrl: string;
 };
 
+/**
+ * A read-only view of the identity 3AG Accounts holds.
+ *
+ * Nothing here is editable because nothing here was ever the local app's to
+ * change: single sign-on rewrites the name and email address from the
+ * Accounts claims on every login, so a local edit only ever lasted until the
+ * user signed in again.
+ */
 export default function Profile() {
     const { auth, accountsUrl } = usePage<PageProps>().props;
 
@@ -27,82 +33,53 @@ export default function Profile() {
                 <Heading
                     variant="small"
                     title="Profile"
-                    description="Update your name and email address"
+                    description="Your name and email address come from 3AG Accounts"
                 />
 
-                <Form
-                    {...ProfileController.update.form()}
-                    options={{
-                        preserveScroll: true,
-                    }}
-                    className="space-y-6"
-                >
-                    {({ processing, errors }) => (
-                        <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                <dl className="space-y-6">
+                    <div className="grid gap-2">
+                        <Label asChild>
+                            <dt>Name</dt>
+                        </Label>
+                        <dd
+                            className="text-muted-foreground text-sm"
+                            data-test="profile-name"
+                        >
+                            {auth.user.name}
+                        </dd>
+                    </div>
 
-                                <Input
-                                    id="name"
-                                    className="mt-1 block w-full"
-                                    defaultValue={auth.user.name}
-                                    name="name"
-                                    required
-                                    autoComplete="name"
-                                    placeholder="Full name"
-                                />
+                    <div className="grid gap-2">
+                        <Label asChild>
+                            <dt>Email address</dt>
+                        </Label>
+                        <dd
+                            className="text-muted-foreground text-sm"
+                            data-test="profile-email"
+                        >
+                            {auth.user.email}
+                        </dd>
+                    </div>
+                </dl>
 
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.name}
-                                />
-                            </div>
+                <p className="text-muted-foreground text-sm">
+                    Your name, email address, password, two-factor
+                    authentication, and passkeys are all managed in 3AG
+                    Accounts. Changes there apply to every 3AG app the next time
+                    you sign in.
+                </p>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
-
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    className="mt-1 block w-full"
-                                    defaultValue={auth.user.email}
-                                    name="email"
-                                    required
-                                    autoComplete="username"
-                                    placeholder="Email address"
-                                />
-
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.email}
-                                />
-                            </div>
-
-                            <p className="text-muted-foreground text-sm">
-                                Password, two-factor authentication, and
-                                passkeys are managed in{' '}
-                                <a
-                                    href={accountsUrl}
-                                    className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors hover:decoration-current"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    3AG Accounts
-                                </a>
-                                .
-                            </p>
-
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    disabled={processing}
-                                    data-test="update-profile-button"
-                                >
-                                    Save
-                                </Button>
-                            </div>
-                        </>
-                    )}
-                </Form>
+                <Button variant="secondary" asChild>
+                    <a
+                        href={accountsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        data-test="accounts-link"
+                    >
+                        Manage in 3AG Accounts
+                        <ExternalLink className="size-4" />
+                    </a>
+                </Button>
             </div>
 
             <DeleteUser />

@@ -144,7 +144,28 @@ class AccountsOidc
             id: $subject,
             email: is_string($email) ? $email : null,
             name: is_string($name) ? $name : null,
+            emailVerified: $this->emailVerified($claims),
         );
+    }
+
+    /**
+     * Read the email_verified claim, if the issuer sent one.
+     *
+     * The claim is optional in OIDC, so its absence is not a denial -- it
+     * means the issuer did not say, and null keeps that distinct from an
+     * explicit false the caller should refuse. Accounts sends a JSON bool;
+     * the filter also copes with the "true"/"false" strings some issuers
+     * send, and answers null for anything it cannot read either way.
+     *
+     * @param  array<string, mixed>  $claims
+     */
+    private function emailVerified(array $claims): ?bool
+    {
+        if (! array_key_exists('email_verified', $claims)) {
+            return null;
+        }
+
+        return filter_var($claims['email_verified'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     }
 
     /**
