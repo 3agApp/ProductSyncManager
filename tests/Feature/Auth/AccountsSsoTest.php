@@ -2,10 +2,10 @@
 
 use App\Models\ShopInvitation;
 use App\Models\User;
-use App\Services\Auth\AccountsOidcException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
+use ThreeAg\AccountsOidc\AccountsOidcException;
 
 test('the login route hands the guest off to accounts', function () {
     $this->get(route('login'))->assertRedirect(route('auth.accounts.redirect'));
