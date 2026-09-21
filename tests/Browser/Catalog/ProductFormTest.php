@@ -39,3 +39,19 @@ it('creates a product with a category from the form', function () {
     expect($product->name)->toBe('Browser Made Product')
         ->and($product->categories()->pluck('name')->all())->toContain('Nested');
 });
+
+it('marks the form unsaved when only a select is changed', function () {
+    $product = Product::factory()->for($this->shop)->create([
+        'name' => 'Editable Product',
+        'status' => 'draft',
+    ]);
+
+    // The selects raise change but never input, so a guard listening only
+    // for input would let this edit be walked away from in silence.
+    visit(route('products.edit', ['current_shop' => $this->shop->slug, 'product' => $product->id]))
+        ->assertMissing('@unsaved-notice')
+        ->click('@product-status')
+        ->click('[role="option"]:has-text("Active")')
+        ->assertPresent('@unsaved-notice')
+        ->assertNoJavaScriptErrors();
+});
