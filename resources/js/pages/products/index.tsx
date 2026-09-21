@@ -1,5 +1,4 @@
 import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
-import type { LucideIcon } from 'lucide-react';
 import {
     ArrowDown,
     ArrowUp,
@@ -24,6 +23,7 @@ import ProductDetailModal from '@/components/product-detail-modal';
 import { ProductStatusBadge } from '@/components/product-status-badge';
 import { ProductStockLevel } from '@/components/product-stock-level';
 import { SyncProgressBar } from '@/components/sync-progress';
+import PaginationArrow from '@/components/pagination-arrow';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -745,6 +745,7 @@ export default function ProductIndex({
                                         href={products.prev_page_url}
                                         label="Previous page"
                                         icon={ChevronLeft}
+                                        test="pagination-previous"
                                     />
                                     {products.links
                                         .slice(1, -1)
@@ -787,6 +788,7 @@ export default function ProductIndex({
                                         href={products.next_page_url}
                                         label="Next page"
                                         icon={ChevronRight}
+                                        test="pagination-next"
                                     />
                                 </nav>
                             ) : null}
@@ -852,34 +854,6 @@ function SortButton({
             {label}
             <Icon className={cn('size-3.5', !active && 'opacity-40')} />
         </button>
-    );
-}
-
-function PaginationArrow({
-    href,
-    label,
-    icon: Icon,
-}: {
-    href: string | null;
-    label: string;
-    icon: LucideIcon;
-}) {
-    if (!href) {
-        return (
-            <Button variant="ghost" size="icon" className="size-8" disabled>
-                <Icon />
-                <span className="sr-only">{label}</span>
-            </Button>
-        );
-    }
-
-    return (
-        <Button variant="ghost" size="icon" className="size-8" asChild>
-            <Link href={href} preserveScroll preserveState>
-                <Icon />
-                <span className="sr-only">{label}</span>
-            </Link>
-        </Button>
     );
 }
 
