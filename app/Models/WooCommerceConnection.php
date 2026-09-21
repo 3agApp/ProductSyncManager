@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\WooCommerceConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,14 +16,14 @@ use Illuminate\Support\Carbon;
  * @property string $store_url
  * @property string $consumer_key
  * @property array<string, array{id: int, delivery_url: string}>|null $webhook_setup
- * @property Carbon|null $webhooks_configured_at
+ * @property CarbonImmutable|null $webhooks_configured_at
  * @property string|null $webhook_secret
  * @property string $consumer_secret
  * @property string|null $key_last_four
  * @property string|null $secret_last_four
- * @property Carbon|null $verified_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $verified_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  */
 #[Fillable([

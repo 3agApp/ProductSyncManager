@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\GeneratesUniqueShopSlugs;
 use App\Enums\ShopRole;
 use App\Enums\ShopType;
+use Carbon\CarbonImmutable;
 use Database\Factories\ShopFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -14,7 +15,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -24,9 +24,9 @@ use Illuminate\Support\Carbon;
  * @property bool $prices_include_tax
  * @property string $tax_rate
  * @property string $currency
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * @property Carbon|null $deleted_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property CarbonImmutable|null $deleted_at
  * @property-read Collection<int, ShopInvitation> $invitations
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, User> $members

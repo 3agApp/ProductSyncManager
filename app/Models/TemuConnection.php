@@ -4,12 +4,12 @@ namespace App\Models;
 
 use App\Enums\ProductStatus;
 use App\Enums\TemuDefaultBehavior;
+use Carbon\CarbonImmutable;
 use Database\Factories\TemuConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -21,11 +21,11 @@ use Illuminate\Support\Carbon;
  * @property string $currency
  * @property bool $sync_after_sync
  * @property int|null $mall_id
- * @property Carbon|null $token_expires_at
- * @property Carbon|null $verified_at
- * @property Carbon|null $last_synced_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $token_expires_at
+ * @property CarbonImmutable|null $verified_at
+ * @property CarbonImmutable|null $last_synced_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  */
 #[Fillable([

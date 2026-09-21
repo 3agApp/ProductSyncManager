@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
+use Carbon\CarbonImmutable;
 use Database\Factories\NaldaExportFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -11,7 +12,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -25,10 +25,10 @@ use Illuminate\Support\Carbon;
  * @property int $skipped_products
  * @property string|null $file_name
  * @property string|null $message
- * @property Carbon|null $started_at
- * @property Carbon|null $finished_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $started_at
+ * @property CarbonImmutable|null $finished_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  */
 #[Fillable([
