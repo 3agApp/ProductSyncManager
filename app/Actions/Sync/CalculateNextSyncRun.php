@@ -6,7 +6,6 @@ use App\Enums\SyncFrequency;
 use App\Models\ShopSyncSetting;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Carbon;
 
 class CalculateNextSyncRun
 {
@@ -23,7 +22,7 @@ class CalculateNextSyncRun
      * A local time that does not exist on a spring forward day is shifted
      * forward by Carbon, which means such a run happens an hour late.
      */
-    public function handle(ShopSyncSetting $settings, ?CarbonInterface $after = null): ?Carbon
+    public function handle(ShopSyncSetting $settings, ?CarbonInterface $after = null): ?CarbonImmutable
     {
         if (! $settings->is_enabled) {
             return null;
@@ -41,7 +40,7 @@ class CalculateNextSyncRun
             SyncFrequency::Weekly => $this->weekly($after, $hour, $minute, $settings->day_of_week ?? 0),
         };
 
-        return Carbon::instance($next->setTimezone('UTC'));
+        return $next->setTimezone('UTC');
     }
 
     /**

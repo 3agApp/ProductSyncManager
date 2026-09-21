@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use App\Enums\ShopRole;
+use Carbon\CarbonImmutable;
 use Database\Factories\ShopInvitationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -19,10 +19,10 @@ use Illuminate\Support\Str;
  * @property string $email
  * @property ShopRole $role
  * @property int $invited_by
- * @property Carbon|null $expires_at
- * @property Carbon|null $accepted_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable|null $accepted_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  * @property-read User $inviter
  */

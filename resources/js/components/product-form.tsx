@@ -79,7 +79,13 @@ export default function ProductForm({
         <Form
             {...formRoute}
             className="space-y-6 pb-4"
+            /**
+             * Typing raises input; the Radix selects raise only change. Both
+             * are needed, or picking a status or a brand and walking away
+             * would lose the edit without the guard ever asking.
+             */
             onInput={() => setDirty(true)}
+            onChange={() => setDirty(true)}
             onSuccess={() => setDirty(false)}
         >
             {({ errors, processing }) => (

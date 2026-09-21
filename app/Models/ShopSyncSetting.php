@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use App\Enums\SyncFrequency;
+use Carbon\CarbonImmutable;
 use Database\Factories\ShopSyncSettingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -18,10 +18,10 @@ use Illuminate\Support\Carbon;
  * @property string $time_of_day
  * @property int|null $day_of_week
  * @property string $timezone
- * @property Carbon|null $last_run_at
- * @property Carbon|null $next_run_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $last_run_at
+ * @property CarbonImmutable|null $next_run_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  */
 #[Fillable([

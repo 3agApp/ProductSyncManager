@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\NaldaListing;
 use App\Enums\ProductStatus;
 use App\Enums\TemuListing;
+use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +15,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -35,9 +35,9 @@ use Illuminate\Support\Carbon;
  * @property ProductStatus $status
  * @property NaldaListing $nalda_listing
  * @property TemuListing $temu_listing
- * @property Carbon|null $last_synced_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $last_synced_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  * @property-read Brand|null $brand
  * @property-read Collection<int, Category> $categories

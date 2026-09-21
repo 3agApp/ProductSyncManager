@@ -5,12 +5,12 @@ namespace App\Models;
 use App\Enums\NaldaDefaultBehavior;
 use App\Enums\NaldaPriceMode;
 use App\Enums\ProductStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\NaldaConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -26,10 +26,10 @@ use Illuminate\Support\Carbon;
  * @property int $delivery_time_days
  * @property int $return_days
  * @property bool $upload_after_sync
- * @property Carbon|null $verified_at
- * @property Carbon|null $last_exported_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $verified_at
+ * @property CarbonImmutable|null $last_exported_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  */
 #[Fillable([

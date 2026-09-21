@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use App\Enums\TemuProductStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\TemuProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * What this app has sent to Temu for one product.
@@ -27,10 +27,10 @@ use Illuminate\Support\Carbon;
  * @property int|null $sent_stock
  * @property string|null $content_hash
  * @property bool $on_sale
- * @property Carbon|null $submitted_at
- * @property Carbon|null $checked_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $submitted_at
+ * @property CarbonImmutable|null $checked_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  * @property-read Product|null $product
  */
