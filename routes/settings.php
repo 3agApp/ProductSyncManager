@@ -82,6 +82,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/shops/{shop}/temu/syncs', [TemuController::class, 'sync'])
             ->middleware('throttle:20,1')
             ->name('shops.temu.syncs.store');
+        Route::post('settings/shops/{shop}/temu/retries', [TemuController::class, 'retry'])
+            ->middleware('throttle:20,1')
+            ->name('shops.temu.retries.store');
     });
 });
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Shops;
 
 use App\Actions\Temu\SaveTemuConnection;
 use App\Actions\Temu\StartTemuSync;
+use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
 use App\Enums\TemuDefaultBehavior;
 use App\Enums\TemuProductStatus;
@@ -69,6 +70,7 @@ class TemuController extends Controller
                     'goodsId' => $record->goods_id,
                     'message' => $record->message,
                     'checkedAtDiff' => $record->checked_at?->diffForHumans(),
+                    'canRetry' => $record->canRetry(),
                 ])
                 ->all(),
             'currentRun' => fn () => $this->runProps($shop->temuSyncRuns()->latest('id')->first()),
@@ -152,6 +154,43 @@ class TemuController extends Controller
         Inertia::flash('toast', $run === null
             ? ['type' => 'error', 'message' => __('A Temu sync is already in progress.')]
             : ['type' => 'success', 'message' => __('Temu sync queued.')]);
+
+        return back();
+    }
+
+    /**
+     * Send products Temu refused again, one or every one of them.
+     *
+     * The products are put back to pending, which the next run creates
+     * like any new product, and a run is queued straight away. If one is
+     * already going, the products wait for the next.
+     */
+    public function retry(Request $request, StartTemuSync $start, Shop $shop): RedirectResponse
+    {
+        Gate::authorize('runSync', $shop);
+
+        $validated = $request->validate([
+            'record' => ['sometimes', 'integer'],
+        ]);
+
+        $retried = $shop->temuProducts()
+            ->where('status', TemuProductStatus::Failed->value)
+            ->whereNull('goods_id')
+            ->when(isset($validated['record']), fn ($query) => $query->whereKey($validated['record']))
+            ->update(['status' => TemuProductStatus::Pending->value]);
+
+        if ($retried === 0) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('There is nothing to retry.')]);
+
+            return back();
+        }
+
+        $run = $start->canSync($shop) ? $start->handle($shop, SyncTrigger::Manual, $request->user()) : null;
+        $sending = $run !== null && $run->status !== SyncRunStatus::Failed;
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => ! $sending
+            ? trans_choice('{1} The product will be sent again on the next sync.|[2,*] :count products will be sent again on the next sync.', $retried)
+            : trans_choice('{1} Sending the product to Temu again.|[2,*] Sending :count products to Temu again.', $retried)]);
 
         return back();
     }

@@ -72,6 +72,10 @@ class TemuException extends RuntimeException
 
     /**
      * Temu refused this one request, with its own explanation.
+     *
+     * Temu answers a passing fault of its own ("System error, please try
+     * again later") the same way it refuses a product, so that is told
+     * apart by what the message says, as credential problems are.
      */
     public static function rejected(string $temuMessage, ?int $code = null): self
     {
@@ -79,6 +83,7 @@ class TemuException extends RuntimeException
 
         return new self(
             $temuMessage === '' ? __('Temu refused the request (code :code).', ['code' => $code ?? '?']) : $temuMessage,
+            retryable: preg_match('/system error|try again later|time ?out|busy/i', $temuMessage) === 1,
             temuCode: $code,
         );
     }

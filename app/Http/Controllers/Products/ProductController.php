@@ -310,8 +310,16 @@ class ProductController extends Controller
     {
         $categoryIds = $request->categoryIds();
 
-        if ($categoryIds !== null) {
-            $product->categories()->sync($categoryIds);
+        if ($categoryIds === null) {
+            return;
+        }
+
+        $changes = $product->categories()->sync($categoryIds);
+
+        // The categories live on a pivot, so the product itself has to be
+        // touched for a marketplace to see it changed.
+        if (array_filter($changes) !== []) {
+            $product->touch();
         }
     }
 

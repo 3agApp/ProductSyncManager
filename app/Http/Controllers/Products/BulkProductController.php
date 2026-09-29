@@ -8,6 +8,7 @@ use App\Enums\ProductStatus;
 use App\Enums\TemuListing;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\BulkProductRequest;
+use App\Models\Product;
 use App\Models\Shop;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -87,6 +88,8 @@ class BulkProductController extends Controller
             $missing,
         ));
 
+        Product::query()->whereIn('id', $missing)->update(['updated_at' => now()]);
+
         return count($missing);
     }
 
@@ -97,10 +100,20 @@ class BulkProductController extends Controller
      */
     private function removeCategory(array $ids, int $categoryId): int
     {
-        return DB::table('category_product')
+        $removed = DB::table('category_product')
             ->where('category_id', $categoryId)
             ->whereIn('product_id', $ids)
+            ->pluck('product_id')
+            ->all();
+
+        DB::table('category_product')
+            ->where('category_id', $categoryId)
+            ->whereIn('product_id', $removed)
             ->delete();
+
+        Product::query()->whereIn('id', $removed)->update(['updated_at' => now()]);
+
+        return count($removed);
     }
 
     /**

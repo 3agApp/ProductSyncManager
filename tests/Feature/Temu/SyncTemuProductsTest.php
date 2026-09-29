@@ -387,6 +387,102 @@ test('a product temu refuses is recorded and not sent again until it is edited',
     expect(temuCallsOf($calls, 'temu.local.goods.v3.add'))->toHaveCount(1);
 });
 
+test('a product temu turned away with a system error is sent again on the next run', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create();
+    $product = temuReadyProduct($shop);
+
+    $calls = [];
+    $attempts = 0;
+    fakeTemuGateway([
+        'temu.local.goods.v3.add' => function () use (&$attempts) {
+            return ++$attempts === 1
+                ? Http::response(['success' => false, 'errorCode' => 150010001, 'errorMsg' => 'System error, please try again later'])
+                : Http::response(['success' => true, 'errorCode' => 1000000, 'errorMsg' => '', 'result' => ['goodsId' => 601000000000020]]);
+        },
+    ], $calls);
+
+    $run = queuedTemuRun($shop);
+    dispatch_sync(new SyncTemuProducts($run));
+
+    $record = $product->temuProduct()->sole();
+
+    expect($record->status)->toBe(TemuProductStatus::Pending)
+        ->and($record->message)->toBe('System error, please try again later')
+        ->and($run->refresh()->failed_products)->toBe(1);
+
+    $this->travel(1)->minute();
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    expect($attempts)->toBe(2)
+        ->and($record->refresh()->status)->toBe(TemuProductStatus::Processing)
+        ->and($record->message)->toBeNull();
+});
+
+test('a failed product put back to pending is sent again without being edited', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create();
+    $product = temuReadyProduct($shop);
+    $record = TemuProduct::factory()->forProduct($product)->create([
+        'goods_id' => null,
+        'status' => TemuProductStatus::Failed,
+        'message' => 'No categories are recommended. Please complete product name and try again.',
+    ]);
+
+    $calls = [];
+    fakeTemuGateway(['temu.local.goods.v3.add' => ['goodsId' => 601000000000021]], $calls);
+
+    $this->travel(1)->minute();
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    expect(temuCallsOf($calls, 'temu.local.goods.v3.add'))->toBe([]);
+
+    $record->update(['status' => TemuProductStatus::Pending]);
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    expect(temuCallsOf($calls, 'temu.local.goods.v3.add'))->toHaveCount(1)
+        ->and($record->refresh()->goods_id)->toBe(601000000000021);
+});
+
+test('the temu title is sent in place of the product name', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create();
+    temuReadyProduct($shop, ['sku' => 'TITLED', 'temu_name' => 'Wooden train set for toddlers, 12 pieces']);
+    temuReadyProduct($shop, ['sku' => 'PLAIN']);
+
+    $calls = [];
+    fakeTemuGateway(['temu.local.goods.v3.add' => ['goodsId' => 601000000000022]], $calls);
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    $names = collect(temuCallsOf($calls, 'temu.local.goods.v3.add'))
+        ->mapWithKeys(fn (array $call) => [$call['skuList'][0]['externalSkuId'] => $call['goodsBasic']['goodsName']]);
+
+    expect($names['TITLED'])->toBe('Wooden train set for toddlers, 12 pieces')
+        ->and($names['PLAIN'])->toBe('Wooden Train Set');
+});
+
+test('a category named after the product brand is left out of the category hint', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create();
+    $product = Product::factory()->for($shop)->branded('Papierdrachen')->categorized('Papierdrachen', 'Kostüme & Verkleiden', 'Geburtstag')->create([
+        'price' => '12.90',
+        'status' => ProductStatus::Active,
+        'image_url' => 'https://toys.example/crown.jpg',
+    ]);
+
+    $calls = [];
+    fakeTemuGateway(['temu.local.goods.v3.add' => ['goodsId' => 601000000000023]], $calls);
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    $add = temuCallsOf($calls, 'temu.local.goods.v3.add');
+
+    expect($add)->toHaveCount(1)
+        ->and($add[0]['goodsBasic']['extCatName'])->toBe('Geburtstag / Kostüme & Verkleiden')
+        ->and($product->brand->name)->toBe('Papierdrachen');
+});
+
 test('a refused token fails the run without retrying', function () {
     $shop = Shop::factory()->create();
     TemuConnection::factory()->for($shop)->create();

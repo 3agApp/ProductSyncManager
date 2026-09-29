@@ -93,6 +93,33 @@ test('products can be taken out of a category in bulk', function () {
     expect(DB::table('category_product')->where('category_id', $category->id)->count())->toBe(1);
 });
 
+test('filing products under a category or taking them out counts as an edit', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $category = Category::factory()->for($shop)->create();
+    [$added, $untouched] = Product::factory()->for($shop)->count(2)->create()->all();
+    $removed = Product::factory()->for($shop)->create();
+    $removed->categories()->sync([$category->id]);
+
+    $this->travel(1)->minute();
+
+    $this->actingAs($user)->post(route('products.bulk', $shop), [
+        'action' => 'add-category',
+        'ids' => [$added->id],
+        'category_id' => $category->id,
+    ]);
+
+    $this->actingAs($user)->post(route('products.bulk', $shop), [
+        'action' => 'remove-category',
+        'ids' => [$removed->id, $untouched->id],
+        'category_id' => $category->id,
+    ]);
+
+    expect($added->updated_at->lt($added->refresh()->updated_at))->toBeTrue()
+        ->and($removed->updated_at->lt($removed->refresh()->updated_at))->toBeTrue()
+        ->and($untouched->updated_at->eq($untouched->refresh()->updated_at))->toBeTrue();
+});
+
 test('a status can be set across many products', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;

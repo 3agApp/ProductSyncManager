@@ -38,6 +38,7 @@ trait PresentsProducts
             'statusLabel' => $product->status->label(),
             'naldaListing' => $product->nalda_listing->value,
             'temuListing' => $product->temu_listing->value,
+            'temuName' => $product->temu_name,
             'updatedAt' => $product->updated_at?->toISOString(),
             'updatedAtDiff' => $product->updated_at?->diffForHumans(),
         ];
