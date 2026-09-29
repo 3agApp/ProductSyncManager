@@ -134,7 +134,8 @@ class BuildNaldaProductFeed
         $skipped = 0;
 
         $connection->shop->products()
-            ->select(['id', 'shop_id', 'gtin', 'price', 'status', 'nalda_listing'])
+            ->select(['id', 'shop_id', 'brand_id', 'gtin', 'price', 'status', 'nalda_listing'])
+            ->with('brand:id,nalda_listing')
             ->chunkById(self::CHUNK_SIZE, function (Collection $products) use ($connection, &$chosen, &$skipped) {
                 foreach ($products as $product) {
                     /** @var Product $product */

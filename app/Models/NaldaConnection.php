@@ -97,7 +97,7 @@ class NaldaConnection extends Model
     {
         return $product->status === ProductStatus::Active
             && (float) $product->price > 0
-            && $product->nalda_listing->includes($this->default_behavior);
+            && $product->nalda_listing->includes($this->default_behavior, $product->brand?->nalda_listing);
     }
 
     /**

@@ -1,4 +1,4 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Tags, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import DeleteCatalogTermModal from '@/components/delete-catalog-term-modal';
@@ -6,6 +6,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -18,16 +25,36 @@ import { dashboard } from '@/routes';
 import { destroy, index as brandsIndex, store, update } from '@/routes/brands';
 import { index as productsIndex } from '@/routes/products';
 import type { Brand, ShopPermissions } from '@/types';
+import type { NaldaListing, NaldaListingOption } from '@/types/nalda';
+import type { TemuListing, TemuListingOption } from '@/types/temu';
 
-type Props = {
-    brands: Brand[];
-    permissions: ShopPermissions;
+type BrandRow = Brand & {
+    naldaListing: NaldaListing;
+    temuListing: TemuListing;
 };
 
-export default function BrandIndex({ brands, permissions }: Props) {
+type ListingField = 'nalda_listing' | 'temu_listing';
+
+type Props = {
+    brands: BrandRow[];
+    permissions: ShopPermissions;
+    hasNalda: boolean;
+    hasTemu: boolean;
+    naldaListings: NaldaListingOption[];
+    temuListings: TemuListingOption[];
+};
+
+export default function BrandIndex({
+    brands,
+    permissions,
+    hasNalda,
+    hasTemu,
+    naldaListings,
+    temuListings,
+}: Props) {
     const { currentShop } = usePage().props;
-    const [editing, setEditing] = useState<Brand | null>(null);
-    const [toDelete, setToDelete] = useState<Brand | null>(null);
+    const [editing, setEditing] = useState<BrandRow | null>(null);
+    const [toDelete, setToDelete] = useState<BrandRow | null>(null);
 
     if (!currentShop) {
         return null;
@@ -44,6 +71,14 @@ export default function BrandIndex({ brands, permissions }: Props) {
                         The names products in {currentShop.name} are sold under.
                         A product carries one.
                     </p>
+                    {hasNalda || hasTemu ? (
+                        <p className="text-muted-foreground text-sm">
+                            A brand can put all its products on a marketplace or
+                            keep them all off, whatever the shop default says. A
+                            product set to always include or exclude still has
+                            the last word.
+                        </p>
+                    ) : null}
                 </div>
 
                 {permissions.canCreateBrand ? (
@@ -92,6 +127,16 @@ export default function BrandIndex({ brands, permissions }: Props) {
                                     <TableHead className="text-right">
                                         Products
                                     </TableHead>
+                                    {hasTemu ? (
+                                        <TableHead className="w-52">
+                                            Temu
+                                        </TableHead>
+                                    ) : null}
+                                    {hasNalda ? (
+                                        <TableHead className="w-52">
+                                            Nalda
+                                        </TableHead>
+                                    ) : null}
                                     <TableHead className="w-32 pr-4">
                                         <span className="sr-only">Actions</span>
                                     </TableHead>
@@ -180,6 +225,36 @@ export default function BrandIndex({ brands, permissions }: Props) {
                                                 label={brand.name}
                                             />
                                         </TableCell>
+                                        {hasTemu ? (
+                                            <TableCell>
+                                                <ListingSelect
+                                                    shop={currentShop.slug}
+                                                    brand={brand}
+                                                    field="temu_listing"
+                                                    marketplace="Temu"
+                                                    value={brand.temuListing}
+                                                    options={temuListings}
+                                                    canUpdate={
+                                                        permissions.canUpdateBrand
+                                                    }
+                                                />
+                                            </TableCell>
+                                        ) : null}
+                                        {hasNalda ? (
+                                            <TableCell>
+                                                <ListingSelect
+                                                    shop={currentShop.slug}
+                                                    brand={brand}
+                                                    field="nalda_listing"
+                                                    marketplace="Nalda"
+                                                    value={brand.naldaListing}
+                                                    options={naldaListings}
+                                                    canUpdate={
+                                                        permissions.canUpdateBrand
+                                                    }
+                                                />
+                                            </TableCell>
+                                        ) : null}
                                         <TableCell className="pr-4 text-right">
                                             <div className="flex justify-end gap-1">
                                                 {permissions.canUpdateBrand &&
@@ -294,3 +369,61 @@ BrandIndex.layout = (props: { currentShop?: { slug: string } | null }) => ({
         },
     ],
 });
+
+/**
+ * A brand's choice for one marketplace, saved as soon as it changes.
+ */
+function ListingSelect({
+    shop,
+    brand,
+    field,
+    marketplace,
+    value,
+    options,
+    canUpdate,
+}: {
+    shop: string;
+    brand: BrandRow;
+    field: ListingField;
+    marketplace: string;
+    value: string;
+    options: { value: string; label: string }[];
+    canUpdate: boolean;
+}) {
+    if (!canUpdate) {
+        return (
+            <span className="text-muted-foreground text-sm">
+                {options.find((option) => option.value === value)?.label}
+            </span>
+        );
+    }
+
+    return (
+        <Select
+            value={value}
+            onValueChange={(listing) =>
+                router.patch(
+                    update.url([shop, brand.id]),
+                    { [field]: listing },
+                    { preserveScroll: true },
+                )
+            }
+        >
+            <SelectTrigger
+                size="sm"
+                className="w-full"
+                data-test={`brand-${field.replace('_', '-')}`}
+                aria-label={`${marketplace} listing for ${brand.name}`}
+            >
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                {options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
