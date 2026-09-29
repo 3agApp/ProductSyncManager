@@ -1,9 +1,13 @@
 <?php
 
+use App\Enums\NaldaListing;
 use App\Enums\ShopRole;
+use App\Enums\TemuListing;
 use App\Models\Brand;
+use App\Models\NaldaConnection;
 use App\Models\Product;
 use App\Models\Shop;
+use App\Models\TemuConnection;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -106,6 +110,105 @@ test('renaming a brand to its own name is allowed', function () {
         ->actingAs($user)
         ->patch(route('brands.update', [$shop, $brand]), ['name' => 'Acme'])
         ->assertSessionHasNoErrors();
+});
+
+test('the brands page offers the listing choices only for connected marketplaces', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    Brand::factory()->for($shop)->temuListing(TemuListing::Include)->create(['name' => 'Acme']);
+    TemuConnection::factory()->for($shop)->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('brands.index', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('hasTemu', true)
+            ->where('hasNalda', false)
+            ->where('brands.0.temuListing', 'include')
+            ->where('brands.0.naldaListing', 'default')
+            ->where('temuListings.0.label', 'Follow shop default'));
+
+    NaldaConnection::factory()->for($shop)->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('brands.index', $shop))
+        ->assertInertia(fn (Assert $page) => $page->where('hasNalda', true));
+});
+
+test('a brand listing choice can be changed without touching its name', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $brand = Brand::factory()->for($shop)->create(['name' => 'Acme']);
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$shop, $brand]), ['temu_listing' => 'exclude'])
+        ->assertSessionHasNoErrors();
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$shop, $brand]), ['nalda_listing' => 'include'])
+        ->assertSessionHasNoErrors();
+
+    $brand->refresh();
+
+    expect($brand->temu_listing)->toBe(TemuListing::Exclude)
+        ->and($brand->nalda_listing)->toBe(NaldaListing::Include)
+        ->and($brand->name)->toBe('Acme')
+        ->and($brand->slug)->toBe('acme');
+});
+
+test('renaming a brand keeps its listing choices', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $brand = Brand::factory()->for($shop)->temuListing(TemuListing::Exclude)->create(['name' => 'Acme']);
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$shop, $brand]), ['name' => 'Globex'])
+        ->assertSessionHasNoErrors();
+
+    expect($brand->refresh()->name)->toBe('Globex')
+        ->and($brand->temu_listing)->toBe(TemuListing::Exclude);
+});
+
+test('an unknown brand listing choice is rejected', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $brand = Brand::factory()->for($shop)->create();
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$shop, $brand]), ['temu_listing' => 'sometimes', 'name' => ''])
+        ->assertSessionHasErrors(['temu_listing', 'name']);
+
+    expect($brand->refresh()->temu_listing)->toBe(TemuListing::Default);
+});
+
+test('a new brand still needs a name', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this
+        ->actingAs($user)
+        ->post(route('brands.store', $shop), ['temu_listing' => 'include'])
+        ->assertSessionHasErrors('name');
+
+    expect($shop->brands()->count())->toBe(0);
+});
+
+test('a non member cannot change a brand listing choice', function () {
+    $user = User::factory()->create();
+    $brand = Brand::factory()->create();
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$brand->shop, $brand]), ['temu_listing' => 'include'])
+        ->assertForbidden();
+
+    expect($brand->refresh()->temu_listing)->toBe(TemuListing::Default);
 });
 
 test('deleting a brand leaves its products without one', function () {

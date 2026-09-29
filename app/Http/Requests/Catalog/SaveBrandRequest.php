@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Catalog;
 
+use App\Enums\NaldaListing;
+use App\Enums\TemuListing;
 use App\Models\Brand;
 use App\Models\Shop;
 use Closure;
@@ -9,6 +11,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class SaveBrandRequest extends FormRequest
 {
@@ -42,7 +45,11 @@ class SaveBrandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', $this->freeSlug()],
+            // An existing brand can have just its listing choices changed,
+            // so only a new brand has to come with a name.
+            'name' => [...($this->brand() ? ['sometimes'] : []), 'required', 'string', 'max:255', $this->freeSlug()],
+            'nalda_listing' => ['sometimes', Rule::enum(NaldaListing::class)],
+            'temu_listing' => ['sometimes', Rule::enum(TemuListing::class)],
         ];
     }
 
@@ -74,6 +81,32 @@ class SaveBrandRequest extends FormRequest
                 $fail(__('This shop already has a brand by that name.'));
             }
         };
+    }
+
+    /**
+     * Get the brand attributes to save.
+     *
+     * @return array<string, mixed>
+     */
+    public function brandAttributes(): array
+    {
+        $attributes = [];
+
+        if ($this->has('name')) {
+            $name = (string) $this->validated('name');
+            $attributes['name'] = $name;
+            $attributes['slug'] = Str::slug($name);
+        }
+
+        if ($this->has('nalda_listing')) {
+            $attributes['nalda_listing'] = NaldaListing::from((string) $this->validated('nalda_listing'));
+        }
+
+        if ($this->has('temu_listing')) {
+            $attributes['temu_listing'] = TemuListing::from((string) $this->validated('temu_listing'));
+        }
+
+        return $attributes;
     }
 
     /**

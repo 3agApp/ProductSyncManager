@@ -3,6 +3,7 @@
 use App\Actions\Nalda\BuildNaldaProductFeed;
 use App\Actions\Nalda\NaldaFeed;
 use App\Enums\NaldaListing;
+use App\Models\Brand;
 use App\Models\NaldaConnection;
 use App\Models\Product;
 use App\Models\Shop;
@@ -220,6 +221,51 @@ test('with exclude all, only products explicitly included are listed', function 
 
     expect($rows['444']['delete_product'])->toBe('')
         ->and($rows['555']['delete_product'])->toBe('yes');
+});
+
+test('a brand included under exclude all lists its products unless they opt out', function () {
+    [$shop, $connection] = naldaShop(['default_behavior' => 'exclude_all']);
+    $brand = Brand::factory()->for($shop)->naldaListing(NaldaListing::Include)->create();
+
+    Product::factory()->for($shop)->for($brand)->create(['gtin' => '401']);
+    Product::factory()->for($shop)->for($brand)->create(['gtin' => '402', 'nalda_listing' => NaldaListing::Exclude]);
+    Product::factory()->for($shop)->create(['gtin' => '403']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    expect($rows['401']['delete_product'])->toBe('')
+        ->and($rows['402']['delete_product'])->toBe('yes')
+        ->and($rows['403']['delete_product'])->toBe('yes');
+});
+
+test('a brand excluded under include all removes its products unless they opt in', function () {
+    [$shop, $connection] = naldaShop();
+    $brand = Brand::factory()->for($shop)->naldaListing(NaldaListing::Exclude)->create();
+
+    Product::factory()->for($shop)->for($brand)->create(['gtin' => '411']);
+    Product::factory()->for($shop)->for($brand)->create(['gtin' => '412', 'nalda_listing' => NaldaListing::Include]);
+    Product::factory()->for($shop)->create(['gtin' => '413']);
+
+    [, $rows] = buildNaldaFeed($connection);
+
+    expect($rows['411']['delete_product'])->toBe('yes')
+        ->and($rows['412']['delete_product'])->toBe('')
+        ->and($rows['413']['delete_product'])->toBe('');
+});
+
+test('when two products share a gtin, the brand choice decides which is listed', function () {
+    [$shop, $connection] = naldaShop();
+    $excluded = Brand::factory()->for($shop)->naldaListing(NaldaListing::Exclude)->create();
+
+    Product::factory()->for($shop)->for($excluded)->create(['gtin' => '421', 'name' => 'Stale']);
+    Product::factory()->for($shop)->create(['gtin' => '421', 'name' => 'Live']);
+
+    [$feed, $rows] = buildNaldaFeed($connection);
+
+    expect($rows)->toHaveCount(1)
+        ->and($rows['421']['title'])->toBe('Live')
+        ->and($rows['421']['delete_product'])->toBe('')
+        ->and($feed->listed)->toBe(1);
 });
 
 test('drafts and archived products are removed even when included', function () {

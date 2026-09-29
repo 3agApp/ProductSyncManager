@@ -69,7 +69,7 @@ class TemuConnection extends Model
         return $product->status === ProductStatus::Active
             && (float) $product->price > 0
             && filled($product->image_url)
-            && $product->temu_listing->includes($this->default_behavior);
+            && $product->temu_listing->includes($this->default_behavior, $product->brand?->temu_listing);
     }
 
     /**

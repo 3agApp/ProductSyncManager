@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\NaldaListing;
+use App\Enums\TemuListing;
 use App\Models\Brand;
 use App\Models\Shop;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,5 +26,21 @@ class BrandFactory extends Factory
             'name' => fake()->unique()->company(),
             'slug' => fn (array $attributes) => Str::slug($attributes['name']),
         ];
+    }
+
+    /**
+     * Set the brand's choice for Temu.
+     */
+    public function temuListing(TemuListing $listing): static
+    {
+        return $this->state(fn () => ['temu_listing' => $listing]);
+    }
+
+    /**
+     * Set the brand's choice for Nalda.
+     */
+    public function naldaListing(NaldaListing $listing): static
+    {
+        return $this->state(fn () => ['nalda_listing' => $listing]);
     }
 }

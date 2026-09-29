@@ -31,13 +31,13 @@ import type {
 const NALDA_LISTINGS: NaldaListingOption[] = [
     { value: 'include', label: 'Always include on Nalda' },
     { value: 'exclude', label: 'Always exclude from Nalda' },
-    { value: 'default', label: 'Follow shop default' },
+    { value: 'default', label: 'Follow brand / shop default' },
 ];
 
 const TEMU_LISTINGS: TemuListingOption[] = [
     { value: 'include', label: 'Always include on Temu' },
     { value: 'exclude', label: 'Always exclude from Temu' },
-    { value: 'default', label: 'Follow shop default' },
+    { value: 'default', label: 'Follow brand / shop default' },
 ];
 
 type Props = {

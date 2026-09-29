@@ -6,6 +6,7 @@ use App\Enums\SyncTrigger;
 use App\Enums\TemuListing;
 use App\Enums\TemuProductStatus;
 use App\Jobs\SyncTemuProducts;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\TemuConnection;
@@ -143,6 +144,68 @@ test('a shop that excludes all only creates products included one by one', funct
 
     expect($add)->toHaveCount(1)
         ->and($add[0]['goodsBasic']['externalGoodsId'])->toBe('psm-'.$included->id);
+});
+
+test('a brand included under an exclude all shop has its products created', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->excludingAll()->create();
+    $brand = Brand::factory()->for($shop)->temuListing(TemuListing::Include)->create();
+
+    $follows = temuReadyProduct($shop, ['sku' => 'FOLLOWS', 'brand_id' => $brand->id]);
+    temuReadyProduct($shop, ['sku' => 'OPTED-OUT', 'brand_id' => $brand->id, 'temu_listing' => TemuListing::Exclude]);
+    temuReadyProduct($shop, ['sku' => 'UNBRANDED']);
+
+    $calls = [];
+    fakeTemuGateway(['temu.local.goods.v3.add' => ['goodsId' => 601000000000010]], $calls);
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    $add = temuCallsOf($calls, 'temu.local.goods.v3.add');
+
+    expect($add)->toHaveCount(1)
+        ->and($add[0]['goodsBasic']['externalGoodsId'])->toBe('psm-'.$follows->id);
+});
+
+test('a brand excluded under an include all shop keeps its products off temu', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create();
+    $brand = Brand::factory()->for($shop)->temuListing(TemuListing::Exclude)->create();
+
+    temuReadyProduct($shop, ['sku' => 'FOLLOWS', 'brand_id' => $brand->id]);
+    $chosen = temuReadyProduct($shop, ['sku' => 'OPTED-IN', 'brand_id' => $brand->id, 'temu_listing' => TemuListing::Include]);
+
+    $calls = [];
+    fakeTemuGateway(['temu.local.goods.v3.add' => ['goodsId' => 601000000000011]], $calls);
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    $add = temuCallsOf($calls, 'temu.local.goods.v3.add');
+
+    expect($add)->toHaveCount(1)
+        ->and($add[0]['goodsBasic']['externalGoodsId'])->toBe('psm-'.$chosen->id);
+});
+
+test('a listed product whose brand is excluded is taken off sale', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create();
+    $brand = Brand::factory()->for($shop)->temuListing(TemuListing::Exclude)->create();
+    $product = temuReadyProduct($shop, ['brand_id' => $brand->id]);
+    $record = TemuProduct::factory()->forProduct($product)->create(['goods_id' => 601000000000012]);
+
+    $calls = [];
+    fakeTemuGateway([
+        'bg.local.goods.list.query' => ['goodsList' => [['goodsId' => 601000000000012, 'goodsShowSubStatus' => 2001]]],
+    ], $calls);
+
+    $run = queuedTemuRun($shop);
+    dispatch_sync(new SyncTemuProducts($run));
+
+    $sale = temuCallsOf($calls, 'bg.local.goods.sale.status.set');
+
+    expect($sale)->toHaveCount(1)
+        ->and($sale[0]['onsale'])->toBe(0)
+        ->and($record->refresh()->on_sale)->toBeFalse()
+        ->and($run->refresh()->removed_products)->toBe(1);
 });
 
 test('stock, price and details that changed are sent to a listed product', function () {

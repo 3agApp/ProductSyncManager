@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Catalog;
 
+use App\Enums\NaldaListing;
+use App\Enums\TemuListing;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Catalog\SaveBrandRequest;
 use App\Models\Brand;
@@ -30,8 +32,14 @@ class BrandController extends Controller
                     'name' => $brand->name,
                     'slug' => $brand->slug,
                     'productCount' => $brand->products_count,
+                    'naldaListing' => $brand->nalda_listing->value,
+                    'temuListing' => $brand->temu_listing->value,
                 ])
                 ->all(),
+            'hasNalda' => $currentShop->naldaConnection()->exists(),
+            'hasTemu' => $currentShop->temuConnection()->exists(),
+            'naldaListings' => NaldaListing::brandOptions(),
+            'temuListings' => TemuListing::brandOptions(),
             'permissions' => $request->user()->toShopPermissions($currentShop),
         ]);
     }
@@ -55,9 +63,7 @@ class BrandController extends Controller
      */
     public function update(SaveBrandRequest $request, Shop $currentShop, Brand $brand): RedirectResponse
     {
-        $name = (string) $request->validated('name');
-
-        $brand->update(['name' => $name, 'slug' => Str::slug($name)]);
+        $brand->update($request->brandAttributes());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Brand updated.')]);
 

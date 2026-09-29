@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Concerns\IsCatalogTerm;
+use App\Enums\NaldaListing;
+use App\Enums\TemuListing;
 use Carbon\CarbonImmutable;
 use Database\Factories\BrandFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,12 +20,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $remote_id
  * @property string $name
  * @property string $slug
+ * @property NaldaListing $nalda_listing
+ * @property TemuListing $temu_listing
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
  * @property-read Collection<int, Product> $products
  */
-#[Fillable(['remote_id', 'name', 'slug'])]
+#[Fillable(['remote_id', 'name', 'slug', 'nalda_listing', 'temu_listing'])]
 class Brand extends Model
 {
     /** @use HasFactory<BrandFactory> */
@@ -37,6 +41,19 @@ class Brand extends Model
     protected static function termsOf(Shop $shop): HasMany
     {
         return $shop->brands();
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'nalda_listing' => NaldaListing::class,
+            'temu_listing' => TemuListing::class,
+        ];
     }
 
     /**
