@@ -1,5 +1,5 @@
 import { Form, Head, router, usePoll } from '@inertiajs/react';
-import { PlugZap, RefreshCw, RotateCcw } from 'lucide-react';
+import { PlugZap, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
@@ -18,6 +18,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import TemuProblems from '@/components/temu-problems';
 import {
     Table,
     TableBody,
@@ -26,7 +27,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { edit as editProduct } from '@/routes/products';
+import { cn } from '@/lib/utils';
 import { edit as editShop, index as shopsIndex } from '@/routes/shops';
 import {
     edit as editTemu,
@@ -42,6 +43,7 @@ import type {
     TemuBehaviorOption,
     TemuConnection,
     TemuProblem,
+    TemuProductStatus,
     TemuStatusCount,
     TemuSyncRun,
 } from '@/types';
@@ -51,10 +53,23 @@ type Props = {
     connection: TemuConnection;
     statusCounts: TemuStatusCount[];
     problems: TemuProblem[];
+    problemsTotal: number;
     currentRun: TemuSyncRun | null;
     recentRuns: TemuSyncRun[];
     behaviors: TemuBehaviorOption[];
     permissions: ShopPermissions;
+};
+
+/** The Temu statuses someone has to look at, as in TemuProductStatus::needsAttention(). */
+const ATTENTION_STATUSES: TemuProductStatus[] = ['draft', 'rejected', 'failed'];
+
+const STATUS_DOTS: Partial<Record<TemuProductStatus, string>> = {
+    pending: 'bg-sky-500',
+    processing: 'bg-sky-500',
+    active: 'bg-emerald-500',
+    draft: 'bg-amber-500',
+    rejected: 'bg-red-500',
+    failed: 'bg-red-500',
 };
 
 const STATUS_VARIANTS: Record<SyncRunStatus, string> = {
@@ -85,6 +100,7 @@ export default function ShopTemu({
     connection,
     statusCounts,
     problems,
+    problemsTotal,
     currentRun,
     recentRuns,
     behaviors,
@@ -127,6 +143,7 @@ export default function ShopTemu({
                 'recentRuns',
                 'statusCounts',
                 'problems',
+                'problemsTotal',
                 'connection',
             ],
         },
@@ -157,14 +174,12 @@ export default function ShopTemu({
         });
     };
 
-    const retry = (record?: number) => {
+    const retry = (records?: number[]) => {
         router.visit(retryProducts(shop.slug), {
-            data: record === undefined ? {} : { record },
+            data: records === undefined ? {} : { records },
             preserveScroll: true,
         });
     };
-
-    const retryable = problems.filter((item) => item.canRetry).length;
 
     return (
         <>
@@ -495,19 +510,38 @@ export default function ShopTemu({
                     </div>
 
                     {statusCounts.length > 0 ? (
-                        <div
-                            className="flex flex-wrap gap-2"
+                        <dl
+                            className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
                             data-test="temu-status-counts"
                         >
                             {statusCounts.map((item) => (
-                                <Badge key={item.status} variant="outline">
-                                    {item.label}
-                                    <span className="tabular-nums">
+                                <div
+                                    key={item.status}
+                                    className={cn(
+                                        'rounded-lg border px-3 py-2',
+                                        ATTENTION_STATUSES.includes(
+                                            item.status,
+                                        ) &&
+                                            'border-amber-600/30 dark:border-amber-400/30',
+                                    )}
+                                >
+                                    <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                                        <span
+                                            aria-hidden
+                                            className={cn(
+                                                'size-2 rounded-full',
+                                                STATUS_DOTS[item.status] ??
+                                                    'bg-muted-foreground/40',
+                                            )}
+                                        />
+                                        {item.label}
+                                    </dt>
+                                    <dd className="text-lg font-semibold tabular-nums">
                                         {item.count.toLocaleString()}
-                                    </span>
-                                </Badge>
+                                    </dd>
+                                </div>
                             ))}
-                        </div>
+                        </dl>
                     ) : (
                         <p className="text-muted-foreground text-sm">
                             Nothing has been sent to Temu yet.
@@ -523,104 +557,13 @@ export default function ShopTemu({
                         </Alert>
                     ) : null}
 
-                    {problems.length > 0 ? (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between gap-4">
-                                <h3 className="text-sm font-medium">
-                                    Needs attention
-                                </h3>
-                                {permissions.canRunSync && retryable > 1 ? (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => retry()}
-                                        data-test="temu-retry-all"
-                                    >
-                                        <RotateCcw className="size-4" />
-                                        Retry all failed
-                                    </Button>
-                                ) : null}
-                            </div>
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Product</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Details</TableHead>
-                                            {permissions.canRunSync ? (
-                                                <TableHead>
-                                                    <span className="sr-only">
-                                                        Actions
-                                                    </span>
-                                                </TableHead>
-                                            ) : null}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {problems.map((item) => (
-                                            <TableRow
-                                                key={item.id}
-                                                data-test="temu-problem-row"
-                                            >
-                                                <TableCell className="max-w-64">
-                                                    {item.productId ? (
-                                                        <a
-                                                            href={
-                                                                editProduct([
-                                                                    shop.slug,
-                                                                    item.productId,
-                                                                ]).url
-                                                            }
-                                                            className="font-medium hover:underline"
-                                                        >
-                                                            {item.productName}
-                                                        </a>
-                                                    ) : (
-                                                        <span className="font-medium">
-                                                            {item.productName}
-                                                        </span>
-                                                    )}
-                                                    <div className="text-muted-foreground font-mono text-xs">
-                                                        {item.sku}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline">
-                                                        {item.statusLabel}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-muted-foreground text-sm whitespace-normal">
-                                                    {item.message ??
-                                                        item.temuStatus ??
-                                                        '—'}
-                                                </TableCell>
-                                                {permissions.canRunSync ? (
-                                                    <TableCell className="text-right">
-                                                        {item.canRetry ? (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() =>
-                                                                    retry(
-                                                                        item.id,
-                                                                    )
-                                                                }
-                                                                data-test="temu-retry"
-                                                            >
-                                                                <RotateCcw className="size-4" />
-                                                                Retry
-                                                            </Button>
-                                                        ) : null}
-                                                    </TableCell>
-                                                ) : null}
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </div>
-                    ) : null}
+                    <TemuProblems
+                        shopSlug={shop.slug}
+                        problems={problems}
+                        total={problemsTotal}
+                        canRetry={permissions.canRunSync}
+                        onRetry={retry}
+                    />
                 </div>
 
                 <div className="space-y-6 border-t pt-8">

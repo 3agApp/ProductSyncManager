@@ -16,6 +16,7 @@ use App\Models\TemuProduct;
 use App\Models\TemuSyncRun;
 use App\Services\Temu\TemuClient;
 use App\Services\Temu\TemuException;
+use App\Support\TemuProblemReason;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -51,10 +52,7 @@ class TemuController extends Controller
             'connection' => fn () => $this->connectionProps($shop->temuConnection),
             'statusCounts' => fn () => $this->statusCounts($shop),
             'problems' => fn () => $shop->temuProducts()
-                ->whereIn('status', array_map(
-                    fn (TemuProductStatus $status) => $status->value,
-                    array_filter(TemuProductStatus::cases(), fn (TemuProductStatus $status) => $status->needsAttention()),
-                ))
+                ->whereIn('status', self::attentionStatuses())
                 ->with('product:id,name,sku')
                 ->latest('updated_at')
                 ->limit(self::PROBLEMS)
@@ -71,8 +69,12 @@ class TemuController extends Controller
                     'message' => $record->message,
                     'checkedAtDiff' => $record->checked_at?->diffForHumans(),
                     'canRetry' => $record->canRetry(),
+                    'reason' => TemuProblemReason::for($record),
                 ])
                 ->all(),
+            'problemsTotal' => fn () => $shop->temuProducts()
+                ->whereIn('status', self::attentionStatuses())
+                ->count(),
             'currentRun' => fn () => $this->runProps($shop->temuSyncRuns()->latest('id')->first()),
             'recentRuns' => fn () => $shop->temuSyncRuns()
                 ->latest('id')
@@ -171,12 +173,18 @@ class TemuController extends Controller
 
         $validated = $request->validate([
             'record' => ['sometimes', 'integer'],
+            'records' => ['sometimes', 'array', 'max:500'],
+            'records.*' => ['integer'],
         ]);
+
+        // One product, a group of them, or every failed one when neither
+        // is given.
+        $only = isset($validated['record']) ? [$validated['record']] : ($validated['records'] ?? null);
 
         $retried = $shop->temuProducts()
             ->where('status', TemuProductStatus::Failed->value)
             ->whereNull('goods_id')
-            ->when(isset($validated['record']), fn ($query) => $query->whereKey($validated['record']))
+            ->when($only !== null, fn ($query) => $query->whereKey($only))
             ->update(['status' => TemuProductStatus::Pending->value]);
 
         if ($retried === 0) {
@@ -251,6 +259,19 @@ class TemuController extends Controller
      *
      * @return array<int, array{status: string, label: string, count: int}>
      */
+    /**
+     * The statuses a person has to look at, as stored values.
+     *
+     * @return array<int, string>
+     */
+    private static function attentionStatuses(): array
+    {
+        return array_values(array_map(
+            fn (TemuProductStatus $status) => $status->value,
+            array_filter(TemuProductStatus::cases(), fn (TemuProductStatus $status) => $status->needsAttention()),
+        ));
+    }
+
     private function statusCounts(Shop $shop): array
     {
         $counts = $shop->temuProducts()

@@ -75,4 +75,15 @@ export type TemuProblem = {
     message: string | null;
     checkedAtDiff: string | null;
     canRetry: boolean;
+    reason: TemuProblemReason;
+};
+
+/** Why a product needs attention, worked out from Temu's answer. */
+export type TemuProblemReason = {
+    /** Products with the same key are shown as one group. */
+    key: string;
+    title: string;
+    hint: string | null;
+    /** What fixes it: a better Temu title, a retry, or Temu Seller Center. */
+    fix: 'title' | 'retry' | 'seller_center' | null;
 };
