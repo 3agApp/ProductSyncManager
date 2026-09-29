@@ -41,19 +41,19 @@ class ShopHealth
                 'sync',
                 $this->shop->wooCommerceConnection?->hasUsableCredentials() ?? false,
                 $this->latestSyncRun(),
-                __('Last sync'),
+                (string) __('Last sync'),
             ),
             $this->integration(
                 'nalda',
                 $this->shop->naldaConnection?->hasUsableCredentials() ?? false,
                 $this->latestNaldaExport(),
-                __('Last upload'),
+                (string) __('Last upload'),
             ),
             $this->integration(
                 'temu',
                 $this->shop->temuConnection?->hasUsableCredentials() ?? false,
                 $this->latestTemuRun(),
-                __('Last sync'),
+                (string) __('Last sync'),
             ),
         ];
     }
@@ -158,21 +158,21 @@ class ShopHealth
     private function integration(string $key, bool $configured, $run, string $lastLabel): array
     {
         [$status, $label] = match (true) {
-            ! $configured => ['not_configured', __('Not set up')],
-            $run === null => ['connected', __('Connected')],
-            $run->status->isActive() => ['running', __('Running')],
-            $run->status === SyncRunStatus::Failed => ['failing', __('Failing')],
-            default => ['connected', __('Connected')],
+            ! $configured => ['not_configured', 'Not set up'],
+            $run === null => ['connected', 'Connected'],
+            $run->status->isActive() => ['running', 'Running'],
+            $run->status === SyncRunStatus::Failed => ['failing', 'Failing'],
+            default => ['connected', 'Connected'],
         };
 
-        $when = $run?->finished_at ?? $run?->started_at ?? $run?->created_at;
+        $when = $run !== null ? ($run->finished_at ?? $run->started_at ?? $run->created_at) : null;
 
         return [
             'key' => $key,
             'status' => $status,
-            'statusLabel' => $label,
+            'statusLabel' => (string) __($label),
             'detail' => $configured && $when !== null
-                ? __(':label :when', ['label' => $lastLabel, 'when' => $when->diffForHumans()])
+                ? "{$lastLabel} {$when->diffForHumans()}"
                 : null,
         ];
     }
