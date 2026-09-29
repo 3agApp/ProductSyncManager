@@ -271,8 +271,14 @@ class SyncTemuProducts implements ShouldQueue
 
             $record = $product->temuProduct()->first();
 
+            // A product Temu turned away over a passing fault of its own is
+            // left pending, so the next run sends it again unprompted.
             $record?->update([
-                'status' => $record->existsOnTemu() ? $record->status : TemuProductStatus::Failed,
+                'status' => match (true) {
+                    $record->existsOnTemu() => $record->status,
+                    $exception->isRetryable() => TemuProductStatus::Pending,
+                    default => TemuProductStatus::Failed,
+                },
                 'message' => $exception->userMessage(),
             ]);
 
@@ -283,8 +289,9 @@ class SyncTemuProducts implements ShouldQueue
     /**
      * Create the product on Temu.
      *
-     * A product Temu refused is only sent again once it has been edited,
-     * so an unfixable product does not cost a request on every run.
+     * A product Temu refused is only sent again once it has been edited or
+     * someone asks for it to be retried, so an unfixable product does not
+     * cost a request on every run.
      */
     private function create(TemuConnection $connection, BuildTemuProductPayload $payloads, Product $product, ?TemuProduct $record): void
     {

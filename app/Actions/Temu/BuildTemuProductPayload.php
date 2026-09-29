@@ -91,10 +91,13 @@ class BuildTemuProductPayload
         $description = $product->description ?: ($product->short_description ?? '');
 
         return [
-            'name' => Str::limit(trim($product->name), self::NAME_LENGTH, ''),
+            'name' => Str::limit(trim($product->temu_name ?: $product->name), self::NAME_LENGTH, ''),
             'description' => Str::limit(trim($description), self::DESCRIPTION_LENGTH, ''),
+            // A store that files products under their brand as well adds
+            // nothing Temu can place a product by, so that category is left out.
             'category' => $product->categories
                 ->map(fn (Category $category) => $category->name)
+                ->reject(fn (string $name) => $product->brand !== null && Str::lower($name) === Str::lower($product->brand->name))
                 ->sort(SORT_NATURAL | SORT_FLAG_CASE)
                 ->implode(' / '),
             'brand' => trim((string) $product->brand?->name),

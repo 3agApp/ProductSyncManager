@@ -22,6 +22,7 @@ export type Product = {
     statusLabel: string;
     naldaListing: NaldaListing;
     temuListing: TemuListing;
+    temuName: string | null;
     updatedAt: string | null;
     updatedAtDiff: string | null;
 };

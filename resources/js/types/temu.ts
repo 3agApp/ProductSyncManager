@@ -74,4 +74,5 @@ export type TemuProblem = {
     goodsId: number | null;
     message: string | null;
     checkedAtDiff: string | null;
+    canRetry: boolean;
 };

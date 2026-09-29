@@ -35,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property ProductStatus $status
  * @property NaldaListing $nalda_listing
  * @property TemuListing $temu_listing
+ * @property string|null $temu_name
  * @property CarbonImmutable|null $last_synced_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -59,6 +60,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'status',
     'nalda_listing',
     'temu_listing',
+    'temu_name',
     'last_synced_at',
 ])]
 class Product extends Model

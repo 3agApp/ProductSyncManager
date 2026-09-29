@@ -118,6 +118,7 @@ class SaveProductRequest extends FormRequest
             'status' => ['required', Rule::enum(ProductStatus::class)],
             'nalda_listing' => ['sometimes', Rule::enum(NaldaListing::class)],
             'temu_listing' => ['sometimes', Rule::enum(TemuListing::class)],
+            'temu_name' => ['sometimes', 'nullable', 'string', 'max:500'],
         ];
     }
 

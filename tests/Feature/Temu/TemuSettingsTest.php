@@ -349,6 +349,127 @@ test('the scheduler checks on products temu is still processing', function () {
         ->and($settled->temuSyncRuns()->count())->toBe(0);
 });
 
+test('a failed product can be retried from the temu page', function () {
+    Bus::fake();
+
+    [$user, $shop] = temuMember(ShopRole::Member);
+    TemuConnection::factory()->for($shop)->create();
+
+    $failed = TemuProduct::factory()->forProduct(Product::factory()->for($shop)->create())->create(['status' => TemuProductStatus::Failed, 'goods_id' => null]);
+    $other = TemuProduct::factory()->forProduct(Product::factory()->for($shop)->create())->create(['status' => TemuProductStatus::Failed, 'goods_id' => null]);
+
+    $this->actingAs($user)
+        ->get(route('shops.temu.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page->where('problems.0.canRetry', true));
+
+    $this->actingAs($user)
+        ->post(route('shops.temu.retries.store', $shop), ['record' => $failed->id])
+        ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Sending the product to Temu again.']);
+
+    expect($failed->refresh()->status)->toBe(TemuProductStatus::Pending)
+        ->and($other->refresh()->status)->toBe(TemuProductStatus::Failed);
+
+    Bus::assertDispatched(SyncTemuProducts::class);
+});
+
+test('every failed product can be retried at once, even while a sync runs', function () {
+    Bus::fake();
+
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    TemuConnection::factory()->for($shop)->create();
+    $shop->temuSyncRuns()->create(['trigger' => 'manual', 'status' => SyncRunStatus::Running]);
+
+    $records = collect(range(1, 2))->map(fn () => TemuProduct::factory()
+        ->forProduct(Product::factory()->for($shop)->create())
+        ->create(['status' => TemuProductStatus::Failed, 'goods_id' => null]));
+    $onTemu = TemuProduct::factory()->forProduct(Product::factory()->for($shop)->create())->create(['status' => TemuProductStatus::Rejected]);
+    $elsewhere = TemuProduct::factory()->forProduct(Product::factory()->create())->create(['status' => TemuProductStatus::Failed, 'goods_id' => null]);
+
+    $this->actingAs($user)
+        ->post(route('shops.temu.retries.store', $shop))
+        ->assertInertiaFlash('toast', ['type' => 'success', 'message' => '2 products will be sent again on the next sync.']);
+
+    expect($records->map(fn (TemuProduct $record) => $record->refresh()->status)->unique()->all())->toBe([TemuProductStatus::Pending])
+        ->and($onTemu->refresh()->status)->toBe(TemuProductStatus::Rejected)
+        ->and($elsewhere->refresh()->status)->toBe(TemuProductStatus::Failed);
+
+    Bus::assertNotDispatched(SyncTemuProducts::class);
+});
+
+test('retrying with nothing failed says so', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    TemuConnection::factory()->for($shop)->create();
+
+    $this->actingAs($user)
+        ->post(route('shops.temu.retries.store', $shop))
+        ->assertInertiaFlash('toast', ['type' => 'error', 'message' => 'There is nothing to retry.']);
+});
+
+test('another shop cannot retry temu products', function () {
+    $user = User::factory()->create();
+    $shop = Shop::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('shops.temu.retries.store', $shop))
+        ->assertForbidden();
+});
+
+test('a product can carry its own title on temu, which the store sync leaves alone', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $product = Product::factory()->for($shop)->create();
+
+    $this->actingAs($user)
+        ->patch(route('products.update', [$shop, $product]), [
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'price' => $product->price,
+            'stock' => $product->stock,
+            'status' => $product->status->value,
+            'temu_name' => 'Musselin Krone für Kinder – Rosa',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($product->refresh()->temu_name)->toBe('Musselin Krone für Kinder – Rosa');
+
+    $this->actingAs($user)
+        ->patch(route('products.update', [$shop, $product]), [
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'price' => $product->price,
+            'stock' => $product->stock,
+            'status' => $product->status->value,
+            'temu_name' => '',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($product->refresh()->temu_name)->toBeNull();
+});
+
+test('changing a product categories counts as an edit', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $product = Product::factory()->for($shop)->create();
+    $before = $product->updated_at;
+
+    $this->travel(1)->minute();
+
+    $this->actingAs($user)
+        ->patch(route('products.update', [$shop, $product]), [
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'price' => $product->price,
+            'stock' => $product->stock,
+            'status' => $product->status->value,
+            'categories' => ['Toys > Crowns'],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($product->refresh()->updated_at->gt($before))->toBeTrue();
+});
+
 test('a product can be set to always include or exclude on temu', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;

@@ -1,5 +1,5 @@
 import { Form, Head, router, usePoll } from '@inertiajs/react';
-import { PlugZap, RefreshCw } from 'lucide-react';
+import { PlugZap, RefreshCw, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
@@ -33,6 +33,7 @@ import {
     test as testConnection,
     update as updateTemu,
 } from '@/routes/shops/temu';
+import { store as retryProducts } from '@/routes/shops/temu/retries';
 import { store as startSync } from '@/routes/shops/temu/syncs';
 import type {
     Shop,
@@ -155,6 +156,15 @@ export default function ShopTemu({
             onFinish: () => setStarting(false),
         });
     };
+
+    const retry = (record?: number) => {
+        router.visit(retryProducts(shop.slug), {
+            data: record === undefined ? {} : { record },
+            preserveScroll: true,
+        });
+    };
+
+    const retryable = problems.filter((item) => item.canRetry).length;
 
     return (
         <>
@@ -515,9 +525,22 @@ export default function ShopTemu({
 
                     {problems.length > 0 ? (
                         <div className="space-y-3">
-                            <h3 className="text-sm font-medium">
-                                Needs attention
-                            </h3>
+                            <div className="flex items-center justify-between gap-4">
+                                <h3 className="text-sm font-medium">
+                                    Needs attention
+                                </h3>
+                                {permissions.canRunSync && retryable > 1 ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => retry()}
+                                        data-test="temu-retry-all"
+                                    >
+                                        <RotateCcw className="size-4" />
+                                        Retry all failed
+                                    </Button>
+                                ) : null}
+                            </div>
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
@@ -525,6 +548,13 @@ export default function ShopTemu({
                                             <TableHead>Product</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>Details</TableHead>
+                                            {permissions.canRunSync ? (
+                                                <TableHead>
+                                                    <span className="sr-only">
+                                                        Actions
+                                                    </span>
+                                                </TableHead>
+                                            ) : null}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -565,6 +595,25 @@ export default function ShopTemu({
                                                         item.temuStatus ??
                                                         '—'}
                                                 </TableCell>
+                                                {permissions.canRunSync ? (
+                                                    <TableCell className="text-right">
+                                                        {item.canRetry ? (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    retry(
+                                                                        item.id,
+                                                                    )
+                                                                }
+                                                                data-test="temu-retry"
+                                                            >
+                                                                <RotateCcw className="size-4" />
+                                                                Retry
+                                                            </Button>
+                                                        ) : null}
+                                                    </TableCell>
+                                                ) : null}
                                             </TableRow>
                                         ))}
                                     </TableBody>

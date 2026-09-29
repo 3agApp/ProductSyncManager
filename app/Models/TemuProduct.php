@@ -98,6 +98,17 @@ class TemuProduct extends Model
     }
 
     /**
+     * Determine if the product can be sent to Temu again as it is.
+     *
+     * Only a product Temu never created can be retried; one it did create
+     * is kept up to date by every sync anyway.
+     */
+    public function canRetry(): bool
+    {
+        return $this->status === TemuProductStatus::Failed && ! $this->existsOnTemu();
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

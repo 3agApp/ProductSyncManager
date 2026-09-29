@@ -372,6 +372,28 @@ export default function ProductForm({
                             </Select>
                             <InputError message={errors.temu_listing} />
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="product-temu-name">
+                                Title on Temu{' '}
+                                <span className="text-muted-foreground font-normal">
+                                    (optional)
+                                </span>
+                            </Label>
+                            <Input
+                                id="product-temu-name"
+                                name="temu_name"
+                                data-test="product-temu-name"
+                                defaultValue={product?.temuName ?? ''}
+                                maxLength={500}
+                                placeholder={product?.name}
+                            />
+                            <p className="text-muted-foreground text-sm">
+                                Leave empty to use the product name. Temu picks
+                                the category from the title, so a descriptive
+                                one helps it place the product.
+                            </p>
+                            <InputError message={errors.temu_name} />
+                        </div>
                     </Section>
 
                     <Section
