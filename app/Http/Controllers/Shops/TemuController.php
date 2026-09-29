@@ -255,11 +255,6 @@ class TemuController extends Controller
     }
 
     /**
-     * Count the shop's Temu products in each status, leaving out empty ones.
-     *
-     * @return array<int, array{status: string, label: string, count: int}>
-     */
-    /**
      * The statuses a person has to look at, as stored values.
      *
      * @return array<int, string>
@@ -272,6 +267,11 @@ class TemuController extends Controller
         ));
     }
 
+    /**
+     * Count the shop's Temu products in each status, leaving out empty ones.
+     *
+     * @return array<int, array{status: string, label: string, count: int}>
+     */
     private function statusCounts(Shop $shop): array
     {
         $counts = $shop->temuProducts()
