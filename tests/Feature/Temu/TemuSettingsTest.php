@@ -397,6 +397,55 @@ test('every failed product can be retried at once, even while a sync runs', func
     Bus::assertNotDispatched(SyncTemuProducts::class);
 });
 
+test('a group of failed products can be retried together', function () {
+    Bus::fake();
+
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    TemuConnection::factory()->for($shop)->create();
+
+    [$first, $second, $left] = collect(range(1, 3))->map(fn () => TemuProduct::factory()
+        ->forProduct(Product::factory()->for($shop)->create())
+        ->create(['status' => TemuProductStatus::Failed, 'goods_id' => null]))->all();
+    $elsewhere = TemuProduct::factory()->forProduct(Product::factory()->create())->create(['status' => TemuProductStatus::Failed, 'goods_id' => null]);
+
+    $this->actingAs($user)
+        ->post(route('shops.temu.retries.store', $shop), ['records' => [$first->id, $second->id, $elsewhere->id]])
+        ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Sending 2 products to Temu again.']);
+
+    expect($first->refresh()->status)->toBe(TemuProductStatus::Pending)
+        ->and($second->refresh()->status)->toBe(TemuProductStatus::Pending)
+        ->and($left->refresh()->status)->toBe(TemuProductStatus::Failed)
+        ->and($elsewhere->refresh()->status)->toBe(TemuProductStatus::Failed);
+});
+
+test('products needing attention are grouped by what fixes them', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    TemuConnection::factory()->for($shop)->create();
+
+    $failed = fn (string $message) => TemuProduct::factory()
+        ->forProduct(Product::factory()->for($shop)->create())
+        ->create(['status' => TemuProductStatus::Failed, 'goods_id' => null, 'message' => $message]);
+
+    $failed('No categories are recommended. Please complete product name and try again.');
+    $failed('System error, please try again later');
+    TemuProduct::factory()->forProduct(Product::factory()->for($shop)->create())->create([
+        'status' => TemuProductStatus::Draft,
+        'temu_sub_status' => 5001,
+        'message' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('shops.temu.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('problemsTotal', 3)
+            ->where('problems', fn ($problems) => collect($problems)
+                ->mapWithKeys(fn ($problem) => [$problem['reason']['key'] => $problem['reason']['fix']])
+                ->sortKeys()
+                ->all() === ['draft' => 'seller_center', 'no-category' => 'title', 'temu-error' => 'retry']));
+});
+
 test('retrying with nothing failed says so', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;
