@@ -125,6 +125,9 @@ is sent again on the next sync.
 
 Lowering the discount to 0% leaves the retail price Temu already has in place.
 
+A **draft** has no price order for a change to amend, so its price waits until
+Temu submits it; its stock and details are still sent.
+
 ## Not covered yet
 
 - **Orders**: orders are not pulled from Temu.

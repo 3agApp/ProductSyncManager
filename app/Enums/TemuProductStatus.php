@@ -68,6 +68,17 @@ enum TemuProductStatus: string
     }
 
     /**
+     * Determine if Temu takes price changes for a product in this status.
+     *
+     * A draft has no price order yet for a change to amend, so Temu
+     * refuses one until the product is submitted.
+     */
+    public function takesPriceChanges(): bool
+    {
+        return $this !== self::Draft;
+    }
+
+    /**
      * Map Temu's product sub-status code to a status.
      *
      * The codes are the goodsShowSubStatus values from Temu's product

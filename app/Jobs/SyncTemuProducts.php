@@ -375,17 +375,21 @@ class SyncTemuProducts implements ShouldQueue
             $changed = true;
         }
 
-        $price = $connection->price($product);
+        // A draft keeps the price it was created with until Temu has
+        // submitted it; the new one is sent on a later run.
+        if ($record->sku_id !== null && $record->status->takesPriceChanges()) {
+            $price = $connection->price($product);
 
-        if ($record->sku_id !== null && $record->sent_price !== $price) {
-            $this->changePrice($connection, $record, $price);
-            $changed = true;
-        }
+            if ($record->sent_price !== $price) {
+                $this->changePrice($connection, $record, $price);
+                $changed = true;
+            }
 
-        $listPrice = $payloads->listPrice($connection, $product);
+            $listPrice = $payloads->listPrice($connection, $product);
 
-        if ($record->sku_id !== null && $listPrice !== null && $record->sent_list_price !== $listPrice['amount']) {
-            $changed = $this->changeListPrice($record, $listPrice) || $changed;
+            if ($listPrice !== null && $record->sent_list_price !== $listPrice['amount']) {
+                $changed = $this->changeListPrice($record, $listPrice) || $changed;
+            }
         }
 
         $hash = $payloads->contentHash($product);

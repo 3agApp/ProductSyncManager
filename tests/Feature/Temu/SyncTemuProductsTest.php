@@ -402,6 +402,50 @@ test('a retail price temu refuses until the new base price is approved is sent a
         ->and($record->refresh()->sent_list_price)->toBe('49.90');
 });
 
+test('a draft keeps its price until temu submits it, but still gets stock', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create(['discount_percent' => 10]);
+    $product = temuReadyProduct($shop, ['stock' => 3]);
+
+    $record = TemuProduct::factory()->forProduct($product)->create([
+        'goods_id' => 601000000000003,
+        'sku_id' => 51000000000003,
+        'status' => TemuProductStatus::Draft,
+        'sent_stock' => 7,
+        'sent_price' => '49.90',
+    ]);
+    $record->update(['content_hash' => app(BuildTemuProductPayload::class)->contentHash($product)]);
+
+    $subStatus = 5001;
+    $calls = [];
+    fakeTemuGateway([
+        'bg.local.goods.list.query' => function () use (&$subStatus) {
+            return Http::response(['success' => true, 'errorCode' => 1000000, 'errorMsg' => '', 'result' => [
+                'goodsList' => [['goodsId' => 601000000000003, 'goodsShowSubStatus' => $subStatus]],
+            ]]);
+        },
+        'bg.local.goods.priceorder.change.sku.price' => ['successSkuList' => [51000000000003], 'failedSkuList' => []],
+    ], $calls);
+
+    $run = queuedTemuRun($shop);
+    dispatch_sync(new SyncTemuProducts($run));
+
+    expect(temuCallsOf($calls, 'bg.local.goods.stock.edit'))->toHaveCount(1)
+        ->and(temuCallsOf($calls, 'bg.local.goods.priceorder.change.sku.price'))->toBe([])
+        ->and(temuCallsOf($calls, 'bg.local.goods.partial.update'))->toBe([])
+        ->and($record->refresh()->sent_price)->toBe('49.90')
+        ->and($run->refresh()->failed_products)->toBe(0);
+
+    // Once Temu has submitted it, the discounted price goes out.
+    $subStatus = 2001;
+    $calls = [];
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    expect(temuCallsOf($calls, 'bg.local.goods.priceorder.change.sku.price'))->toHaveCount(1)
+        ->and($record->refresh()->sent_price)->toBe('44.90');
+});
+
 test('a product temu is still reviewing is left alone', function () {
     $shop = Shop::factory()->create();
     TemuConnection::factory()->for($shop)->create();
