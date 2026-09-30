@@ -66,6 +66,29 @@ class ShopInvitationController extends Controller
     }
 
     /**
+     * Send the invitation again, with a fresh expiry date.
+     *
+     * The link in the new email is the same one: the code does not change,
+     * so an earlier email that is opened later still works as well.
+     */
+    public function resend(Shop $shop, ShopInvitation $invitation): RedirectResponse
+    {
+        abort_unless($invitation->shop_id === $shop->id, 404);
+        abort_if($invitation->isAccepted(), 404);
+
+        Gate::authorize('inviteMember', $shop);
+
+        $invitation->update(['expires_at' => now()->addDays(3)]);
+
+        Notification::route('mail', $invitation->email)
+            ->notify(new ShopInvitationNotification($invitation));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation sent again.')]);
+
+        return to_route('shops.edit', ['shop' => $shop->slug]);
+    }
+
+    /**
      * Cancel the specified invitation.
      */
     public function destroy(Shop $shop, ShopInvitation $invitation): RedirectResponse

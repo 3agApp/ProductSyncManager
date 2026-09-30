@@ -18,6 +18,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { SectionNav } from '@/components/ui/section-nav';
 import {
     Table,
     TableBody,
@@ -162,7 +163,23 @@ export default function ShopNalda({
             <Head title={`Nalda ${shop.name}`} />
 
             <div className="flex flex-col space-y-10">
-                <div className="space-y-6">
+                <SectionNav
+                    sections={[
+                        { id: 'nalda-connection', label: 'Connection' },
+                        { id: 'nalda-defaults', label: 'Product defaults' },
+                        { id: 'nalda-file', label: 'Product file' },
+                        { id: 'nalda-history', label: 'History' },
+                    ]}
+                    idPrefix="nalda"
+                    orientation="horizontal"
+                    className="bg-card sticky top-2 z-10"
+                />
+
+                <div
+                    id="nalda-connection"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 outline-none"
+                >
                     <Heading
                         variant="small"
                         title="Nalda marketplace"
@@ -272,7 +289,11 @@ export default function ShopNalda({
                                         ) : null}
                                     </fieldset>
 
-                                    <fieldset className="space-y-4 border-t pt-6">
+                                    <fieldset
+                                        id="nalda-defaults"
+                                        tabIndex={-1}
+                                        className="scroll-mt-20 space-y-4 border-t pt-6 outline-none"
+                                    >
                                         <legend className="sr-only">
                                             Product defaults
                                         </legend>
@@ -528,7 +549,11 @@ export default function ShopNalda({
                 </div>
 
                 <div className="space-y-6 border-t pt-8">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div
+                        id="nalda-file"
+                        tabIndex={-1}
+                        className="flex scroll-mt-20 flex-wrap items-start justify-between gap-4 outline-none"
+                    >
                         <Heading
                             variant="small"
                             title="Product file"
@@ -602,7 +627,11 @@ export default function ShopNalda({
                     ) : null}
                 </div>
 
-                <div className="space-y-6 border-t pt-8">
+                <div
+                    id="nalda-history"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 border-t pt-8 outline-none"
+                >
                     <Heading
                         variant="small"
                         title="Recent uploads"

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { SectionNav } from '@/components/ui/section-nav';
 import {
     Table,
     TableBody,
@@ -167,7 +168,24 @@ export default function ShopSync({
             <Head title={`Sync ${shop.name}`} />
 
             <div className="flex flex-col space-y-10">
-                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                <SectionNav
+                    sections={[
+                        { id: 'sync-connection', label: 'Connection' },
+                        { id: 'sync-webhooks', label: 'Webhooks' },
+                        { id: 'sync-schedule', label: 'Schedule' },
+                        { id: 'sync-run', label: 'Sync now' },
+                        { id: 'sync-history', label: 'History' },
+                    ]}
+                    idPrefix="sync"
+                    orientation="horizontal"
+                    className="bg-card sticky top-2 z-10"
+                />
+
+                <div
+                    id="sync-connection"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 border-t pt-8 outline-none first:border-0 first:pt-0"
+                >
                     <Heading
                         variant="small"
                         title="WooCommerce connection"
@@ -288,7 +306,9 @@ export default function ShopSync({
                 </div>
 
                 <div
-                    className="space-y-5 border-t pt-8"
+                    id="sync-webhooks"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-5 border-t pt-8 outline-none"
                     data-test="automatic-webhooks"
                 >
                     <Heading
@@ -483,7 +503,11 @@ export default function ShopSync({
                     )}
                 </div>
 
-                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                <div
+                    id="sync-schedule"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 border-t pt-8 outline-none first:border-0 first:pt-0"
+                >
                     <Heading
                         variant="small"
                         title="Scheduled sync"
@@ -519,7 +543,11 @@ export default function ShopSync({
                 </div>
 
                 <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div
+                        id="sync-run"
+                        tabIndex={-1}
+                        className="flex scroll-mt-20 flex-wrap items-start justify-between gap-4 outline-none"
+                    >
                         <Heading
                             variant="small"
                             title="Sync now"
@@ -564,7 +592,11 @@ export default function ShopSync({
                     ) : null}
                 </div>
 
-                <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
+                <div
+                    id="sync-history"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 border-t pt-8 outline-none first:border-0 first:pt-0"
+                >
                     <Heading
                         variant="small"
                         title="Recent syncs"

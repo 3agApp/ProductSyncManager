@@ -55,3 +55,30 @@ it('creates a shop and switches to it', function () {
 
     expect($this->user->fresh()->currentShop->id)->toBe($created->id);
 });
+
+it('asks before changing a member role', function () {
+    $member = User::factory()->create();
+    $this->shop->members()->attach($member, ['role' => 'member']);
+
+    visit(route('shops.edit', $this->shop))
+        ->click('@member-role-trigger')
+        ->click('[role="menuitemradio"]:has-text("Admin")')
+        ->assertSee('Change role')
+        ->click('@member-role-confirm')
+        ->assertNoJavaScriptErrors();
+
+    expect($this->shop->members()->whereKey($member->id)->first()->pivot->role->value)->toBe('admin');
+});
+
+it('switches shop from the shop list', function () {
+    $other = Shop::factory()->create(['name' => 'Second Storefront']);
+    $other->members()->attach($this->user, ['role' => 'owner']);
+
+    visit(route('shops.index'))
+        ->assertSee('Current')
+        ->click('[data-test="shop-row"]:has-text("Second Storefront") [data-test="shop-actions"]')
+        ->click('@shop-switch-button')
+        ->assertNoJavaScriptErrors();
+
+    expect($this->user->fresh()->currentShop->id)->toBe($other->id);
+});

@@ -11,7 +11,10 @@ use App\Http\Requests\Shops\DeleteShopRequest;
 use App\Http\Requests\Shops\SaveShopRequest;
 use App\Models\Membership;
 use App\Models\Shop;
+use App\Models\ShopInvitation;
 use App\Models\User;
+use App\Support\ShopHealth;
+use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +58,8 @@ class ShopController extends Controller
     public function edit(Request $request, Shop $shop): Response
     {
         $user = $request->user();
+        $permissions = $user->toShopPermissions($shop);
+        $health = new ShopHealth($shop, $permissions);
 
         return Inertia::render('shops/edit', [
             'shop' => [
@@ -82,15 +87,23 @@ class ShopController extends Controller
             }),
             'invitations' => $shop->invitations()
                 ->whereNull('accepted_at')
+                ->oldest()
                 ->get()
-                ->map(fn ($invitation) => [
+                ->map(fn (ShopInvitation $invitation) => [
                     'code' => $invitation->code,
                     'email' => $invitation->email,
                     'role' => $invitation->role->value,
                     'role_label' => $invitation->role->label(),
                     'created_at' => $invitation->created_at->toISOString(),
+                    'sent_at_diff' => $invitation->created_at->diffForHumans(),
+                    // Without "ago" or "from now", so the page can say
+                    // "Expires in 2 days" or "Expired 3 hours ago".
+                    'expires_at_diff' => $invitation->expires_at?->diffForHumans(syntax: CarbonInterface::DIFF_ABSOLUTE),
+                    'is_expired' => $invitation->isExpired(),
                 ]),
-            'permissions' => $user->toShopPermissions($shop),
+            'integrations' => fn () => $health->integrations(),
+            'attention' => fn () => $health->attention(),
+            'permissions' => $permissions,
             'availableRoles' => ShopRole::assignable(),
         ]);
     }

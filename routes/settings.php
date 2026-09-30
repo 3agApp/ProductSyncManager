@@ -31,7 +31,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:6,1')
         ->name('user-password.update');
 
-    Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
+    // Appearance is a section of the profile page now. The old address
+    // still works for bookmarks and links in sent mail.
+    Route::redirect('settings/appearance', '/settings/profile#appearance')->name('appearance.edit');
 
     Route::get('settings/shops', [ShopController::class, 'index'])->name('shops.index');
     Route::post('settings/shops', [ShopController::class, 'store'])->name('shops.store');
@@ -48,6 +50,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::post('settings/shops/{shop}/invitations', [ShopInvitationController::class, 'store'])->name('shops.invitations.store');
         Route::delete('settings/shops/{shop}/invitations/{invitation}', [ShopInvitationController::class, 'destroy'])->name('shops.invitations.destroy');
+        Route::post('settings/shops/{shop}/invitations/{invitation}/resend', [ShopInvitationController::class, 'resend'])
+            ->middleware('throttle:6,1')
+            ->name('shops.invitations.resend');
 
         Route::get('settings/shops/{shop}/sync', [ShopSyncController::class, 'edit'])->name('shops.sync.edit');
         Route::patch('settings/shops/{shop}/sync/connection', [ShopSyncController::class, 'updateConnection'])->name('shops.sync.connection.update');
