@@ -1,18 +1,18 @@
-import type { SyncRunStatus } from "./sync";
+import type { SyncRunStatus } from './sync';
 
-export type TemuDefaultBehavior = "include_all" | "exclude_all";
+export type TemuDefaultBehavior = 'include_all' | 'exclude_all';
 
-export type TemuListing = "default" | "include" | "exclude";
+export type TemuListing = 'default' | 'include' | 'exclude';
 
 export type TemuProductStatus =
-    | "pending"
-    | "processing"
-    | "draft"
-    | "active"
-    | "inactive"
-    | "rejected"
-    | "deleted"
-    | "failed";
+    | 'pending'
+    | 'processing'
+    | 'draft'
+    | 'active'
+    | 'inactive'
+    | 'rejected'
+    | 'deleted'
+    | 'failed';
 
 export type TemuBehaviorOption = {
     value: TemuDefaultBehavior;
@@ -87,5 +87,5 @@ export type TemuProblemReason = {
     title: string;
     hint: string | null;
     /** What fixes it: a better Temu title, a retry, or Temu Seller Center. */
-    fix: "title" | "retry" | "seller_center" | null;
+    fix: 'title' | 'retry' | 'seller_center' | null;
 };

@@ -1,18 +1,18 @@
-import { Form, Head, Link, router, usePage } from "@inertiajs/react";
-import { Pencil, Plus, Tags, Trash2, X } from "lucide-react";
-import { useState } from "react";
-import DeleteCatalogTermModal from "@/components/delete-catalog-term-modal";
-import InputError from "@/components/input-error";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Pencil, Plus, Tags, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import DeleteCatalogTermModal from '@/components/delete-catalog-term-modal';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -20,13 +20,13 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { dashboard } from "@/routes";
-import { destroy, index as brandsIndex, store, update } from "@/routes/brands";
-import { index as productsIndex } from "@/routes/products";
-import type { Brand, ShopPermissions } from "@/types";
-import type { NaldaListing, NaldaListingOption } from "@/types/nalda";
-import type { TemuListing, TemuListingOption } from "@/types/temu";
+} from '@/components/ui/table';
+import { dashboard } from '@/routes';
+import { destroy, index as brandsIndex, store, update } from '@/routes/brands';
+import { index as productsIndex } from '@/routes/products';
+import type { Brand, ShopPermissions } from '@/types';
+import type { NaldaListing, NaldaListingOption } from '@/types/nalda';
+import type { TemuListing, TemuListingOption } from '@/types/temu';
 
 type BrandRow = Brand & {
     naldaListing: NaldaListing;
@@ -34,7 +34,7 @@ type BrandRow = Brand & {
     temuDiscountPercent: number | null;
 };
 
-type ListingField = "nalda_listing" | "temu_listing";
+type ListingField = 'nalda_listing' | 'temu_listing';
 
 type Props = {
     brands: BrandRow[];
@@ -356,8 +356,8 @@ export default function BrandIndex({
                 confirmLabel="Delete brand"
                 description={
                     toDelete
-                        ? `${toDelete.name} will be removed. Its ${toDelete.productCount} product${toDelete.productCount === 1 ? "" : "s"} stay in the catalog, without a brand.`
-                        : ""
+                        ? `${toDelete.name} will be removed. Its ${toDelete.productCount} product${toDelete.productCount === 1 ? '' : 's'} stay in the catalog, without a brand.`
+                        : ''
                 }
             />
         </>
@@ -392,12 +392,12 @@ function ProductCountLink({
 BrandIndex.layout = (props: { currentShop?: { slug: string } | null }) => ({
     breadcrumbs: [
         {
-            title: "Dashboard",
-            href: props.currentShop ? dashboard(props.currentShop.slug) : "/",
+            title: 'Dashboard',
+            href: props.currentShop ? dashboard(props.currentShop.slug) : '/',
         },
         {
-            title: "Brands",
-            href: props.currentShop ? brandsIndex(props.currentShop.slug) : "",
+            title: 'Brands',
+            href: props.currentShop ? brandsIndex(props.currentShop.slug) : '',
         },
     ],
 });
@@ -444,7 +444,7 @@ function ListingSelect({
             <SelectTrigger
                 size="sm"
                 className="w-full"
-                data-test={`brand-${field.replace("_", "-")}`}
+                data-test={`brand-${field.replace('_', '-')}`}
                 aria-label={`${marketplace} listing for ${brand.name}`}
             >
                 <SelectValue />
@@ -478,7 +478,7 @@ function DiscountInput({
 }) {
     const saved =
         brand.temuDiscountPercent === null
-            ? ""
+            ? ''
             : String(brand.temuDiscountPercent);
     const [value, setValue] = useState(saved);
     const [error, setError] = useState<string | undefined>();
@@ -500,7 +500,7 @@ function DiscountInput({
             update.url([shop, brand.id]),
             {
                 temu_discount_percent:
-                    value.trim() === "" ? null : value.trim(),
+                    value.trim() === '' ? null : value.trim(),
             },
             {
                 preserveScroll: true,
@@ -526,7 +526,7 @@ function DiscountInput({
                     onChange={(event) => setValue(event.target.value)}
                     onBlur={save}
                     onKeyDown={(event) => {
-                        if (event.key === "Enter") {
+                        if (event.key === 'Enter') {
                             event.currentTarget.blur();
                         }
                     }}
