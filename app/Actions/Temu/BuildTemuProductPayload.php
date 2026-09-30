@@ -54,12 +54,13 @@ class BuildTemuProductPayload
             'skuList' => [array_filter([
                 'externalSkuId' => $record->external_sku_id,
                 'images' => $content['images'],
-                'price' => [
+                'price' => array_filter([
                     'basePrice' => [
                         'amount' => $connection->price($product),
                         'currency' => $connection->currency,
                     ],
-                ],
+                    'listPrice' => $this->listPrice($connection, $product),
+                ]),
                 'quantity' => $this->stock($product),
                 // Zero tells Temu to use its default package size and weight;
                 // the catalog does not store either yet.
@@ -136,6 +137,18 @@ class BuildTemuProductPayload
         }
 
         return $sku;
+    }
+
+    /**
+     * Get the recommended retail price block, if the product has one.
+     *
+     * @return array{amount: string, currency: string}|null
+     */
+    public function listPrice(TemuConnection $connection, Product $product): ?array
+    {
+        $amount = $connection->listPrice($product);
+
+        return $amount === null ? null : ['amount' => $amount, 'currency' => $connection->currency];
     }
 
     /**

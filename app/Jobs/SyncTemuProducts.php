@@ -62,6 +62,11 @@ class SyncTemuProducts implements ShouldQueue
     private const string PRICE_REASON = 'Price updated in the shop';
 
     /**
+     * Temu's codes for a recommended retail price not above the base price.
+     */
+    private const array LIST_PRICE_TOO_LOW = [150010041, 150010083];
+
+    /**
      * Counters accumulated across the run.
      *
      * @var array<string, int>
@@ -325,6 +330,7 @@ class SyncTemuProducts implements ShouldQueue
             'temu_sub_status' => null,
             'message' => null,
             'sent_price' => $connection->price($product),
+            'sent_list_price' => $connection->listPrice($product),
             'sent_stock' => $payloads->stock($product),
             'content_hash' => $payloads->contentHash($product),
             'on_sale' => true,
@@ -376,6 +382,12 @@ class SyncTemuProducts implements ShouldQueue
             $changed = true;
         }
 
+        $listPrice = $payloads->listPrice($connection, $product);
+
+        if ($record->sku_id !== null && $listPrice !== null && $record->sent_list_price !== $listPrice['amount']) {
+            $changed = $this->changeListPrice($record, $listPrice) || $changed;
+        }
+
         $hash = $payloads->contentHash($product);
 
         if ($record->content_hash !== $hash) {
@@ -418,6 +430,36 @@ class SyncTemuProducts implements ShouldQueue
         }
 
         $record->update(['sent_price' => $price]);
+    }
+
+    /**
+     * Send the product's recommended retail price.
+     *
+     * Temu only takes one above the base price it currently has, and a
+     * lower base price waits on Temu's review of the price change. Until
+     * then the retail price is left for a later run, which sends it again
+     * because it is not recorded as sent.
+     *
+     * @param  array{amount: string, currency: string}  $listPrice
+     */
+    private function changeListPrice(TemuProduct $record, array $listPrice): bool
+    {
+        try {
+            $this->client->call('bg.local.goods.partial.update', [
+                'goodsId' => $record->goods_id,
+                'skuList' => [['skuId' => $record->sku_id, 'listPrice' => $listPrice]],
+            ]);
+        } catch (TemuException $exception) {
+            if (in_array($exception->temuCode(), self::LIST_PRICE_TOO_LOW, true)) {
+                return false;
+            }
+
+            throw $exception;
+        }
+
+        $record->update(['sent_list_price' => $listPrice['amount']]);
+
+        return true;
     }
 
     /**

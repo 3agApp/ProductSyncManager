@@ -31,6 +31,7 @@ import type { TemuListing, TemuListingOption } from '@/types/temu';
 type BrandRow = Brand & {
     naldaListing: NaldaListing;
     temuListing: TemuListing;
+    temuDiscountPercent: number | null;
 };
 
 type ListingField = 'nalda_listing' | 'temu_listing';
@@ -42,6 +43,7 @@ type Props = {
     hasTemu: boolean;
     naldaListings: NaldaListingOption[];
     temuListings: TemuListingOption[];
+    temuDiscountPercent: number | null;
 };
 
 export default function BrandIndex({
@@ -51,6 +53,7 @@ export default function BrandIndex({
     hasTemu,
     naldaListings,
     temuListings,
+    temuDiscountPercent,
 }: Props) {
     const { currentShop } = usePage().props;
     const [editing, setEditing] = useState<BrandRow | null>(null);
@@ -77,6 +80,12 @@ export default function BrandIndex({
                             keep them all off, whatever the shop default says. A
                             product set to always include or exclude still has
                             the last word.
+                        </p>
+                    ) : null}
+                    {hasTemu ? (
+                        <p className="text-muted-foreground text-sm">
+                            A brand can also sell on Temu at its own discount
+                            instead of the shop's {temuDiscountPercent ?? 0}%.
                         </p>
                     ) : null}
                 </div>
@@ -128,9 +137,14 @@ export default function BrandIndex({
                                         Products
                                     </TableHead>
                                     {hasTemu ? (
-                                        <TableHead className="w-52">
-                                            Temu
-                                        </TableHead>
+                                        <>
+                                            <TableHead className="w-52">
+                                                Temu
+                                            </TableHead>
+                                            <TableHead className="w-32">
+                                                Temu discount
+                                            </TableHead>
+                                        </>
                                     ) : null}
                                     {hasNalda ? (
                                         <TableHead className="w-52">
@@ -226,19 +240,37 @@ export default function BrandIndex({
                                             />
                                         </TableCell>
                                         {hasTemu ? (
-                                            <TableCell>
-                                                <ListingSelect
-                                                    shop={currentShop.slug}
-                                                    brand={brand}
-                                                    field="temu_listing"
-                                                    marketplace="Temu"
-                                                    value={brand.temuListing}
-                                                    options={temuListings}
-                                                    canUpdate={
-                                                        permissions.canUpdateBrand
-                                                    }
-                                                />
-                                            </TableCell>
+                                            <>
+                                                <TableCell>
+                                                    <ListingSelect
+                                                        shop={currentShop.slug}
+                                                        brand={brand}
+                                                        field="temu_listing"
+                                                        marketplace="Temu"
+                                                        value={
+                                                            brand.temuListing
+                                                        }
+                                                        options={temuListings}
+                                                        canUpdate={
+                                                            permissions.canUpdateBrand
+                                                        }
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DiscountInput
+                                                        key={`${brand.id}-${brand.temuDiscountPercent}`}
+                                                        shop={currentShop.slug}
+                                                        brand={brand}
+                                                        shopDiscount={
+                                                            temuDiscountPercent ??
+                                                            0
+                                                        }
+                                                        canUpdate={
+                                                            permissions.canUpdateBrand
+                                                        }
+                                                    />
+                                                </TableCell>
+                                            </>
                                         ) : null}
                                         {hasNalda ? (
                                             <TableCell>
@@ -425,5 +457,86 @@ function ListingSelect({
                 ))}
             </SelectContent>
         </Select>
+    );
+}
+
+/**
+ * A brand's own Temu discount, saved when the field is left.
+ *
+ * Left blank, the brand follows the discount on the Temu page.
+ */
+function DiscountInput({
+    shop,
+    brand,
+    shopDiscount,
+    canUpdate,
+}: {
+    shop: string;
+    brand: BrandRow;
+    shopDiscount: number;
+    canUpdate: boolean;
+}) {
+    const saved =
+        brand.temuDiscountPercent === null
+            ? ''
+            : String(brand.temuDiscountPercent);
+    const [value, setValue] = useState(saved);
+    const [error, setError] = useState<string | undefined>();
+
+    if (!canUpdate) {
+        return (
+            <span className="text-muted-foreground text-sm">
+                {brand.temuDiscountPercent ?? shopDiscount}%
+            </span>
+        );
+    }
+
+    const save = () => {
+        if (value.trim() === saved) {
+            return;
+        }
+
+        router.patch(
+            update.url([shop, brand.id]),
+            {
+                temu_discount_percent:
+                    value.trim() === '' ? null : value.trim(),
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setError(undefined),
+                onError: (errors) => {
+                    setError(errors.temu_discount_percent);
+                    setValue(saved);
+                },
+            },
+        );
+    };
+
+    return (
+        <div className="grid gap-1">
+            <div className="flex items-center gap-1">
+                <Input
+                    type="number"
+                    min={0}
+                    max={90}
+                    step="0.01"
+                    value={value}
+                    placeholder={String(shopDiscount)}
+                    onChange={(event) => setValue(event.target.value)}
+                    onBlur={save}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.currentTarget.blur();
+                        }
+                    }}
+                    className="h-8 w-20"
+                    data-test="brand-temu-discount"
+                    aria-label={`Temu discount for ${brand.name}, in percent`}
+                />
+                <span className="text-muted-foreground text-sm">%</span>
+            </div>
+            <InputError message={error} />
+        </div>
     );
 }

@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $temu_sub_status
  * @property string|null $message
  * @property string|null $sent_price
+ * @property string|null $sent_list_price
  * @property int|null $sent_stock
  * @property string|null $content_hash
  * @property bool $on_sale
@@ -44,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'temu_sub_status',
     'message',
     'sent_price',
+    'sent_list_price',
     'sent_stock',
     'content_hash',
     'on_sale',
@@ -121,6 +123,7 @@ class TemuProduct extends Model
             'status' => TemuProductStatus::class,
             'temu_sub_status' => 'integer',
             'sent_price' => 'decimal:2',
+            'sent_list_price' => 'decimal:2',
             'sent_stock' => 'integer',
             'on_sale' => 'boolean',
             'submitted_at' => 'datetime',

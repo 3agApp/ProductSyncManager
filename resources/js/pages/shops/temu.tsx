@@ -443,11 +443,49 @@ export default function ShopTemu({
                                             </div>
                                         </div>
 
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="discount_percent">
+                                                Temu discount
+                                            </Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    id="discount_percent"
+                                                    name="discount_percent"
+                                                    type="number"
+                                                    min={0}
+                                                    max={90}
+                                                    step="0.01"
+                                                    required
+                                                    className="w-24"
+                                                    data-test="temu-discount"
+                                                    defaultValue={
+                                                        connection.discountPercent
+                                                    }
+                                                />
+                                                <span className="text-muted-foreground text-sm">
+                                                    % off the shop price
+                                                </span>
+                                            </div>
+                                            <p className="text-muted-foreground text-xs">
+                                                Temu sells at the shop price
+                                                less this discount, rounded to 5
+                                                Rappen, and shows the shop price
+                                                as the recommended retail price.
+                                                A brand can set its own discount
+                                                on the Brands page.
+                                            </p>
+                                            <InputError
+                                                message={
+                                                    errors.discount_percent
+                                                }
+                                            />
+                                        </div>
+
                                         <p className="text-muted-foreground text-sm">
-                                            Prices are sent exactly as the shop
-                                            has them. Temu reviews price changes
-                                            on listed products, so a new price
-                                            can take a while to show.
+                                            Temu reviews price changes on listed
+                                            products, so a new price can take a
+                                            while to show, and the retail price
+                                            follows once it has.
                                         </p>
                                     </fieldset>
 

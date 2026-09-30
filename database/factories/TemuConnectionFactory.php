@@ -26,6 +26,8 @@ class TemuConnectionFactory extends Factory
             'access_token' => 'upl'.fake()->regexify('[a-z0-9]{56}'),
             'default_behavior' => TemuDefaultBehavior::IncludeAll,
             'currency' => 'CHF',
+            // Tests see the shop price unless they set a discount.
+            'discount_percent' => 0,
             'sync_after_sync' => true,
         ];
     }

@@ -160,6 +160,40 @@ test('a brand listing choice can be changed without touching its name', function
         ->and($brand->slug)->toBe('acme');
 });
 
+test('a brand can sell on temu at its own discount, and go back to the shop discount', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    $brand = Brand::factory()->for($shop)->create(['name' => 'Acme']);
+    TemuConnection::factory()->for($shop)->create(['discount_percent' => 10]);
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$shop, $brand]), ['temu_discount_percent' => '15'])
+        ->assertSessionHasNoErrors();
+
+    expect($brand->refresh()->temu_discount_percent)->toBe('15.00')
+        ->and($brand->name)->toBe('Acme');
+
+    $this
+        ->actingAs($user)
+        ->get(route('brands.index', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('brands.0.temuDiscountPercent', 15)
+            ->where('temuDiscountPercent', 10));
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$shop, $brand]), ['temu_discount_percent' => ''])
+        ->assertSessionHasNoErrors();
+
+    expect($brand->refresh()->temu_discount_percent)->toBeNull();
+
+    $this
+        ->actingAs($user)
+        ->patch(route('brands.update', [$shop, $brand]), ['temu_discount_percent' => '120'])
+        ->assertSessionHasErrors('temu_discount_percent');
+});
+
 test('renaming a brand keeps its listing choices', function () {
     $user = User::factory()->create();
     $shop = $user->currentShop;

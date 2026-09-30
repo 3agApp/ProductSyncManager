@@ -37,6 +37,8 @@ export type TemuConnection = {
     tokenHasExpired: boolean;
     defaultBehavior: TemuDefaultBehavior;
     currency: string;
+    /** Percent off the shop price on Temu, unless a brand sets its own. */
+    discountPercent: number;
     syncAfterSync: boolean;
     lastSyncedAt: string | null;
 };

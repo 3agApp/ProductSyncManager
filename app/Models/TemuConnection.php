@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $access_token
  * @property TemuDefaultBehavior $default_behavior
  * @property string $currency
+ * @property string $discount_percent
  * @property bool $sync_after_sync
  * @property int|null $mall_id
  * @property CarbonImmutable|null $token_expires_at
@@ -34,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'access_token',
     'default_behavior',
     'currency',
+    'discount_percent',
     'sync_after_sync',
     'mall_id',
     'token_expires_at',
@@ -73,14 +75,47 @@ class TemuConnection extends Model
     }
 
     /**
-     * Get the price to send for the product, with two decimals.
+     * Get the base price to send for the product, with two decimals.
      *
-     * Temu shows Swiss prices with VAT included, and the WooCommerce price
-     * is sent exactly as the shop has it.
+     * Temu sells below the shop price by the brand's discount, or the
+     * shop's when the brand has none, rounded to the nearest 5 Rappen like
+     * any Swiss price. Temu shows Swiss prices with VAT included, as the
+     * WooCommerce price already is.
      */
     public function price(Product $product): string
     {
-        return number_format((float) $product->price, 2, '.', '');
+        // Rounded to cents first so float noise cannot tip a price that
+        // sits halfway between two 5 Rappen steps.
+        $price = round((float) $product->price * (100 - $this->discount($product)) / 100, 2);
+
+        // Rounding to 5 Rappen can never take a priced product down to 0.
+        $rounded = max(0.05, round($price * 20) / 20);
+
+        return number_format($rounded, 2, '.', '');
+    }
+
+    /**
+     * Get the recommended retail price to send for the product, if any.
+     *
+     * The shop price is what the product sells for elsewhere, so it is the
+     * retail price. Temu only takes one above the base price, so a product
+     * sold at the shop price has none.
+     */
+    public function listPrice(Product $product): ?string
+    {
+        $listPrice = number_format((float) $product->price, 2, '.', '');
+
+        return (float) $listPrice > (float) $this->price($product) ? $listPrice : null;
+    }
+
+    /**
+     * Get the discount on the shop price for the product, in percent.
+     */
+    public function discount(Product $product): float
+    {
+        $brandDiscount = $product->brand?->temu_discount_percent;
+
+        return (float) ($brandDiscount ?? $this->discount_percent);
     }
 
     /**
@@ -118,6 +153,7 @@ class TemuConnection extends Model
             'app_secret' => 'encrypted',
             'access_token' => 'encrypted',
             'default_behavior' => TemuDefaultBehavior::class,
+            'discount_percent' => 'decimal:2',
             'sync_after_sync' => 'boolean',
             'mall_id' => 'integer',
             'token_expires_at' => 'datetime',

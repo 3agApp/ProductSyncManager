@@ -31,6 +31,7 @@ function temuSettings(array $overrides = []): array
         'access_token' => 'token-for-tests',
         'default_behavior' => 'exclude_all',
         'currency' => 'chf',
+        'discount_percent' => '12.5',
         'sync_after_sync' => '1',
         ...$overrides,
     ];
@@ -62,6 +63,7 @@ test('the temu page starts with nothing listed', function () {
             ->where('connection.isConfigured', false)
             ->where('connection.defaultBehavior', 'exclude_all')
             ->where('connection.currency', 'CHF')
+            ->where('connection.discountPercent', 10)
             ->where('connection.gateway', 'https://openapi-b-eu.temu.com/openapi/router')
             ->where('statusCounts', [])
             ->where('problems', [])
@@ -88,6 +90,7 @@ test('an owner can save the temu settings, with the secret and token encrypted',
         ->and($raw->app_secret)->not->toBe('secret-for-tests')
         ->and($raw->access_token)->not->toBe('token-for-tests')
         ->and($connection->currency)->toBe('CHF')
+        ->and($connection->discount_percent)->toBe('12.50')
         ->and($connection->default_behavior)->toBe(TemuDefaultBehavior::ExcludeAll)
         ->and($connection->hasUsableCredentials())->toBeTrue();
 
@@ -172,8 +175,9 @@ test('the settings are validated', function () {
             'app_key' => 'not a key!',
             'currency' => 'SWISS',
             'default_behavior' => 'sometimes',
+            'discount_percent' => '95',
         ]))
-        ->assertSessionHasErrors(['app_key', 'currency', 'default_behavior']);
+        ->assertSessionHasErrors(['app_key', 'currency', 'default_behavior', 'discount_percent']);
 });
 
 test('a member cannot change the temu settings or test the connection', function () {

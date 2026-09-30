@@ -48,6 +48,7 @@ class SaveTemuConnectionRequest extends FormRequest
             'access_token' => ['nullable', 'string', 'max:1024'],
             'default_behavior' => ['required', Rule::enum(TemuDefaultBehavior::class)],
             'currency' => ['required', 'string', 'alpha', 'size:3'],
+            'discount_percent' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:90'],
             'sync_after_sync' => ['required', 'boolean'],
         ];
     }
@@ -106,6 +107,7 @@ class SaveTemuConnectionRequest extends FormRequest
             'app_secret' => 'app secret',
             'access_token' => 'access token',
             'default_behavior' => 'default product behavior',
+            'discount_percent' => 'Temu discount',
             'sync_after_sync' => 'sync after every WooCommerce sync',
         ];
     }
