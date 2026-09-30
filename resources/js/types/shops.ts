@@ -34,6 +34,25 @@ export type ShopInvitation = {
     role: ShopRole;
     role_label: string;
     created_at: string;
+    sent_at_diff: string;
+    expires_at_diff: string | null;
+    is_expired: boolean;
+};
+
+export type ShopIntegration = {
+    key: 'sync' | 'nalda' | 'temu';
+    status: 'not_configured' | 'connected' | 'running' | 'failing';
+    statusLabel: string;
+    detail: string | null;
+};
+
+export type ShopAttentionItem = {
+    key: string;
+    tone: 'warning' | 'danger';
+    title: string;
+    description: string;
+    /** `invitations` for the section on the shop page, else an integration key. */
+    target: 'invitations' | ShopIntegration['key'];
 };
 
 export type ShopInvitationContext = {

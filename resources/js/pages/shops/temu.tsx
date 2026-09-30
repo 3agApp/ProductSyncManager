@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import TemuProblems from '@/components/temu-problems';
+import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import {
     Table,
     TableBody,
@@ -186,7 +187,35 @@ export default function ShopTemu({
             <Head title={`Temu ${shop.name}`} />
 
             <div className="flex flex-col space-y-10">
-                <div className="space-y-6">
+                <SectionNav
+                    sections={[
+                        { id: 'temu-connection', label: 'Connection' },
+                        { id: 'temu-listing', label: 'Listing' },
+                        {
+                            id: 'temu-products',
+                            label: 'Products',
+                            badge:
+                                problems.length > 0 ? (
+                                    <SectionBadge
+                                        tone="attention"
+                                        testId="temu-problems-count"
+                                    >
+                                        {problems.length}
+                                    </SectionBadge>
+                                ) : undefined,
+                        },
+                        { id: 'temu-history', label: 'History' },
+                    ]}
+                    idPrefix="temu"
+                    orientation="horizontal"
+                    className="bg-card sticky top-2 z-10"
+                />
+
+                <div
+                    id="temu-connection"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 outline-none"
+                >
                     <Heading
                         variant="small"
                         title="Temu marketplace"
@@ -328,7 +357,11 @@ export default function ShopTemu({
                                         ) : null}
                                     </fieldset>
 
-                                    <fieldset className="space-y-4 border-t pt-6">
+                                    <fieldset
+                                        id="temu-listing"
+                                        tabIndex={-1}
+                                        className="scroll-mt-20 space-y-4 border-t pt-6 outline-none"
+                                    >
                                         <legend className="sr-only">
                                             Listing
                                         </legend>
@@ -484,7 +517,11 @@ export default function ShopTemu({
                 </div>
 
                 <div className="space-y-6 border-t pt-8">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div
+                        id="temu-products"
+                        tabIndex={-1}
+                        className="flex scroll-mt-20 flex-wrap items-start justify-between gap-4 outline-none"
+                    >
                         <Heading
                             variant="small"
                             title="Products on Temu"
@@ -566,7 +603,11 @@ export default function ShopTemu({
                     />
                 </div>
 
-                <div className="space-y-6 border-t pt-8">
+                <div
+                    id="temu-history"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 border-t pt-8 outline-none"
+                >
                     <Heading
                         variant="small"
                         title="Recent syncs"

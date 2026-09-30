@@ -31,7 +31,7 @@ it('renders the page', function (string $path, string $heading) {
     'brands' => ['/{shop}/brands', 'Brands'],
     'profile settings' => ['/settings/profile', 'Profile'],
     'shop list' => ['/settings/shops', 'Shops'],
-    'appearance settings' => ['/settings/appearance', 'Appearance settings'],
+    'appearance settings' => ['/settings/appearance', 'Choose how the app looks'],
     'shop settings' => ['/settings/shops/{shop}', 'Shop settings'],
     'woocommerce connection' => ['/settings/shops/{shop}/sync', 'WooCommerce connection'],
     'nalda marketplace' => ['/settings/shops/{shop}/nalda', 'Nalda marketplace'],
