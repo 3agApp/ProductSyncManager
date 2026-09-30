@@ -247,6 +247,7 @@ test('stock, price and details that changed are sent to a listed product', funct
         ->and($content)->toHaveCount(1)
         ->and($content[0]['goodsBasic']['goodsName'])->toBe('Wooden Train Set')
         ->and($content[0]['goodsDesc'])->toBe('A classic wooden train.')
+        ->and($content[0]['goodsBasic'])->not->toHaveKey('goodsGallery')
         ->and(temuCallsOf($calls, 'temu.local.goods.v3.add'))->toBe([]);
 
     $record->refresh();

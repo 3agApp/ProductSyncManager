@@ -469,8 +469,9 @@ class SyncTemuProducts implements ShouldQueue
     /**
      * Build the partial update carrying the product's content.
      *
-     * Temu wants between 3 and 10 carousel images when they are changed, so
-     * fewer are left as Temu already has them.
+     * Images are left as Temu has them: Temu refuses the whole update when
+     * it is given the shop's image URLs ("Invalid Request Parameters"),
+     * which it only downloads when a product is created.
      *
      * @return array<string, mixed>
      */
@@ -478,15 +479,9 @@ class SyncTemuProducts implements ShouldQueue
     {
         $content = $payloads->content($product);
 
-        $basic = ['goodsName' => $content['name']];
-
-        if (count($content['images']) >= 3) {
-            $basic['goodsGallery'] = ['goodsCarouselImage' => $content['images']];
-        }
-
         return array_filter([
             'goodsId' => $record->goods_id,
-            'goodsBasic' => $basic,
+            'goodsBasic' => ['goodsName' => $content['name']],
             'goodsDesc' => $content['description'] === '' ? null : $content['description'],
         ], fn (mixed $value) => $value !== null);
     }

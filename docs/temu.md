@@ -53,15 +53,15 @@ where the product stands, and the stock, price and content last sent. A sync:
    `bg.local.goods.list.query`, storing Temu's sub-status and the SKU id.
 2. **Walks the catalog**:
 
-| Product                                   | Request                                            |
-| ----------------------------------------- | -------------------------------------------------- |
-| Listed, not on Temu yet                   | `temu.local.goods.v3.add`                          |
-| Listed, stock changed                     | `bg.local.goods.stock.edit` (sets the exact stock) |
-| Listed, price changed                     | `bg.local.goods.priceorder.change.sku.price`       |
-| Listed, retail price changed              | `bg.local.goods.partial.update` with `listPrice`   |
-| Listed, name, description, images changed | `bg.local.goods.partial.update`                    |
-| Listed again after being taken off sale   | `bg.local.goods.sale.status.set` with `onsale = 1` |
-| No longer listed                          | `bg.local.goods.sale.status.set` with `onsale = 0` |
+| Product                                 | Request                                            |
+| --------------------------------------- | -------------------------------------------------- |
+| Listed, not on Temu yet                 | `temu.local.goods.v3.add`                          |
+| Listed, stock changed                   | `bg.local.goods.stock.edit` (sets the exact stock) |
+| Listed, price changed                   | `bg.local.goods.priceorder.change.sku.price`       |
+| Listed, retail price changed            | `bg.local.goods.partial.update` with `listPrice`   |
+| Listed, name or description changed     | `bg.local.goods.partial.update`                    |
+| Listed again after being taken off sale | `bg.local.goods.sale.status.set` with `onsale = 1` |
+| No longer listed                        | `bg.local.goods.sale.status.set` with `onsale = 0` |
 
 3. **Takes products deleted from the catalog off sale**. Their row outlives
    the product for this.
@@ -135,6 +135,10 @@ Temu submits it; its stock and details are still sent.
 - **Package dimensions**: Temu's defaults are used until the catalog stores
   weight and size.
 - **Products deleted on Temu** are left alone; recreate them in Seller Center.
+- **Image changes** after a product is created: Temu refuses a content update
+  that carries the shop's image URLs, so images stay as they were when the
+  product was created. Syncing them would mean uploading them through Temu's
+  image upload API first.
 
 ## To confirm once the app is approved
 
