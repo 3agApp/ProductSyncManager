@@ -229,6 +229,7 @@ class TemuController extends Controller
                 'tokenHasExpired' => false,
                 'defaultBehavior' => TemuDefaultBehavior::ExcludeAll->value,
                 'currency' => 'CHF',
+                'discountPercent' => 10.0,
                 'syncAfterSync' => true,
                 'lastSyncedAt' => null,
             ];
@@ -249,6 +250,7 @@ class TemuController extends Controller
             'tokenHasExpired' => $connection->tokenHasExpired(),
             'defaultBehavior' => $connection->default_behavior->value,
             'currency' => $connection->currency,
+            'discountPercent' => (float) $connection->discount_percent,
             'syncAfterSync' => $connection->sync_after_sync,
             'lastSyncedAt' => $connection->last_synced_at?->toISOString(),
         ];

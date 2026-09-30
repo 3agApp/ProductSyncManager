@@ -1,25 +1,25 @@
-import { Form, Head, router, usePoll } from '@inertiajs/react';
-import { PlugZap, RefreshCw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
-import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Form, Head, router, usePoll } from "@inertiajs/react";
+import { PlugZap, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import Heading from "@/components/heading";
+import InputError from "@/components/input-error";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
-import TemuProblems from '@/components/temu-problems';
-import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
+import TemuProblems from "@/components/temu-problems";
+import { SectionBadge, SectionNav } from "@/components/ui/section-nav";
 import {
     Table,
     TableBody,
@@ -27,16 +27,16 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@/components/ui/table';
-import { cn } from '@/lib/utils';
-import { edit as editShop, index as shopsIndex } from '@/routes/shops';
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { edit as editShop, index as shopsIndex } from "@/routes/shops";
 import {
     edit as editTemu,
     test as testConnection,
     update as updateTemu,
-} from '@/routes/shops/temu';
-import { store as retryProducts } from '@/routes/shops/temu/retries';
-import { store as startSync } from '@/routes/shops/temu/syncs';
+} from "@/routes/shops/temu";
+import { store as retryProducts } from "@/routes/shops/temu/retries";
+import { store as startSync } from "@/routes/shops/temu/syncs";
 import type {
     Shop,
     ShopPermissions,
@@ -47,7 +47,7 @@ import type {
     TemuProductStatus,
     TemuStatusCount,
     TemuSyncRun,
-} from '@/types';
+} from "@/types";
 
 type Props = {
     shop: Shop;
@@ -62,27 +62,27 @@ type Props = {
 };
 
 /** The Temu statuses someone has to look at, as in TemuProductStatus::needsAttention(). */
-const ATTENTION_STATUSES: TemuProductStatus[] = ['draft', 'rejected', 'failed'];
+const ATTENTION_STATUSES: TemuProductStatus[] = ["draft", "rejected", "failed"];
 
 const STATUS_DOTS: Partial<Record<TemuProductStatus, string>> = {
-    pending: 'bg-sky-500',
-    processing: 'bg-sky-500',
-    active: 'bg-emerald-500',
-    draft: 'bg-amber-500',
-    rejected: 'bg-red-500',
-    failed: 'bg-red-500',
+    pending: "bg-sky-500",
+    processing: "bg-sky-500",
+    active: "bg-emerald-500",
+    draft: "bg-amber-500",
+    rejected: "bg-red-500",
+    failed: "bg-red-500",
 };
 
 const STATUS_VARIANTS: Record<SyncRunStatus, string> = {
-    queued: 'text-muted-foreground',
-    running: 'text-blue-600 dark:text-blue-400',
-    completed: 'text-emerald-600 dark:text-emerald-400',
-    failed: 'text-red-600 dark:text-red-400',
+    queued: "text-muted-foreground",
+    running: "text-blue-600 dark:text-blue-400",
+    completed: "text-emerald-600 dark:text-emerald-400",
+    failed: "text-red-600 dark:text-red-400",
 };
 
 function formatDuration(seconds: number | null): string {
     if (seconds === null) {
-        return '—';
+        return "—";
     }
 
     if (seconds < 60) {
@@ -93,7 +93,7 @@ function formatDuration(seconds: number | null): string {
 }
 
 function formatDate(iso: string | null): string {
-    return iso ? new Date(iso).toLocaleDateString() : '—';
+    return iso ? new Date(iso).toLocaleDateString() : "—";
 }
 
 export default function ShopTemu({
@@ -126,10 +126,10 @@ export default function ShopTemu({
         const current = currentRun?.status ?? null;
 
         if (previous && current && previous !== current) {
-            if (current === 'completed') {
-                toast.success('Temu sync finished.');
-            } else if (current === 'failed') {
-                toast.error(currentRun?.message ?? 'The Temu sync failed.');
+            if (current === "completed") {
+                toast.success("Temu sync finished.");
+            } else if (current === "failed") {
+                toast.error(currentRun?.message ?? "The Temu sync failed.");
             }
         }
 
@@ -140,15 +140,15 @@ export default function ShopTemu({
         3000,
         {
             only: [
-                'currentRun',
-                'recentRuns',
-                'statusCounts',
-                'problems',
-                'problemsTotal',
-                'connection',
+                "currentRun",
+                "recentRuns",
+                "statusCounts",
+                "problems",
+                "problemsTotal",
+                "connection",
             ],
         },
-        { autoStart: isActive, keepAlive: false, mode: 'cancel' },
+        { autoStart: isActive, keepAlive: false, mode: "cancel" },
     );
 
     useEffect(() => {
@@ -189,11 +189,11 @@ export default function ShopTemu({
             <div className="flex flex-col space-y-10">
                 <SectionNav
                     sections={[
-                        { id: 'temu-connection', label: 'Connection' },
-                        { id: 'temu-listing', label: 'Listing' },
+                        { id: "temu-connection", label: "Connection" },
+                        { id: "temu-listing", label: "Listing" },
                         {
-                            id: 'temu-products',
-                            label: 'Products',
+                            id: "temu-products",
+                            label: "Products",
                             badge:
                                 problems.length > 0 ? (
                                     <SectionBadge
@@ -204,7 +204,7 @@ export default function ShopTemu({
                                     </SectionBadge>
                                 ) : undefined,
                         },
-                        { id: 'temu-history', label: 'History' },
+                        { id: "temu-history", label: "History" },
                     ]}
                     idPrefix="temu"
                     orientation="horizontal"
@@ -238,7 +238,7 @@ export default function ShopTemu({
                         <Form
                             {...updateTemu.form(shop.slug)}
                             data-test="temu-form"
-                            resetOnSuccess={['app_secret', 'access_token']}
+                            resetOnSuccess={["app_secret", "access_token"]}
                             options={{ preserveScroll: true }}
                             className="space-y-8"
                         >
@@ -254,7 +254,7 @@ export default function ShopTemu({
                                             Authorization management. The access
                                             token appears there once the app is
                                             approved and authorized. Requests go
-                                            to{' '}
+                                            to{" "}
                                             <span className="font-mono break-all">
                                                 {connection.gateway}
                                             </span>
@@ -293,8 +293,8 @@ export default function ShopTemu({
                                                     data-test="temu-app-secret"
                                                     placeholder={
                                                         connection.hasSecret
-                                                            ? 'Saved — leave blank to keep'
-                                                            : ''
+                                                            ? "Saved — leave blank to keep"
+                                                            : ""
                                                     }
                                                 />
                                                 <InputError
@@ -314,8 +314,8 @@ export default function ShopTemu({
                                                     data-test="temu-access-token"
                                                     placeholder={
                                                         connection.hasToken
-                                                            ? 'Saved — leave blank to keep'
-                                                            : 'Available after approval'
+                                                            ? "Saved — leave blank to keep"
+                                                            : "Available after approval"
                                                     }
                                                 />
                                                 <InputError
@@ -334,15 +334,15 @@ export default function ShopTemu({
                                                 Connected
                                                 {connection.mallId
                                                     ? ` to store ${connection.mallId}`
-                                                    : ''}{' '}
-                                                on{' '}
+                                                    : ""}{" "}
+                                                on{" "}
                                                 {formatDate(
                                                     connection.verifiedAt,
                                                 )}
                                                 .
                                                 {connection.tokenExpiresAt
                                                     ? ` The token expires on ${formatDate(connection.tokenExpiresAt)}.`
-                                                    : ''}
+                                                    : ""}
                                             </p>
                                         ) : null}
 
@@ -443,11 +443,49 @@ export default function ShopTemu({
                                             </div>
                                         </div>
 
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="discount_percent">
+                                                Temu discount
+                                            </Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    id="discount_percent"
+                                                    name="discount_percent"
+                                                    type="number"
+                                                    min={0}
+                                                    max={90}
+                                                    step="0.01"
+                                                    required
+                                                    className="w-24"
+                                                    data-test="temu-discount"
+                                                    defaultValue={
+                                                        connection.discountPercent
+                                                    }
+                                                />
+                                                <span className="text-muted-foreground text-sm">
+                                                    % off the shop price
+                                                </span>
+                                            </div>
+                                            <p className="text-muted-foreground text-xs">
+                                                Temu sells at the shop price
+                                                less this discount, rounded to 5
+                                                Rappen, and shows the shop price
+                                                as the recommended retail price.
+                                                A brand can set its own discount
+                                                on the Brands page.
+                                            </p>
+                                            <InputError
+                                                message={
+                                                    errors.discount_percent
+                                                }
+                                            />
+                                        </div>
+
                                         <p className="text-muted-foreground text-sm">
-                                            Prices are sent exactly as the shop
-                                            has them. Temu reviews price changes
-                                            on listed products, so a new price
-                                            can take a while to show.
+                                            Temu reviews price changes on listed
+                                            products, so a new price can take a
+                                            while to show, and the retail price
+                                            follows once it has.
                                         </p>
                                     </fieldset>
 
@@ -510,8 +548,8 @@ export default function ShopTemu({
                     ) : (
                         <p className="text-muted-foreground text-sm">
                             {connection.isUsable
-                                ? 'This shop lists its products on Temu.'
-                                : 'This shop is not connected to Temu yet.'}
+                                ? "This shop lists its products on Temu."
+                                : "This shop is not connected to Temu yet."}
                         </p>
                     )}
                 </div>
@@ -541,7 +579,7 @@ export default function ShopTemu({
                                 ) : (
                                     <RefreshCw className="size-4" />
                                 )}
-                                {isActive ? 'Syncing…' : 'Sync now'}
+                                {isActive ? "Syncing…" : "Sync now"}
                             </Button>
                         ) : null}
                     </div>
@@ -555,20 +593,20 @@ export default function ShopTemu({
                                 <div
                                     key={item.status}
                                     className={cn(
-                                        'rounded-lg border px-3 py-2',
+                                        "rounded-lg border px-3 py-2",
                                         ATTENTION_STATUSES.includes(
                                             item.status,
                                         ) &&
-                                            'border-amber-600/30 dark:border-amber-400/30',
+                                            "border-amber-600/30 dark:border-amber-400/30",
                                     )}
                                 >
                                     <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
                                         <span
                                             aria-hidden
                                             className={cn(
-                                                'size-2 rounded-full',
+                                                "size-2 rounded-full",
                                                 STATUS_DOTS[item.status] ??
-                                                    'bg-muted-foreground/40',
+                                                    "bg-muted-foreground/40",
                                             )}
                                         />
                                         {item.label}
@@ -657,7 +695,7 @@ export default function ShopTemu({
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {item.createdAtDiff} ·{' '}
+                                                {item.createdAtDiff} ·{" "}
                                                 {item.triggerLabel}
                                             </TableCell>
                                             <TableCell className="text-right tabular-nums">
@@ -695,8 +733,8 @@ export default function ShopTemu({
 
 ShopTemu.layout = (props: { shop: { name: string; slug: string } }) => ({
     breadcrumbs: [
-        { title: 'Shops', href: shopsIndex() },
+        { title: "Shops", href: shopsIndex() },
         { title: props.shop.name, href: editShop(props.shop.slug) },
-        { title: 'Temu', href: editTemu(props.shop.slug) },
+        { title: "Temu", href: editTemu(props.shop.slug) },
     ],
 });

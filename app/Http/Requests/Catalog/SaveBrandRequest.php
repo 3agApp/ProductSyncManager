@@ -50,6 +50,20 @@ class SaveBrandRequest extends FormRequest
             'name' => [...($this->brand() ? ['sometimes'] : []), 'required', 'string', 'max:255', $this->freeSlug()],
             'nalda_listing' => ['sometimes', Rule::enum(NaldaListing::class)],
             'temu_listing' => ['sometimes', Rule::enum(TemuListing::class)],
+            // Blank follows the Temu page's discount.
+            'temu_discount_percent' => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:90'],
+        ];
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'temu_discount_percent' => 'Temu discount',
         ];
     }
 
@@ -104,6 +118,11 @@ class SaveBrandRequest extends FormRequest
 
         if ($this->has('temu_listing')) {
             $attributes['temu_listing'] = TemuListing::from((string) $this->validated('temu_listing'));
+        }
+
+        if ($this->has('temu_discount_percent')) {
+            $discount = $this->validated('temu_discount_percent');
+            $attributes['temu_discount_percent'] = $discount === null ? null : number_format((float) $discount, 2, '.', '');
         }
 
         return $attributes;

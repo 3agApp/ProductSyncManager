@@ -34,10 +34,12 @@ class BrandController extends Controller
                     'productCount' => $brand->products_count,
                     'naldaListing' => $brand->nalda_listing->value,
                     'temuListing' => $brand->temu_listing->value,
+                    'temuDiscountPercent' => $brand->temu_discount_percent === null ? null : (float) $brand->temu_discount_percent,
                 ])
                 ->all(),
             'hasNalda' => $currentShop->naldaConnection()->exists(),
             'hasTemu' => $currentShop->temuConnection()->exists(),
+            'temuDiscountPercent' => fn () => $currentShop->temuConnection === null ? null : (float) $currentShop->temuConnection->discount_percent,
             'naldaListings' => NaldaListing::brandOptions(),
             'temuListings' => TemuListing::brandOptions(),
             'permissions' => $request->user()->toShopPermissions($currentShop),

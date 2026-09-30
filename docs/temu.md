@@ -58,6 +58,7 @@ where the product stands, and the stock, price and content last sent. A sync:
 | Listed, not on Temu yet                   | `temu.local.goods.v3.add`                          |
 | Listed, stock changed                     | `bg.local.goods.stock.edit` (sets the exact stock) |
 | Listed, price changed                     | `bg.local.goods.priceorder.change.sku.price`       |
+| Listed, retail price changed              | `bg.local.goods.partial.update` with `listPrice`   |
 | Listed, name, description, images changed | `bg.local.goods.partial.update`                    |
 | Listed again after being taken off sale   | `bg.local.goods.sale.status.set` with `onsale = 1` |
 | No longer listed                          | `bg.local.goods.sale.status.set` with `onsale = 0` |
@@ -80,7 +81,8 @@ URLs. The product goes out with:
 - `externalSkuId` — the shop's SKU (or the goods id if the SKU is unusable);
 - the name, description (or short description), main and gallery images (up
   to 10), the brand as a `Brand` attribute, and the GTIN as a barcode;
-- the price and stock, and package weight and size left at 0 so Temu uses its
+- the discounted base price, the shop price as the recommended retail price,
+  and the stock, with package weight and size left at 0 so Temu uses its
   defaults (100 g, 10 × 20 × 30 cm);
 - Temu's default fulfilment time and the store's default shipping template.
 
@@ -100,11 +102,28 @@ unfixable product does not cost a request every run.
 
 ### Prices
 
-Prices are sent exactly as the shop has them, in the currency on the Temu page
-(CHF by default, two decimals). On a listed product a new price is a
-**price change request**: Temu can review it, suggest another price, or ask the
-seller to confirm it in Seller Center, so it may take a while to show. A
-refused change is shown on the product under **Needs attention**.
+Temu sells below the shop price: the **Temu discount** on the Temu page (10%
+by default) comes off the WooCommerce price, and a brand can set its own
+discount on the Brands page instead (blank follows the Temu page, 0% sells at
+the shop price). The result is rounded to the nearest 5 Rappen and sent as
+the **base price**, in the currency on the Temu page (CHF by default). Temu
+shows Swiss prices with VAT included, as the WooCommerce price already is.
+
+The shop price itself is sent as the **recommended retail price**
+(`listPrice`), which Temu only takes when it is above the base price, so a
+product sold at 0% has none.
+
+On a listed product a new base price is a **price change request**
+(`bg.local.goods.priceorder.change.sku.price`): Temu can review it, suggest
+another price, or ask the seller to confirm it in Seller Center, so it may
+take a while to show. A refused change is shown on the product under **Needs
+attention**. A new retail price goes through `bg.local.goods.partial.update`
+(per SKU, without `basePrice`). While a lower base price is still under
+review, Temu refuses a retail price that is not above the old one (codes
+150010041 / 150010083); that is not treated as an error, and the retail price
+is sent again on the next sync.
+
+Lowering the discount to 0% leaves the retail price Temu already has in place.
 
 ## Not covered yet
 
@@ -125,7 +144,9 @@ live store yet:
   from the message, since Temu does not document the gateway's codes;
 - whether a product without variations is accepted with an empty
   `variations` list;
-- the `reason` Temu expects on a price change.
+- the `reason` Temu expects on a price change;
+- that a retail price change is accepted without `listPriceType`, which Temu's
+  documentation describes only as "empty or 0 means listPrice is required".
 
 ## Production requirements
 

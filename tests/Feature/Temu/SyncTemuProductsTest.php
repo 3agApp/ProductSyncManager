@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Temu\BuildTemuProductPayload;
 use App\Enums\ProductStatus;
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
@@ -263,6 +264,142 @@ test('stock, price and details that changed are sent to a listed product', funct
     dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
 
     expect(array_column($calls, 'type'))->toBe(['bg.local.goods.list.query']);
+});
+
+test('temu sells at the discounted price with the shop price as the retail price', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create(['discount_percent' => 10]);
+    $product = temuReadyProduct($shop);
+
+    $calls = [];
+    fakeTemuGateway(['temu.local.goods.v3.add' => ['goodsId' => 601000000000001]], $calls);
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    $add = temuCallsOf($calls, 'temu.local.goods.v3.add');
+
+    // 49.90 less 10% is 44.91, rounded to the nearest 5 Rappen.
+    expect($add[0]['skuList'][0]['price'])->toBe([
+        'basePrice' => ['amount' => '44.90', 'currency' => 'CHF'],
+        'listPrice' => ['amount' => '49.90', 'currency' => 'CHF'],
+    ]);
+
+    $record = $product->temuProduct()->sole();
+
+    expect($record->sent_price)->toBe('44.90')
+        ->and($record->sent_list_price)->toBe('49.90');
+});
+
+test('a brand discount takes the place of the shop discount', function () {
+    $shop = Shop::factory()->create();
+    $connection = TemuConnection::factory()->for($shop)->create(['discount_percent' => 10]);
+    $brand = Brand::factory()->for($shop)->create(['temu_discount_percent' => 20]);
+    $noDiscount = Brand::factory()->for($shop)->create(['temu_discount_percent' => 0]);
+
+    $discounted = temuReadyProduct($shop, ['brand_id' => $brand->id]);
+    $atShopPrice = temuReadyProduct($shop, ['sku' => 'TOY-101', 'brand_id' => $noDiscount->id]);
+
+    // 49.90 less 20% is 39.92; a brand at 0% sells at the shop price, which
+    // leaves no retail price above it to send.
+    expect($connection->price($discounted))->toBe('39.90')
+        ->and($connection->listPrice($discounted))->toBe('49.90')
+        ->and($connection->price($atShopPrice))->toBe('49.90')
+        ->and($connection->listPrice($atShopPrice))->toBeNull();
+});
+
+test('discounted prices are rounded to the nearest 5 rappen', function (string $price, float $discount, string $expected) {
+    $shop = Shop::factory()->create();
+    $connection = TemuConnection::factory()->for($shop)->create(['discount_percent' => $discount]);
+
+    expect($connection->price(temuReadyProduct($shop, ['price' => $price])))->toBe($expected);
+})->with([
+    'rounds down' => ['29.90', 10, '26.90'],
+    'rounds up' => ['19.90', 10, '17.90'],
+    'halfway rounds up' => ['44.50', 10, '40.05'],
+    'fractional discount' => ['100.00', 12.5, '87.50'],
+    'never reaches zero' => ['0.05', 50, '0.05'],
+]);
+
+test('a changed retail price is sent to a listed product', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create(['discount_percent' => 10]);
+    $product = temuReadyProduct($shop, ['price' => '59.90']);
+
+    $record = TemuProduct::factory()->forProduct($product)->create([
+        'goods_id' => 601000000000003,
+        'sku_id' => 51000000000003,
+        'status' => TemuProductStatus::Active,
+        'sent_stock' => 7,
+        'sent_price' => '44.90',
+        'sent_list_price' => '49.90',
+    ]);
+    $record->update(['content_hash' => app(BuildTemuProductPayload::class)->contentHash($product)]);
+
+    $calls = [];
+    fakeTemuGateway([
+        'bg.local.goods.priceorder.change.sku.price' => ['successSkuList' => [51000000000003], 'failedSkuList' => []],
+    ], $calls);
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    $price = temuCallsOf($calls, 'bg.local.goods.priceorder.change.sku.price');
+    $update = temuCallsOf($calls, 'bg.local.goods.partial.update');
+
+    expect($price[0]['changeSkuPriceDTOList'][0]['skuChangePriceBaseDTOList'][0]['newSupplierPrice'])->toBe(['amount' => '53.90', 'currency' => 'CHF'])
+        ->and($update)->toHaveCount(1)
+        ->and($update[0]['goodsId'])->toBe(601000000000003)
+        ->and($update[0]['skuList'])->toBe([['skuId' => 51000000000003, 'listPrice' => ['amount' => '59.90', 'currency' => 'CHF']]])
+        ->and($record->refresh()->sent_list_price)->toBe('59.90');
+});
+
+test('a retail price temu refuses until the new base price is approved is sent again later', function () {
+    $shop = Shop::factory()->create();
+    TemuConnection::factory()->for($shop)->create(['discount_percent' => 10]);
+    $product = temuReadyProduct($shop);
+
+    // Listed before the discount, so Temu still has the shop price as the
+    // base price while it reviews the lower one.
+    $record = TemuProduct::factory()->forProduct($product)->create([
+        'goods_id' => 601000000000003,
+        'sku_id' => 51000000000003,
+        'status' => TemuProductStatus::Active,
+        'sent_stock' => 7,
+        'sent_price' => '49.90',
+        'sent_list_price' => null,
+    ]);
+    $record->update(['content_hash' => app(BuildTemuProductPayload::class)->contentHash($product)]);
+
+    $approved = false;
+    $calls = [];
+    fakeTemuGateway([
+        'bg.local.goods.priceorder.change.sku.price' => ['successSkuList' => [51000000000003], 'failedSkuList' => []],
+        'bg.local.goods.partial.update' => function () use (&$approved) {
+            return $approved
+            ? Http::response(['success' => true, 'errorCode' => 1000000, 'errorMsg' => '', 'result' => []])
+            : Http::response(['success' => false, 'errorCode' => 150010041, 'errorMsg' => 'List price must be greater than base price']);
+        },
+    ], $calls);
+
+    $run = queuedTemuRun($shop);
+    dispatch_sync(new SyncTemuProducts($run));
+
+    $record->refresh();
+
+    expect(temuCallsOf($calls, 'bg.local.goods.partial.update'))->toHaveCount(1)
+        ->and($record->sent_price)->toBe('44.90')
+        ->and($record->sent_list_price)->toBeNull()
+        ->and($record->message)->toBeNull()
+        ->and($run->refresh()->failed_products)->toBe(0);
+
+    // Once Temu has approved the new base price, the retail price goes through.
+    $approved = true;
+    $calls = [];
+
+    dispatch_sync(new SyncTemuProducts(queuedTemuRun($shop)));
+
+    expect(temuCallsOf($calls, 'bg.local.goods.priceorder.change.sku.price'))->toBe([])
+        ->and(temuCallsOf($calls, 'bg.local.goods.partial.update'))->toHaveCount(1)
+        ->and($record->refresh()->sent_list_price)->toBe('49.90');
 });
 
 test('a product temu is still reviewing is left alone', function () {
