@@ -7,6 +7,7 @@ use App\Services\Network\PublicHostGuard;
 use App\Services\Network\UnsafeDestinationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceAuthenticationException;
 use App\Services\WooCommerce\Exceptions\WooCommerceDestinationException;
+use App\Services\WooCommerce\Exceptions\WooCommerceException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use App\Services\WooCommerce\Exceptions\WooCommerceWebhookSetupException;
@@ -375,6 +376,95 @@ class WooCommerceClient
         ]);
 
         return $this->intHeader($response, 'X-WP-Total') ?? 0;
+    }
+
+    /**
+     * Create an order and return it as WooCommerce saved it.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     *
+     * @throws WooCommerceException
+     */
+    public function createOrder(array $data): array
+    {
+        return $this->savedOrder($this->write('POST', 'orders', $data));
+    }
+
+    /**
+     * Change an order and return it as WooCommerce saved it.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     *
+     * @throws WooCommerceException
+     */
+    public function updateOrder(int $id, array $data): array
+    {
+        return $this->savedOrder($this->write('PUT', 'orders/'.$id, $data));
+    }
+
+    /**
+     * Add a private note to an order.
+     *
+     * @throws WooCommerceException
+     */
+    public function addOrderNote(int $id, string $note): void
+    {
+        $this->write('POST', 'orders/'.$id.'/notes', ['note' => $note]);
+    }
+
+    /**
+     * Read the saved order out of a write response.
+     *
+     * @return array<string, mixed>
+     */
+    private function savedOrder(Response $response): array
+    {
+        $order = $response->json();
+
+        if (! is_array($order) || ! is_int($order['id'] ?? null) || $order['id'] <= 0) {
+            throw new WooCommerceRequestException('WooCommerce did not return the saved order.');
+        }
+
+        return $order;
+    }
+
+    /**
+     * Send a write and translate failures into typed exceptions.
+     *
+     * Writes are never repeated automatically: a request that timed out may
+     * still have been saved, and sending it again could create a second order.
+     *
+     * @param  array<string, mixed>  $data
+     *
+     * @throws WooCommerceAuthenticationException
+     * @throws WooCommerceRateLimitException
+     * @throws WooCommerceRequestException
+     */
+    private function write(string $method, string $path, array $data): Response
+    {
+        try {
+            $response = $this->request()->retry(1, 0, throw: false)->send($method, $path, ['json' => $data]);
+        } catch (ConnectionException $exception) {
+            throw new WooCommerceRequestException($exception->getMessage(), previous: $exception);
+        }
+
+        if ($response->status() === 401 || $response->status() === 403) {
+            throw new WooCommerceAuthenticationException('WooCommerce rejected the API credentials.');
+        }
+
+        if ($response->status() === 429) {
+            throw WooCommerceRateLimitException::retryAfter(
+                (int) ($response->header('Retry-After') ?: 60),
+            );
+        }
+
+        if (! $response->successful()) {
+            throw WooCommerceRequestException::status($response->status(), $response->body());
+        }
+
+        return $response;
     }
 
     /**

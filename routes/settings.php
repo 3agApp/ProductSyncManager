@@ -90,6 +90,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/shops/{shop}/temu/retries', [TemuController::class, 'retry'])
             ->middleware('throttle:20,1')
             ->name('shops.temu.retries.store');
+        Route::post('settings/shops/{shop}/temu/orders/{temuOrder}/retry', [TemuController::class, 'retryOrder'])
+            ->middleware('throttle:20,1')
+            ->scopeBindings()
+            ->name('shops.temu.orders.retry');
     });
 });
 

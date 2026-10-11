@@ -128,9 +128,53 @@ Lowering the discount to 0% leaves the retail price Temu already has in place.
 A **draft** has no price order for a change to amend, so its price waits until
 Temu submits it; its stock and details are still sent.
 
+## Orders
+
+WooCommerce fulfils Temu orders and owns the stock; this app only carries
+them across. With **Import orders into WooCommerce** on, the scheduler checks
+Temu every five minutes (`bg.order.list.v2.get`, orders updated since the last
+check, with half an hour of overlap) and creates each new order in
+WooCommerce once. Creating the order lowers the stock there, and the usual
+webhook → product sync sends the new stock to Temu.
+
+| Temu status        | What happens                                                    |
+| ------------------ | --------------------------------------------------------------- |
+| Pending (1)        | Waits: Temu can still cancel it or change the address           |
+| To ship (2)        | Created in WooCommerce                                          |
+| Cancelled (3)      | Cancelled in WooCommerce if imported, which puts the stock back |
+| Shipped, delivered | Left as it is; never imported if first seen in that state       |
+
+The WooCommerce order is:
+
+- **processing** and paid, payment method **Temu**, `created_via` `temu`, the
+  Temu parent order number as the transaction id and in `_temu_parent_order_sn`;
+- **billed to Temu** (name and company "Temu") **without an email address**,
+  so WooCommerce sends the buyer no emails;
+- **shipped to the buyer**, from `bg.order.shippinginfo.v2.get`. The address is
+  sent straight to WooCommerce and not stored here;
+- priced at the **base price** Temu pays the shop: the price last sent to Temu
+  (`temu_products.sent_price`). Temu's API has no call that returns the
+  accepted base price, so while a price change is under review the new price
+  is used. WooCommerce reads REST line totals as before tax, so a shop whose
+  prices include tax sends them net and WooCommerce adds the tax back;
+- given a **Temu** shipping line at 0, and a private note with the ship-by
+  time.
+
+Lines are matched by Temu's SKU id, then by SKU code. A line whose product left
+the catalog is sent by name only (no stock change) and the note says so; a line
+with no known Temu price fails the order.
+
+A failed import is listed under **Orders** on the Temu page with
+**Import again**. An import cut off before WooCommerce answered stays as
+**Check WooCommerce** and is never sent again on its own, since WooCommerce
+may have created it; check the store before importing it again.
+
+Not yet covered: shipping is still confirmed in Temu Seller Center
+(tracking is not sent back with `bg.logistics.shipment.v2.confirm`), and
+returns and refunds stay in Seller Center.
+
 ## Not covered yet
 
-- **Orders**: orders are not pulled from Temu.
 - **Variable products**: like the rest of the app, only simple products sync.
 - **Package dimensions**: Temu's defaults are used until the catalog stores
   weight and size.
