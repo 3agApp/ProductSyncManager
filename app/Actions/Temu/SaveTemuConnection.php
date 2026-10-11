@@ -54,6 +54,7 @@ class SaveTemuConnection
         $connection->currency = strtoupper((string) $data['currency']);
         $connection->discount_percent = number_format((float) $data['discount_percent'], 2, '.', '');
         $connection->sync_after_sync = (bool) ($data['sync_after_sync'] ?? false);
+        $connection->import_orders = (bool) ($data['import_orders'] ?? false);
 
         $connection->save();
 

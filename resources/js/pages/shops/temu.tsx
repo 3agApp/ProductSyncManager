@@ -35,6 +35,7 @@ import {
     test as testConnection,
     update as updateTemu,
 } from '@/routes/shops/temu';
+import { retry as retryOrder } from '@/routes/shops/temu/orders';
 import { store as retryProducts } from '@/routes/shops/temu/retries';
 import { store as startSync } from '@/routes/shops/temu/syncs';
 import type {
@@ -43,6 +44,8 @@ import type {
     SyncRunStatus,
     TemuBehaviorOption,
     TemuConnection,
+    TemuOrder,
+    TemuOrderStatus,
     TemuProblem,
     TemuProductStatus,
     TemuStatusCount,
@@ -57,6 +60,7 @@ type Props = {
     problemsTotal: number;
     currentRun: TemuSyncRun | null;
     recentRuns: TemuSyncRun[];
+    orders: TemuOrder[];
     behaviors: TemuBehaviorOption[];
     permissions: ShopPermissions;
 };
@@ -79,6 +83,23 @@ const STATUS_VARIANTS: Record<SyncRunStatus, string> = {
     completed: 'text-emerald-600 dark:text-emerald-400',
     failed: 'text-red-600 dark:text-red-400',
 };
+
+const ORDER_VARIANTS: Record<TemuOrderStatus, string> = {
+    pending: 'text-muted-foreground',
+    creating: 'text-amber-600 dark:text-amber-400',
+    imported: 'text-emerald-600 dark:text-emerald-400',
+    failed: 'text-red-600 dark:text-red-400',
+    cancelled: 'text-muted-foreground',
+};
+
+function formatDateTime(iso: string | null): string {
+    return iso
+        ? new Date(iso).toLocaleString(undefined, {
+              dateStyle: 'short',
+              timeStyle: 'short',
+          })
+        : '—';
+}
 
 function formatDuration(seconds: number | null): string {
     if (seconds === null) {
@@ -104,6 +125,7 @@ export default function ShopTemu({
     problemsTotal,
     currentRun,
     recentRuns,
+    orders,
     behaviors,
     permissions,
 }: Props) {
@@ -112,6 +134,7 @@ export default function ShopTemu({
     const [syncAfterSync, setSyncAfterSync] = useState(
         connection.syncAfterSync,
     );
+    const [importOrders, setImportOrders] = useState(connection.importOrders);
 
     const isActive = currentRun?.isActive ?? false;
 
@@ -182,6 +205,25 @@ export default function ShopTemu({
         });
     };
 
+    const retryImport = (order: TemuOrder) => {
+        if (
+            order.status === 'creating' &&
+            !window.confirm(
+                `Check WooCommerce first: the import of ${order.parentOrderSn} was cut off and the order may already be there. Import it again?`,
+            )
+        ) {
+            return;
+        }
+
+        router.visit(retryOrder({ shop: shop.slug, temuOrder: order.id }), {
+            preserveScroll: true,
+        });
+    };
+
+    const ordersNeedingAttention = orders.filter(
+        (order) => order.needsAttention,
+    ).length;
+
     return (
         <>
             <Head title={`Temu ${shop.name}`} />
@@ -201,6 +243,19 @@ export default function ShopTemu({
                                         testId="temu-problems-count"
                                     >
                                         {problems.length}
+                                    </SectionBadge>
+                                ) : undefined,
+                        },
+                        {
+                            id: 'temu-orders',
+                            label: 'Orders',
+                            badge:
+                                ordersNeedingAttention > 0 ? (
+                                    <SectionBadge
+                                        tone="attention"
+                                        testId="temu-orders-count"
+                                    >
+                                        {ordersNeedingAttention}
                                     </SectionBadge>
                                 ) : undefined,
                         },
@@ -515,6 +570,34 @@ export default function ShopTemu({
                                         </div>
                                     </div>
 
+                                    <div className="flex items-start gap-3 rounded-lg border p-4">
+                                        <Checkbox
+                                            id="import_orders"
+                                            name="import_orders"
+                                            value="1"
+                                            checked={importOrders}
+                                            onCheckedChange={(value) =>
+                                                setImportOrders(value === true)
+                                            }
+                                            data-test="temu-import-orders"
+                                            className="mt-0.5"
+                                        />
+                                        <div className="space-y-1">
+                                            <Label htmlFor="import_orders">
+                                                Import orders into WooCommerce
+                                            </Label>
+                                            <p className="text-muted-foreground text-sm">
+                                                Every few minutes, create new
+                                                Temu orders in WooCommerce,
+                                                which ships them and lowers the
+                                                stock. They are billed to Temu
+                                                without an email address, so the
+                                                buyer gets no emails from the
+                                                shop.
+                                            </p>
+                                        </div>
+                                    </div>
+
                                     <div className="flex flex-wrap items-center gap-4">
                                         <Button
                                             type="submit"
@@ -639,6 +722,114 @@ export default function ShopTemu({
                         canRetry={permissions.canRunSync}
                         onRetry={retry}
                     />
+                </div>
+
+                <div
+                    id="temu-orders"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 border-t pt-8 outline-none"
+                >
+                    <Heading
+                        variant="small"
+                        title="Orders"
+                        description={
+                            connection.importOrders
+                                ? `Temu orders created in WooCommerce. Last checked ${connection.ordersCheckedAt ? formatDateTime(connection.ordersCheckedAt) : 'never'}.`
+                                : 'Temu orders are not imported. Turn on “Import orders into WooCommerce” above to create them there.'
+                        }
+                    />
+
+                    {orders.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Temu order</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>On Temu</TableHead>
+                                        <TableHead>Ordered</TableHead>
+                                        <TableHead>Ship by</TableHead>
+                                        <TableHead>WooCommerce</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {orders.map((order) => (
+                                        <TableRow
+                                            key={order.id}
+                                            data-test="temu-order-row"
+                                        >
+                                            <TableCell className="font-mono text-xs">
+                                                {order.parentOrderSn}
+                                                {order.message ? (
+                                                    <p className="text-muted-foreground mt-1 max-w-sm font-sans text-xs whitespace-normal">
+                                                        {order.message}
+                                                    </p>
+                                                ) : null}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={
+                                                        ORDER_VARIANTS[
+                                                            order.status
+                                                        ]
+                                                    }
+                                                >
+                                                    {order.statusLabel}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">
+                                                {order.temuStatus}
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">
+                                                {formatDateTime(
+                                                    order.orderedAt,
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">
+                                                {formatDateTime(order.shipByAt)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {order.wooCommerceUrl ? (
+                                                    <a
+                                                        href={
+                                                            order.wooCommerceUrl
+                                                        }
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="underline underline-offset-4"
+                                                    >
+                                                        #
+                                                        {
+                                                            order.wooCommerceOrderId
+                                                        }
+                                                    </a>
+                                                ) : order.needsAttention &&
+                                                  permissions.canManageSync ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        data-test="temu-order-retry"
+                                                        onClick={() =>
+                                                            retryImport(order)
+                                                        }
+                                                    >
+                                                        Import again
+                                                    </Button>
+                                                ) : (
+                                                    '—'
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-sm">
+                            No Temu orders have been imported yet.
+                        </p>
+                    )}
                 </div>
 
                 <div

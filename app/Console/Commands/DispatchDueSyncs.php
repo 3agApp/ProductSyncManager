@@ -8,6 +8,7 @@ use App\Actions\Temu\StartTemuSync;
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
 use App\Enums\TemuProductStatus;
+use App\Jobs\ImportTemuOrders;
 use App\Models\NaldaExport;
 use App\Models\ShopSyncSetting;
 use App\Models\SyncRun;
@@ -21,6 +22,11 @@ class DispatchDueSyncs extends Command
      * Minutes between checks on Temu products that are still being processed.
      */
     private const int TEMU_CHECK_MINUTES = 15;
+
+    /**
+     * Minutes between checks for new Temu orders.
+     */
+    private const int TEMU_ORDER_MINUTES = 5;
 
     /**
      * The name and signature of the console command.
@@ -43,6 +49,7 @@ class DispatchDueSyncs extends Command
     {
         $this->reapStalledRuns();
         $this->checkTemuProcessing($startTemuSync);
+        $this->importTemuOrders();
 
         $due = ShopSyncSetting::query()
             ->where('is_enabled', true)
@@ -115,5 +122,25 @@ class DispatchDueSyncs extends Command
             ->whereDoesntHave('shop.temuSyncRuns', fn ($query) => $query->where('created_at', '>', $due))
             ->get()
             ->each(fn (TemuConnection $connection) => $start->handle($connection->shop, SyncTrigger::Scheduled));
+    }
+
+    /**
+     * Check shops that import Temu orders for new ones.
+     *
+     * The command runs every minute; orders are checked every few minutes,
+     * and the job is unique per shop so a slow check is never doubled.
+     */
+    private function importTemuOrders(): void
+    {
+        if (now()->minute % self::TEMU_ORDER_MINUTES !== 0) {
+            return;
+        }
+
+        TemuConnection::query()
+            ->where('import_orders', true)
+            ->with('shop.wooCommerceConnection')
+            ->get()
+            ->filter(fn (TemuConnection $connection) => ImportTemuOrders::canImport($connection))
+            ->each(fn (TemuConnection $connection) => ImportTemuOrders::dispatch($connection->shop_id));
     }
 }

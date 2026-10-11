@@ -241,6 +241,16 @@ class Shop extends Model
     }
 
     /**
+     * Get the Temu orders seen for the shop.
+     *
+     * @return HasMany<TemuOrder, $this>
+     */
+    public function temuOrders(): HasMany
+    {
+        return $this->hasMany(TemuOrder::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

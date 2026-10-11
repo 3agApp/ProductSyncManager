@@ -4,6 +4,7 @@ use App\Enums\ShopRole;
 use App\Enums\SyncRunStatus;
 use App\Enums\TemuDefaultBehavior;
 use App\Enums\TemuListing;
+use App\Enums\TemuOrderStatus;
 use App\Enums\TemuProductStatus;
 use App\Jobs\SyncTemuProducts;
 use App\Jobs\SyncWooCommerceProducts;
@@ -11,9 +12,11 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\SyncRun;
 use App\Models\TemuConnection;
+use App\Models\TemuOrder;
 use App\Models\TemuProduct;
 use App\Models\TemuSyncRun;
 use App\Models\User;
+use App\Models\WooCommerceConnection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -558,4 +561,34 @@ test('products can be included on temu in bulk', function () {
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => '2 products updated for Temu.']);
 
     expect(Product::query()->where('temu_listing', 'include')->count())->toBe(2);
+});
+
+test('order importing can be turned on, and imported orders are listed', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    WooCommerceConnection::factory()->verified()->for($shop)->create(['store_url' => 'https://toys.example']);
+
+    $this->actingAs($user)
+        ->patch(route('shops.temu.update', $shop), temuSettings(['import_orders' => '1']))
+        ->assertSessionHasNoErrors();
+
+    expect($shop->temuConnection->fresh()->import_orders)->toBeTrue();
+
+    TemuOrder::factory()->for($shop)->create(['parent_order_sn' => 'PO-192-1', 'woocommerce_order_id' => 9001]);
+    TemuOrder::factory()->for($shop)->create([
+        'parent_order_sn' => 'PO-192-2',
+        'status' => TemuOrderStatus::Failed,
+        'woocommerce_order_id' => null,
+        'message' => 'WooCommerce responded with HTTP 400',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('shops.temu.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connection.importOrders', true)
+            ->has('orders', 2)
+            ->where('orders.0.parentOrderSn', 'PO-192-2')
+            ->where('orders.0.needsAttention', true)
+            ->where('orders.1.wooCommerceUrl', 'https://toys.example/wp-admin/post.php?post=9001&action=edit')
+            ->where('orders.1.temuStatus', 'To ship'));
 });
