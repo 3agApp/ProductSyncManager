@@ -36,6 +36,7 @@ export default defineConfig({
                 '**/.cursor/**',
                 '**/.junie/**',
                 '**/vendor/**',
+                '**/wordpress/**',
             ],
         },
     },
@@ -43,6 +44,7 @@ export default defineConfig({
         ignorePatterns: [
             'vendor/**',
             'node_modules/**',
+            'wordpress/**',
             'public/**',
             'bootstrap/ssr/**',
             'tailwind.config.js',
@@ -64,6 +66,7 @@ export default defineConfig({
         singleAttributePerLine: false,
         htmlWhitespaceSensitivity: 'css',
         ignorePatterns: [
+            'wordpress/**',
             '.ai/**',
             '.claude/**',
             '.github/**',

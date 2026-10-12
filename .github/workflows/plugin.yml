@@ -1,0 +1,122 @@
+name: plugin
+
+# The WooCommerce plugin in wordpress/woo-product-sync-manager. It is its own Composer
+# project with its own standards (WooCommerce-Core, PHPUnit on the WordPress test
+# library), so it has its own workflow and only runs when the plugin changes.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'wordpress/**'
+      - '.github/workflows/plugin.yml'
+      - '.github/actions/setup-wordpress-plugin/**'
+  pull_request:
+    paths:
+      - 'wordpress/**'
+      - '.github/workflows/plugin.yml'
+      - '.github/actions/setup-wordpress-plugin/**'
+  # Called by plugin-release.yml, so nothing is released on a red build.
+  workflow_call:
+
+concurrency:
+  group: plugin-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: wordpress/woo-product-sync-manager
+
+jobs:
+  lint:
+    name: Coding standards and translations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-wordpress-plugin
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
+      - name: Check the version is stated consistently
+        run: ./bin/check-version.sh
+
+      - name: PHPCS (WooCommerce coding standards)
+        run: composer lint
+
+      - name: Install wp-cli
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/wp-cli.phar" \
+            https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x "$RUNNER_TEMP/wp-cli.phar"
+          sudo mv "$RUNNER_TEMP/wp-cli.phar" /usr/local/bin/wp
+
+      - name: Check the catalogue still describes the source
+        run: ./bin/check-translations.sh
+
+      - name: Audit the locked dependencies
+        run: composer audit --locked --abandoned=report --ignore-unreachable
+
+  test:
+    name: Tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 8.2 is the floor and what toysonline runs.
+        php: ['8.2', '8.3', '8.4']
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wpsm_tests
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-wordpress-plugin
+        with:
+          php-version: ${{ matrix.php }}
+          install-wordpress: 'true'
+
+      - name: PHPUnit
+        run: composer test
+
+  build:
+    name: Build the plugin zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-wordpress-plugin
+
+      - name: Build
+        run: ./bin/build-zip.sh
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v7
+        with:
+          name: woo-product-sync-manager-zip
+          path: wordpress/woo-product-sync-manager/dist/*.zip
+          retention-days: 14
+          if-no-files-found: error
