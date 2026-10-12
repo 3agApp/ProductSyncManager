@@ -12,6 +12,7 @@ use App\Services\Nalda\NaldaSftp;
 use App\Services\Nalda\NaldaUploadException;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -309,4 +310,63 @@ test('the listing can be set on several products at once', function () {
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => '2 products updated for Nalda.']);
 
     expect(Product::query()->where('nalda_listing', 'include')->count())->toBe(2);
+});
+
+test('the nalda api key is stored encrypted and never sent back', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this->actingAs($user)
+        ->patch(route('shops.nalda.update', $shop), naldaSettings(['api_key' => 'nalda-api-key-for-tests', 'import_orders' => '1']))
+        ->assertSessionHasNoErrors();
+
+    $connection = $shop->naldaConnection()->first();
+    expect($connection->api_key)->toBe('nalda-api-key-for-tests')
+        ->and($connection->import_orders)->toBeTrue()
+        ->and(DB::table('nalda_connections')->value('api_key'))->not->toContain('nalda-api-key-for-tests');
+
+    // A blank key keeps the stored one.
+    $this->actingAs($user)
+        ->patch(route('shops.nalda.update', $shop), naldaSettings(['api_key' => '', 'import_orders' => '1']))
+        ->assertSessionHasNoErrors();
+
+    expect($connection->fresh()->api_key)->toBe('nalda-api-key-for-tests');
+
+    $this->actingAs($user)
+        ->get(route('shops.nalda.edit', $shop))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connection.hasApiKey', true)
+            ->where('connection.importOrders', true)
+            ->missing('connection.apiKey')
+            ->has('orders', 0));
+});
+
+test('importing orders needs an api key', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('shops.nalda.update', $user->currentShop), naldaSettings(['import_orders' => '1']))
+        ->assertSessionHasErrors('api_key');
+});
+
+test('the api key can be tested against nalda', function () {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+    NaldaConnection::factory()->for($shop)->create(['api_key' => 'nalda-api-key-for-tests']);
+
+    Http::fake(['sellers-api.nalda.com/*' => Http::sequence()
+        ->push(['success' => true, 'message' => 'ok', 'result' => []])
+        ->push(['success' => false, 'message' => 'Unauthorized'], 401)]);
+
+    $this->actingAs($user)
+        ->from(route('shops.nalda.edit', $shop))
+        ->post(route('shops.nalda.api-test', $shop))
+        ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Connected to the Nalda API.']);
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-API-KEY', 'nalda-api-key-for-tests') && str_ends_with($request->url(), '/orders/items'));
+
+    $this->actingAs($user)
+        ->from(route('shops.nalda.edit', $shop))
+        ->post(route('shops.nalda.api-test', $shop))
+        ->assertInertiaFlash('toast', ['type' => 'error', 'message' => 'Nalda rejected the API key. Create a new one in the Nalda Seller Portal under Orders → Settings.']);
 });

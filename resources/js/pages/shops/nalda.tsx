@@ -3,6 +3,9 @@ import { Download, PlugZap, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
+import MarketplaceOrders, {
+    formatDateTime,
+} from '@/components/marketplace-orders';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +32,7 @@ import {
 } from '@/components/ui/table';
 import { edit as editShop, index as shopsIndex } from '@/routes/shops';
 import {
+    apiTest as testNaldaApi,
     download,
     edit as editNalda,
     test as testConnection,
@@ -39,6 +43,7 @@ import type {
     NaldaBehaviorOption,
     NaldaConnection,
     NaldaExport,
+    MarketplaceOrder,
     NaldaPriceModeOption,
     Shop,
     ShopPermissions,
@@ -55,6 +60,7 @@ type Props = {
     behaviors: NaldaBehaviorOption[];
     priceModes: NaldaPriceModeOption[];
     shopTax: ShopTax;
+    orders: MarketplaceOrder[];
     permissions: ShopPermissions;
 };
 
@@ -86,6 +92,7 @@ export default function ShopNalda({
     behaviors,
     priceModes,
     shopTax,
+    orders,
     permissions,
 }: Props) {
     const [testing, setTesting] = useState(false);
@@ -93,6 +100,16 @@ export default function ShopNalda({
     const [uploadAfterSync, setUploadAfterSync] = useState(
         connection.uploadAfterSync,
     );
+    const [importOrders, setImportOrders] = useState(connection.importOrders);
+    const [testingApi, setTestingApi] = useState(false);
+
+    const runApiTest = () => {
+        router.visit(testNaldaApi(shop.slug), {
+            preserveScroll: true,
+            onStart: () => setTestingApi(true),
+            onFinish: () => setTestingApi(false),
+        });
+    };
 
     const isActive = currentExport?.isActive ?? false;
 
@@ -168,6 +185,7 @@ export default function ShopNalda({
                         { id: 'nalda-connection', label: 'Connection' },
                         { id: 'nalda-defaults', label: 'Product defaults' },
                         { id: 'nalda-file', label: 'Product file' },
+                        { id: 'nalda-orders', label: 'Orders' },
                         { id: 'nalda-history', label: 'History' },
                     ]}
                     idPrefix="nalda"
@@ -287,6 +305,91 @@ export default function ShopNalda({
                                                 be read. Enter it again.
                                             </p>
                                         ) : null}
+                                    </fieldset>
+
+                                    <fieldset className="space-y-4 border-t pt-6">
+                                        <legend className="text-sm font-medium">
+                                            Orders
+                                        </legend>
+                                        <p className="text-muted-foreground text-sm">
+                                            Create Nalda orders in WooCommerce,
+                                            billed to Nalda Marketplace AG at
+                                            what Nalda pays out, and send their
+                                            delivery status and tracking code
+                                            back to Nalda every 15 minutes. Find
+                                            the API key in the Nalda Seller
+                                            Portal under Orders → Settings.
+                                        </p>
+
+                                        <div className="grid gap-2 sm:max-w-md">
+                                            <Label htmlFor="api_key">
+                                                API key
+                                            </Label>
+                                            <Input
+                                                id="api_key"
+                                                name="api_key"
+                                                type="password"
+                                                autoComplete="new-password"
+                                                data-test="nalda-api-key"
+                                                placeholder={
+                                                    connection.hasApiKey
+                                                        ? 'Saved — leave blank to keep'
+                                                        : ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.api_key}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-start gap-3 rounded-lg border p-4">
+                                            <Checkbox
+                                                id="import_orders"
+                                                name="import_orders"
+                                                value="1"
+                                                checked={importOrders}
+                                                onCheckedChange={(value) =>
+                                                    setImportOrders(
+                                                        value === true,
+                                                    )
+                                                }
+                                                data-test="nalda-import-orders"
+                                                className="mt-0.5"
+                                            />
+                                            <div className="space-y-1">
+                                                <Label htmlFor="import_orders">
+                                                    Import orders into
+                                                    WooCommerce
+                                                </Label>
+                                                <p className="text-muted-foreground text-sm">
+                                                    The first check records the
+                                                    Nalda orders WooCommerce
+                                                    already has, so none is
+                                                    created twice. Turn off the
+                                                    old Nalda plugin&apos;s
+                                                    order import before turning
+                                                    this on.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            data-test="nalda-api-test"
+                                            onClick={runApiTest}
+                                            disabled={
+                                                testingApi ||
+                                                !connection.hasApiKey
+                                            }
+                                        >
+                                            {testingApi ? (
+                                                <Spinner />
+                                            ) : (
+                                                <PlugZap className="size-4" />
+                                            )}
+                                            Test API key
+                                        </Button>
                                     </fieldset>
 
                                     <fieldset
@@ -625,6 +728,29 @@ export default function ShopNalda({
                             </AlertDescription>
                         </Alert>
                     ) : null}
+                </div>
+
+                <div
+                    id="nalda-orders"
+                    tabIndex={-1}
+                    className="scroll-mt-20 space-y-6 border-t pt-8 outline-none"
+                >
+                    <Heading
+                        variant="small"
+                        title="Orders"
+                        description={
+                            connection.importOrders
+                                ? `Nalda orders created in WooCommerce. Last checked ${connection.ordersCheckedAt ? formatDateTime(connection.ordersCheckedAt) : 'never'}; statuses last sent ${connection.statusesExportedAt ? formatDateTime(connection.statusesExportedAt) : 'never'}.`
+                                : 'Nalda orders are not imported. Save the API key and turn on “Import orders into WooCommerce” above.'
+                        }
+                    />
+
+                    <MarketplaceOrders
+                        marketplace="Nalda"
+                        shopSlug={shop.slug}
+                        orders={orders}
+                        canRetry={permissions.canManageSync}
+                    />
                 </div>
 
                 <div

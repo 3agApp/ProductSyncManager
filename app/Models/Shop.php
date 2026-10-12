@@ -241,13 +241,13 @@ class Shop extends Model
     }
 
     /**
-     * Get the Temu orders seen for the shop.
+     * Get the Nalda and Temu orders seen for the shop.
      *
-     * @return HasMany<TemuOrder, $this>
+     * @return HasMany<MarketplaceOrder, $this>
      */
-    public function temuOrders(): HasMany
+    public function marketplaceOrders(): HasMany
     {
-        return $this->hasMany(TemuOrder::class);
+        return $this->hasMany(MarketplaceOrder::class);
     }
 
     /**

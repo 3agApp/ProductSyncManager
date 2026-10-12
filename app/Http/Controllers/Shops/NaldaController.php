@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Shops;
 use App\Actions\Nalda\BuildNaldaProductFeed;
 use App\Actions\Nalda\SaveNaldaConnection;
 use App\Actions\Nalda\StartNaldaExport;
+use App\Enums\Marketplace;
 use App\Enums\NaldaDefaultBehavior;
 use App\Enums\NaldaPriceMode;
 use App\Enums\SyncTrigger;
@@ -14,8 +15,11 @@ use App\Http\Requests\Shops\TestNaldaConnectionRequest;
 use App\Models\NaldaConnection;
 use App\Models\NaldaExport;
 use App\Models\Shop;
+use App\Services\Nalda\NaldaApiException;
+use App\Services\Nalda\NaldaClient;
 use App\Services\Nalda\NaldaSftp;
 use App\Services\Nalda\NaldaUploadException;
+use App\Support\MarketplaceOrderList;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -56,6 +60,7 @@ class NaldaController extends Controller
                 ->get()
                 ->map(fn (NaldaExport $export) => $this->exportProps($export))
                 ->all(),
+            'orders' => fn () => MarketplaceOrderList::props($shop, Marketplace::Nalda),
             'behaviors' => NaldaDefaultBehavior::options(),
             'priceModes' => NaldaPriceMode::options(),
             'shopTax' => fn () => [
@@ -111,6 +116,34 @@ class NaldaController extends Controller
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Connected to the Nalda SFTP server.')]);
+
+        return back();
+    }
+
+    /**
+     * Check the saved API key against Nalda with a read-only call.
+     */
+    public function testApi(Shop $shop): RedirectResponse
+    {
+        Gate::authorize('manageSync', $shop);
+
+        $connection = $shop->naldaConnection;
+
+        if ($connection === null || ! $connection->hasUsableApiKey()) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('Save the Nalda API key first.')]);
+
+            return back();
+        }
+
+        try {
+            (new NaldaClient($connection))->check();
+        } catch (NaldaApiException $exception) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $exception->getMessage()]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Connected to the Nalda API.')]);
 
         return back();
     }
@@ -200,6 +233,10 @@ class NaldaController extends Controller
                 'returnDays' => 14,
                 'uploadAfterSync' => true,
                 'lastExportedAt' => null,
+                'hasApiKey' => false,
+                'importOrders' => false,
+                'ordersCheckedAt' => null,
+                'statusesExportedAt' => null,
             ];
         }
 
@@ -220,6 +257,10 @@ class NaldaController extends Controller
             'returnDays' => $connection->return_days,
             'uploadAfterSync' => $connection->upload_after_sync,
             'lastExportedAt' => $connection->last_exported_at?->toISOString(),
+            'hasApiKey' => $connection->hasUsableApiKey(),
+            'importOrders' => $connection->import_orders,
+            'ordersCheckedAt' => $connection->orders_checked_at?->toISOString(),
+            'statusesExportedAt' => $connection->statuses_exported_at?->toISOString(),
         ];
     }
 

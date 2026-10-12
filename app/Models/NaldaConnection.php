@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $shop_id
  * @property string|null $sftp_username
  * @property string|null $sftp_password
+ * @property string|null $api_key
  * @property string $file_name
  * @property NaldaDefaultBehavior $default_behavior
  * @property string $country
@@ -26,8 +27,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $delivery_time_days
  * @property int $return_days
  * @property bool $upload_after_sync
+ * @property bool $import_orders
  * @property CarbonImmutable|null $verified_at
  * @property CarbonImmutable|null $last_exported_at
+ * @property CarbonImmutable|null $orders_checked_at
+ * @property CarbonImmutable|null $statuses_exported_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
@@ -35,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'sftp_username',
     'sftp_password',
+    'api_key',
     'file_name',
     'default_behavior',
     'country',
@@ -44,8 +49,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'delivery_time_days',
     'return_days',
     'upload_after_sync',
+    'import_orders',
     'verified_at',
     'last_exported_at',
+    'orders_checked_at',
+    'statuses_exported_at',
 ])]
 class NaldaConnection extends Model
 {
@@ -64,7 +72,7 @@ class NaldaConnection extends Model
      */
     public const array TAX_RATES = ['8.1', '2.6'];
 
-    protected $hidden = ['sftp_password'];
+    protected $hidden = ['sftp_password', 'api_key'];
 
     /**
      * The model's default values for attributes.
@@ -147,6 +155,17 @@ class NaldaConnection extends Model
     }
 
     /**
+     * Determine if a seller API key is stored and can still be decrypted.
+     *
+     * Like the password, the key is encrypted with the application key, so a
+     * rotated application key leaves it unreadable.
+     */
+    public function hasUsableApiKey(): bool
+    {
+        return rescue(fn () => filled($this->api_key), false, report: false);
+    }
+
+    /**
      * Determine if SFTP credentials are stored and can still be decrypted.
      *
      * The password is encrypted with the application key, so rotating it
@@ -187,13 +206,17 @@ class NaldaConnection extends Model
     {
         return [
             'sftp_password' => 'encrypted',
+            'api_key' => 'encrypted',
             'default_behavior' => NaldaDefaultBehavior::class,
             'price_mode' => NaldaPriceMode::class,
             'delivery_time_days' => 'integer',
             'return_days' => 'integer',
             'upload_after_sync' => 'boolean',
+            'import_orders' => 'boolean',
             'verified_at' => 'datetime',
             'last_exported_at' => 'datetime',
+            'orders_checked_at' => 'datetime',
+            'statuses_exported_at' => 'datetime',
         ];
     }
 }

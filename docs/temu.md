@@ -147,7 +147,11 @@ webhook → product sync sends the new stock to Temu.
 The WooCommerce order is:
 
 - **processing** and paid, payment method **Temu**, `created_via` `temu`, the
-  Temu parent order number as the transaction id and in `_temu_parent_order_sn`;
+  Temu parent order number as the transaction id;
+- tagged with the marketplace meta the **Product Sync Manager** WooCommerce
+  plugin reads (`_wpsm_marketplace` = `temu`, the order number, the buyer's
+  relay email, the ship-by time, the shipping payout; see
+  [Marketplace orders](#marketplace-orders-in-woocommerce));
 - **billed to Temu** (name and company "Temu") **without an email address**,
   so WooCommerce sends the buyer no emails;
 - **shipped to the buyer**, from `bg.order.shippinginfo.v2.get`. The address is
@@ -176,6 +180,16 @@ may have created it; check the store before importing it again.
 Not yet covered: shipping is still confirmed in Temu Seller Center
 (tracking is not sent back with `bg.logistics.shipment.v2.confirm`), and
 returns and refunds stay in Seller Center.
+
+## Marketplace orders in WooCommerce
+
+Nalda and Temu orders share one table (`marketplace_orders`) and one set of
+WooCommerce order meta, `_wpsm_*`, spelled in `App\Support\MarketplaceOrderMeta`
+here and `WooProductSyncManager\Orders\Meta` in the plugin
+(`wordpress/woo-product-sync-manager`). Change both together. The plugin shows
+the orders in WooCommerce, blocks customer emails, gives Planzer the buyer's
+email, and keeps each order's delivery status and tracking code, which this
+app reads back.
 
 ## Not covered yet
 

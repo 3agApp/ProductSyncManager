@@ -1,5 +1,6 @@
 export type * from './auth';
 export type * from './catalog';
+export type * from './marketplace';
 export type * from './nalda';
 export type * from './navigation';
 export type * from './pagination';

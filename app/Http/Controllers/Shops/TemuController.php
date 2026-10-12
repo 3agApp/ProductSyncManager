@@ -4,21 +4,20 @@ namespace App\Http\Controllers\Shops;
 
 use App\Actions\Temu\SaveTemuConnection;
 use App\Actions\Temu\StartTemuSync;
+use App\Enums\Marketplace;
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
 use App\Enums\TemuDefaultBehavior;
-use App\Enums\TemuOrderStatus;
 use App\Enums\TemuProductStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Shops\SaveTemuConnectionRequest;
-use App\Jobs\ImportTemuOrders;
 use App\Models\Shop;
 use App\Models\TemuConnection;
-use App\Models\TemuOrder;
 use App\Models\TemuProduct;
 use App\Models\TemuSyncRun;
 use App\Services\Temu\TemuClient;
 use App\Services\Temu\TemuException;
+use App\Support\MarketplaceOrderList;
 use App\Support\TemuProblemReason;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,11 +37,6 @@ class TemuController extends Controller
      * The number of products needing attention shown at once.
      */
     private const int PROBLEMS = 50;
-
-    /**
-     * The number of recent Temu orders shown.
-     */
-    private const int ORDERS = 20;
 
     /**
      * Show the Temu settings and listing status for the shop.
@@ -90,7 +84,7 @@ class TemuController extends Controller
                 ->get()
                 ->map(fn (TemuSyncRun $run) => $this->runProps($run))
                 ->all(),
-            'orders' => fn () => $this->orderProps($shop),
+            'orders' => fn () => MarketplaceOrderList::props($shop, Marketplace::Temu),
             'behaviors' => TemuDefaultBehavior::options(),
             'permissions' => $request->user()->toShopPermissions($shop),
         ]);
@@ -210,70 +204,6 @@ class TemuController extends Controller
             : trans_choice('{1} Sending the product to Temu again.|[2,*] Sending :count products to Temu again.', $retried)]);
 
         return back();
-    }
-
-    /**
-     * Import a Temu order into WooCommerce again.
-     *
-     * Only an order that failed, or whose import was cut off, can be sent
-     * again. For a cut-off one the page asks the person to check WooCommerce
-     * first, since the order may already be there.
-     */
-    public function retryOrder(Shop $shop, TemuOrder $temuOrder): RedirectResponse
-    {
-        Gate::authorize('manageSync', $shop);
-
-        if (! $temuOrder->status->needsAttention()) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => __('There is nothing to retry.')]);
-
-            return back();
-        }
-
-        $temuOrder->update(['status' => TemuOrderStatus::Pending, 'message' => null]);
-
-        $connection = $shop->temuConnection;
-
-        if ($connection !== null && ImportTemuOrders::canImport($connection)) {
-            ImportTemuOrders::dispatch($shop->id);
-        }
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('The order will be imported again.')]);
-
-        return back();
-    }
-
-    /**
-     * Build the props for the recent Temu orders.
-     *
-     * Orders that need attention come first, however old they are.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function orderProps(Shop $shop): array
-    {
-        $storeUrl = $shop->wooCommerceConnection?->store_url;
-
-        return $shop->temuOrders()
-            ->orderByRaw('case when status in (?, ?) then 0 else 1 end', [TemuOrderStatus::Creating->value, TemuOrderStatus::Failed->value])
-            ->latest('id')
-            ->limit(self::ORDERS)
-            ->get()
-            ->map(fn (TemuOrder $order) => [
-                'id' => $order->id,
-                'parentOrderSn' => $order->parent_order_sn,
-                'status' => $order->status->value,
-                'statusLabel' => $order->status->label(),
-                'temuStatus' => TemuOrder::describeTemuStatus($order->temu_status),
-                'needsAttention' => $order->status->needsAttention(),
-                'message' => $order->message,
-                'orderedAt' => $order->ordered_at?->toISOString(),
-                'shipByAt' => $order->ship_by_at?->toISOString(),
-                'wooCommerceOrderId' => $order->woocommerce_order_id,
-                'wooCommerceUrl' => $order->woocommerce_order_id !== null && $storeUrl !== null
-                    ? rtrim($storeUrl, '/').'/wp-admin/post.php?post='.$order->woocommerce_order_id.'&action=edit'
-                    : null,
-            ])
-            ->all();
     }
 
     /**
