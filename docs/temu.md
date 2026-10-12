@@ -177,9 +177,21 @@ A failed import is listed under **Orders** on the Temu page with
 **Check WooCommerce** and is never sent again on its own, since WooCommerce
 may have created it; check the store before importing it again.
 
-Not yet covered: shipping is still confirmed in Temu Seller Center
-(tracking is not sent back with `bg.logistics.shipment.v2.confirm`), and
-returns and refunds stay in Seller Center.
+With **Confirm shipments on Temu** on, every check also tells Temu which
+imported orders have shipped. The Product Sync Manager plugin copies
+Planzer's parcel number onto the WooCommerce order; the check reads it back
+and confirms the order on Temu with `bg.logistics.shipment.v2.confirm`, as
+one Planzer parcel (`sendType` 0). Temu's id for Planzer is looked up once
+with `bg.logistics.companies.get` and kept on the connection. Lines Temu
+cancelled are left out. The WooCommerce order gets a note.
+
+A confirmation Temu refuses (an unrecognised parcel number, a cancellation
+under review) is shown under **Orders** with Temu's message and
+**Confirm again**, and is never sent again by itself. The Orders list marks
+orders Temu still waits on in amber within 24 hours of their ship-by time and
+in red once it has passed.
+
+Returns and refunds stay in Seller Center.
 
 ## Marketplace orders in WooCommerce
 

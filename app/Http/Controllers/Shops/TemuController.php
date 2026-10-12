@@ -236,6 +236,7 @@ class TemuController extends Controller
                 'syncAfterSync' => true,
                 'importOrders' => false,
                 'orderShipping' => 5.5,
+                'confirmShipments' => false,
                 'ordersCheckedAt' => null,
                 'lastSyncedAt' => null,
             ];
@@ -260,6 +261,7 @@ class TemuController extends Controller
             'syncAfterSync' => $connection->sync_after_sync,
             'importOrders' => $connection->import_orders,
             'orderShipping' => (float) $connection->order_shipping,
+            'confirmShipments' => $connection->confirm_shipments,
             'ordersCheckedAt' => $connection->orders_checked_at?->toISOString(),
             'lastSyncedAt' => $connection->last_synced_at?->toISOString(),
         ];

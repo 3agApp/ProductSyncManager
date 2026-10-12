@@ -44,6 +44,8 @@ export type TemuConnection = {
     importOrders: boolean;
     /** What Temu pays for shipping one order, tax included. */
     orderShipping: number;
+    /** Whether shipments with a Planzer parcel number are confirmed on Temu. */
+    confirmShipments: boolean;
     ordersCheckedAt: string | null;
     lastSyncedAt: string | null;
 };

@@ -23,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $sync_after_sync
  * @property bool $import_orders
  * @property string $order_shipping
+ * @property bool $confirm_shipments
+ * @property int|null $carrier_id
  * @property int|null $mall_id
  * @property CarbonImmutable|null $token_expires_at
  * @property CarbonImmutable|null $verified_at
@@ -42,6 +44,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'sync_after_sync',
     'import_orders',
     'order_shipping',
+    'confirm_shipments',
+    'carrier_id',
     'mall_id',
     'token_expires_at',
     'verified_at',
@@ -163,6 +167,8 @@ class TemuConnection extends Model
             'sync_after_sync' => 'boolean',
             'import_orders' => 'boolean',
             'order_shipping' => 'decimal:2',
+            'confirm_shipments' => 'boolean',
+            'carrier_id' => 'integer',
             'mall_id' => 'integer',
             'token_expires_at' => 'datetime',
             'verified_at' => 'datetime',

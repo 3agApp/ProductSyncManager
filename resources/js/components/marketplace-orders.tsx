@@ -29,6 +29,11 @@ export function formatDateTime(iso: string | null): string {
         : '—';
 }
 
+const SHIP_BY_VARIANTS = {
+    overdue: 'font-medium text-red-600 dark:text-red-400',
+    soon: 'font-medium text-amber-600 dark:text-amber-400',
+} as const;
+
 function readable(state: string | null): string {
     if (!state) {
         return '—';
@@ -75,6 +80,12 @@ export default function MarketplaceOrders({
         );
     };
 
+    const confirmAgain = (order: MarketplaceOrder) =>
+        router.visit(
+            retryOrder({ shop: shopSlug, marketplaceOrder: order.id }),
+            { preserveScroll: true },
+        );
+
     if (orders.length === 0) {
         return (
             <p className="text-muted-foreground text-sm">
@@ -105,11 +116,16 @@ export default function MarketplaceOrders({
                         >
                             <TableCell className="font-mono text-xs">
                                 {order.externalOrderId}
-                                {order.message ? (
-                                    <p className="text-muted-foreground mt-1 max-w-sm font-sans text-xs whitespace-normal">
-                                        {order.message}
-                                    </p>
-                                ) : null}
+                                {[order.message, order.shipmentMessage]
+                                    .filter(Boolean)
+                                    .map((message) => (
+                                        <p
+                                            key={message}
+                                            className="text-muted-foreground mt-1 max-w-sm font-sans text-xs whitespace-normal"
+                                        >
+                                            {message}
+                                        </p>
+                                    ))}
                             </TableCell>
                             <TableCell>
                                 <Badge
@@ -121,6 +137,17 @@ export default function MarketplaceOrders({
                             </TableCell>
                             <TableCell className="text-muted-foreground">
                                 {order.marketplaceStatus || '—'}
+                                {order.shipmentMessage && canRetry ? (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="ml-2"
+                                        data-test="marketplace-order-confirm-again"
+                                        onClick={() => confirmAgain(order)}
+                                    >
+                                        Confirm again
+                                    </Button>
+                                ) : null}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
                                 {readable(order.deliveryStatus)}
@@ -129,8 +156,20 @@ export default function MarketplaceOrders({
                                 {formatDateTime(order.orderedAt)}
                             </TableCell>
                             {showShipBy ? (
-                                <TableCell className="text-muted-foreground">
+                                <TableCell
+                                    className={
+                                        order.shipByWarning
+                                            ? SHIP_BY_VARIANTS[
+                                                  order.shipByWarning
+                                              ]
+                                            : 'text-muted-foreground'
+                                    }
+                                    data-test="marketplace-order-ship-by"
+                                >
                                     {formatDateTime(order.shipByAt)}
+                                    {order.shipByWarning === 'overdue'
+                                        ? ' · overdue'
+                                        : null}
                                 </TableCell>
                             ) : null}
                             <TableCell>

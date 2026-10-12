@@ -594,3 +594,17 @@ test('order importing can be turned on, and imported orders are listed', functio
             ->where('orders.1.wooCommerceUrl', 'https://toys.example/wp-admin/admin.php?page=wc-orders&action=edit&id=9001')
             ->where('orders.1.marketplaceStatus', 'To ship'));
 });
+
+test('confirming shipments can be turned on, but only with order importing', function (string $import, bool $expected) {
+    $user = User::factory()->create();
+    $shop = $user->currentShop;
+
+    $this->actingAs($user)
+        ->patch(route('shops.temu.update', $shop), temuSettings(['import_orders' => $import, 'confirm_shipments' => '1']))
+        ->assertSessionHasNoErrors();
+
+    expect($shop->temuConnection->fresh()->confirm_shipments)->toBe($expected);
+})->with([
+    'importing on' => ['1', true],
+    'importing off' => ['0', false],
+]);
