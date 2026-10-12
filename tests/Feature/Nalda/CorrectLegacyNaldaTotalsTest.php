@@ -7,6 +7,7 @@ use App\Models\WooCommerceConnection;
 use App\Support\MarketplaceOrderMeta as Meta;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 
 /**
  * A shop with prices including 8.1% VAT, connected to WooCommerce and Nalda.
@@ -94,6 +95,34 @@ test('an old nalda order is repriced at the payout, shipping included', function
         ->and(Meta::read($payload, Meta::SHIPPING_PAYOUT))->toBe('5.41')
         ->and($writes[1]['data']['note'])->toContain('34.00 → 36.86')
         ->and($shop->marketplaceOrders()->sole()->customer_total)->toBe('44.30');
+});
+
+test('a rate-limited nalda call is tried again a minute later', function () {
+    Sleep::fake();
+    $shop = legacyNaldaShop();
+    $writes = [];
+    $naldaCalls = 0;
+
+    Http::fake(function (Request $request) use (&$writes, &$naldaCalls) {
+        if (str_contains($request->url(), 'sellers-api.nalda.com')) {
+            return ++$naldaCalls === 1
+                ? Http::response([], 429)
+                : Http::response(['success' => true, 'result' => ['orderId' => 469328, 'fee' => 6.5, 'commission' => 1.09]]);
+        }
+
+        if ($request->method() === 'GET') {
+            return Http::response([legacyNaldaStoreOrder()], 200, ['X-WP-TotalPages' => '1']);
+        }
+
+        $writes[] = $request->method();
+
+        return Http::response(['id' => 8300, 'total' => '36.86']);
+    });
+
+    $this->artisan('nalda:correct-legacy-totals', ['shop' => $shop->slug, '--apply' => true])->assertSuccessful();
+
+    Sleep::assertSleptTimes(1);
+    expect($naldaCalls)->toBe(2)->and($writes)->toBe(['PUT', 'POST']);
 });
 
 test('without --apply nothing is changed', function () {

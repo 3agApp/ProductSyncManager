@@ -11,6 +11,7 @@ use App\Services\WooCommerce\WooCommerceClient;
 use App\Support\MarketplaceOrderMeta as Meta;
 use App\Support\WooCommerceAmount;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Sleep;
 
 /**
  * Puts the Nalda orders the old "Nalda Marketplace Sync" plugin imported at
@@ -34,6 +35,11 @@ class CorrectLegacyNaldaTotals
      * WooCommerce statuses whose amounts are not the payout.
      */
     private const array SKIPPED_STATUSES = ['cancelled', 'refunded', 'failed', 'trash'];
+
+    /**
+     * How often a rate-limited Nalda call is tried again, a minute apart.
+     */
+    private const int RATE_LIMIT_RETRIES = 5;
 
     /**
      * Check, and with $apply correct, every Nalda order created since a date.
@@ -86,7 +92,7 @@ class CorrectLegacyNaldaTotals
             return [...$outcome, 'result' => $skip];
         }
 
-        $details = $nalda->order((int) $id);
+        $details = $this->naldaOrder($nalda, (int) $id);
 
         if ((float) ($details['refund'] ?? 0) > 0) {
             return [...$outcome, 'result' => 'skipped: refunded by Nalda'];
@@ -112,6 +118,31 @@ class CorrectLegacyNaldaTotals
             ->update(['customer_total' => $correction['customer_total'], 'commission' => $correction['commission']]);
 
         return [...$outcome, 'to' => (string) $saved['total'], 'result' => 'corrected'];
+    }
+
+    /**
+     * Read one order from Nalda, waiting out its rate limit.
+     *
+     * A correction run reads every old order in a row, which is more than Nalda
+     * allows in a minute.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws NaldaApiException
+     */
+    private function naldaOrder(NaldaClient $nalda, int $id): array
+    {
+        for ($attempt = 0; ; $attempt++) {
+            try {
+                return $nalda->order($id);
+            } catch (NaldaApiException $exception) {
+                if (! $exception->isRateLimited() || $attempt >= self::RATE_LIMIT_RETRIES) {
+                    throw $exception;
+                }
+
+                Sleep::for(1)->minute();
+            }
+        }
     }
 
     /**
