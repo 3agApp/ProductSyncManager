@@ -21,11 +21,27 @@ return new class extends Migration
     public function up(): void
     {
         // Indexes keep the name of the table they were made on, so the old ones
-        // go before the rename and new ones are made after it.
-        Schema::table('temu_orders', function (Blueprint $table) {
-            $table->dropUnique(['shop_id', 'parent_order_sn']);
-            $table->dropIndex(['shop_id', 'status']);
-        });
+        // go before the rename and new ones are made after it. MySQL will not
+        // drop the last index the shop_id foreign key can use, so it gets one
+        // of its own first. Each step is skipped when done already, so a run
+        // that stopped halfway can be finished.
+        if (! Schema::hasIndex('temu_orders', 'marketplace_orders_shop_id_index')) {
+            Schema::table('temu_orders', function (Blueprint $table) {
+                $table->index('shop_id', 'marketplace_orders_shop_id_index');
+            });
+        }
+
+        if (Schema::hasIndex('temu_orders', 'temu_orders_shop_id_parent_order_sn_unique')) {
+            Schema::table('temu_orders', function (Blueprint $table) {
+                $table->dropUnique(['shop_id', 'parent_order_sn']);
+            });
+        }
+
+        if (Schema::hasIndex('temu_orders', 'temu_orders_shop_id_status_index')) {
+            Schema::table('temu_orders', function (Blueprint $table) {
+                $table->dropIndex(['shop_id', 'status']);
+            });
+        }
 
         Schema::rename('temu_orders', 'marketplace_orders');
 
@@ -109,6 +125,10 @@ return new class extends Migration
         Schema::table('temu_orders', function (Blueprint $table) {
             $table->unique(['shop_id', 'parent_order_sn']);
             $table->index(['shop_id', 'status']);
+        });
+
+        Schema::table('temu_orders', function (Blueprint $table) {
+            $table->dropIndex('marketplace_orders_shop_id_index');
         });
     }
 };
