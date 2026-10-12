@@ -4,7 +4,7 @@
  * Plugin URI:           https://github.com/3agApp/ProductSyncManager
  * Update URI:           https://github.com/3agApp/ProductSyncManager
  * Description:          Shows the marketplace orders Product Sync Manager imports from Nalda and Temu: an orders column, an order panel, the delivery status the marketplace is sent, a delivery note, and no customer emails.
- * Version:              0.1.0
+ * Version:              0.1.1
  * Requires at least:    7.0
  * Tested up to:         7.1
  * Requires PHP:         8.2
@@ -24,7 +24,7 @@ namespace WooProductSyncManager;
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WPSM_VERSION', '0.1.0' );
+define( 'WPSM_VERSION', '0.1.1' );
 define( 'WPSM_PLUGIN_FILE', __FILE__ );
 define( 'WPSM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WPSM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

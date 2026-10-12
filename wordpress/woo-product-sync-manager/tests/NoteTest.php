@@ -32,6 +32,36 @@ class NoteTest extends TestCase {
 	}
 
 	/**
+	 * The note prints in German or English whatever wp-admin is in, and offers both.
+	 *
+	 * @return void
+	 */
+	public function test_the_note_can_be_printed_in_german_or_english() {
+		$order = MarketplaceOrder::from( $this->marketplace_order() );
+
+		$german  = ( new Note() )->render( $order, 'de_DE' );
+		$english = ( new Note() )->render( $order, 'en_US' );
+
+		$this->assertStringContainsString( 'Lieferschein', $german );
+		$this->assertMatchesRegularExpression( '/aria-current="true">Deutsch</', $german );
+		$this->assertStringContainsString( 'Delivery note', $english );
+		$this->assertMatchesRegularExpression( '/aria-current="true">English</', $english );
+		$this->assertStringContainsString( 'lang=en_US', $german );
+		$this->assertFalse( is_locale_switched(), 'The previous language is restored.' );
+	}
+
+	/**
+	 * A language the note does not offer falls back to wp-admin's.
+	 *
+	 * @return void
+	 */
+	public function test_an_unknown_language_is_ignored() {
+		$html = ( new Note() )->render( MarketplaceOrder::from( $this->marketplace_order() ), 'fr_FR' );
+
+		$this->assertStringContainsString( 'Delivery note', $html );
+	}
+
+	/**
 	 * The link carries a nonce for that one order.
 	 *
 	 * @return void

@@ -28,6 +28,20 @@ class Note {
 	const ACTION = 'wpsm_delivery_note';
 
 	/**
+	 * The languages the note can be printed in, by locale.
+	 *
+	 * The parcel's buyer may not read the shop's language, so the note offers both,
+	 * whatever language wp-admin is in. The names are not translated: each is
+	 * written the way its own readers look for it.
+	 *
+	 * @var array<string, string>
+	 */
+	const LANGUAGES = array(
+		'de_DE' => 'Deutsch',
+		'en_US' => 'English',
+	);
+
+	/**
 	 * Register the hooks.
 	 *
 	 * @return void
@@ -39,15 +53,19 @@ class Note {
 	/**
 	 * The URL that prints an order's delivery note.
 	 *
-	 * @param \WC_Order $order The order.
+	 * @param \WC_Order $order  The order.
+	 * @param string    $locale One of LANGUAGES, or empty for wp-admin's language.
 	 * @return string
 	 */
-	public static function url( \WC_Order $order ) {
+	public static function url( \WC_Order $order, $locale = '' ) {
 		return wp_nonce_url(
 			add_query_arg(
-				array(
-					'action'   => self::ACTION,
-					'order_id' => $order->get_id(),
+				array_filter(
+					array(
+						'action'   => self::ACTION,
+						'order_id' => $order->get_id(),
+						'lang'     => $locale,
+					)
 				),
 				admin_url( 'admin-post.php' )
 			),
@@ -75,10 +93,12 @@ class Note {
 			wp_die( esc_html__( 'This order did not come from a marketplace.', 'woo-product-sync-manager' ), '', array( 'response' => 404 ) );
 		}
 
+		$locale = isset( $_GET['lang'] ) ? sanitize_text_field( wp_unslash( $_GET['lang'] ) ) : '';
+
 		nocache_headers();
 		header( 'Content-Type: text/html; charset=utf-8' );
 
-		echo $this->render( $marketplace_order ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The template escapes everything it prints.
+		echo $this->render( $marketplace_order, $locale ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The template escapes everything it prints.
 		exit;
 	}
 
@@ -86,9 +106,28 @@ class Note {
 	 * Build the note's HTML.
 	 *
 	 * @param MarketplaceOrder $marketplace_order The order.
+	 * @param string           $locale            One of LANGUAGES, or empty for wp-admin's language.
 	 * @return string
 	 */
-	public function render( MarketplaceOrder $marketplace_order ) {
+	public function render( MarketplaceOrder $marketplace_order, $locale = '' ) {
+		$switched = isset( self::LANGUAGES[ $locale ] ) && switch_to_locale( $locale );
+
+		try {
+			return $this->render_in_current_locale( $marketplace_order );
+		} finally {
+			if ( $switched ) {
+				restore_previous_locale();
+			}
+		}
+	}
+
+	/**
+	 * Build the note's HTML in whatever language is active.
+	 *
+	 * @param MarketplaceOrder $marketplace_order The order.
+	 * @return string
+	 */
+	private function render_in_current_locale( MarketplaceOrder $marketplace_order ) {
 		$order = $marketplace_order->order();
 		$note  = array(
 			'order'          => $order,
@@ -98,12 +137,34 @@ class Note {
 			'logo_url'       => $this->logo_url(),
 			'lines'          => $this->lines( $order ),
 			'shipping_types' => $this->shipping_types(),
+			'languages'      => $this->languages( $order ),
 		);
 
 		ob_start();
 		include WPSM_PLUGIN_DIR . 'templates/delivery-note.php';
 
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The language buttons: name, link, and whether it is the one showing.
+	 *
+	 * @param \WC_Order $order The order.
+	 * @return array<int, array{name: string, url: string, active: bool}>
+	 */
+	private function languages( \WC_Order $order ) {
+		$current   = is_locale_switched() ? get_locale() : determine_locale();
+		$languages = array();
+
+		foreach ( self::LANGUAGES as $locale => $name ) {
+			$languages[] = array(
+				'name'   => $name,
+				'url'    => self::url( $order, $locale ),
+				'active' => strtok( $current, '_' ) === strtok( $locale, '_' ),
+			);
+		}
+
+		return $languages;
 	}
 
 	/**
