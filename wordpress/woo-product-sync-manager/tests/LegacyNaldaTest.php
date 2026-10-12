@@ -96,6 +96,65 @@ class LegacyNaldaTest extends TestCase {
 	}
 
 	/**
+	 * A kept state that the rules would change stays put on the next save.
+	 *
+	 * @return void
+	 */
+	public function test_a_state_the_rules_would_change_is_kept_as_manual() {
+		$order = $this->legacy_order();
+
+		( new LegacyNalda() )->run();
+
+		$order = wc_get_order( $order->get_id() );
+		$order->add_order_note( 'Packed again.' );
+		$order->save();
+
+		$marketplace_order = MarketplaceOrder::from( wc_get_order( $order->get_id() ) );
+
+		$this->assertTrue( $marketplace_order->delivery_status_is_manual() );
+		$this->assertSame( Status::IN_DELIVERY, $marketplace_order->delivery_status() );
+	}
+
+	/**
+	 * A state the rules agree with stays automatic.
+	 *
+	 * @return void
+	 */
+	public function test_a_state_the_rules_agree_with_stays_automatic() {
+		$order = $this->legacy_order();
+		$order->update_meta_data( '_nalda_delivery_status', 'DELIVERED' );
+		$order->save();
+
+		( new LegacyNalda() )->run();
+
+		$this->assertFalse( MarketplaceOrder::from( wc_get_order( $order->get_id() ) )->delivery_status_is_manual() );
+	}
+
+	/**
+	 * Orders an earlier version copied are checked too, without copying them again.
+	 *
+	 * @return void
+	 */
+	public function test_orders_copied_before_are_checked() {
+		$order = $this->legacy_order();
+		$order->update_meta_data( Meta::MARKETPLACE, Meta::NALDA );
+		$order->update_meta_data( Meta::DELIVERY_STATUS, 'RETURNED' );
+		$order->update_meta_data( Meta::TRACKING_CODE, 'kept' );
+		$order->set_status( 'cancelled' );
+		Status::suspend();
+		$order->save();
+		Status::resume();
+
+		$this->assertSame( 0, ( new LegacyNalda() )->run() );
+
+		$marketplace_order = MarketplaceOrder::from( wc_get_order( $order->get_id() ) );
+
+		$this->assertTrue( $marketplace_order->delivery_status_is_manual() );
+		$this->assertSame( Status::RETURNED, $marketplace_order->delivery_status() );
+		$this->assertSame( 'kept', $marketplace_order->tracking_code(), 'Nothing is copied again.' );
+	}
+
+	/**
 	 * Running again copies nothing new, and the finished run records the version.
 	 *
 	 * @return void

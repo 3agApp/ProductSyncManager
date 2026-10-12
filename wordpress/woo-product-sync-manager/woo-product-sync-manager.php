@@ -36,7 +36,7 @@ define( 'WPSM_MIN_WC_VERSION', '11.0' );
  * Bumped whenever an upgrade has to rewrite stored data, which is what makes an
  * existing site run Migration\LegacyNalda (or a later step) on the next load.
  */
-define( 'WPSM_DB_VERSION', '1.0.0' );
+define( 'WPSM_DB_VERSION', '1.1.0' );
 
 /**
  * Load the Composer autoloader.
