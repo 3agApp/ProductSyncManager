@@ -250,3 +250,16 @@ test('a shop without the switch, an api key or a store is not checked', function
     Queue::assertPushed(ImportNaldaOrders::class, 1);
     Queue::assertPushed(ImportNaldaOrders::class, fn (ImportNaldaOrders $job) => $job->shopId === $on->id);
 });
+
+test('a quiet day without orders is not an error', function () {
+    $shop = naldaOrderShop(['orders_checked_at' => now()->subMinutes(15)]);
+    Http::fake([
+        'sellers-api.nalda.com/*' => Http::response(['success' => false, 'message' => 'No orders found', 'statusCode' => 404], 404),
+        '*' => Http::response([], 200, ['X-WP-TotalPages' => '1']),
+    ]);
+
+    dispatch_sync(new ImportNaldaOrders($shop->id));
+
+    expect($shop->marketplaceOrders()->count())->toBe(0)
+        ->and($shop->naldaConnection->fresh()->orders_checked_at->isAfter(now()->subMinute()))->toBeTrue();
+});

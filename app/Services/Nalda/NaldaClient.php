@@ -116,6 +116,11 @@ class NaldaClient
     {
         $json = $response->json();
 
+        // An empty range is not an error, but Nalda answers it as one.
+        if (is_array($json) && ($json['success'] ?? null) === false && preg_match('/no orders? found/i', (string) ($json['message'] ?? '')) === 1) {
+            return [];
+        }
+
         if (! is_array($json) || $response->failed() || ($json['success'] ?? false) !== true) {
             throw NaldaApiException::rejected(is_array($json) ? (string) ($json['message'] ?? '') : '');
         }
