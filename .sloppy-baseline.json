@@ -1,0 +1,153 @@
+{
+    "schema": 1,
+    "tool": "sloppy",
+    "generated_at": "2026-10-12T05:29:50+00:00",
+    "score": 88,
+    "total": 18,
+    "entries": [
+        {
+            "id": "ca3482a6587eab8e",
+            "rule": "SL101",
+            "file": "app/Support/ShopHealth.php",
+            "fingerprint": "ShopHealth::attention",
+            "count": 1,
+            "message": "ShopHealth::attention() spans 87 lines with 20 statements, cyclomatic complexity 10, nesting depth 2 and 32 calls to 10 distinct collaborators."
+        },
+        {
+            "id": "3b8c758a65f8de5b",
+            "rule": "SL102",
+            "file": "app/Http/Controllers/Products/ProductController.php",
+            "fingerprint": "ProductController",
+            "count": 1,
+            "message": "ProductController spans 342 lines with 15 methods (6 public), 75 statements and talks to 43 distinct collaborators."
+        },
+        {
+            "id": "86bf37ce0e98f1fd",
+            "rule": "SL102",
+            "file": "app/Http/Controllers/Shops/TemuController.php",
+            "fingerprint": "TemuController",
+            "count": 1,
+            "message": "TemuController spans 372 lines with 11 methods (6 public), 68 statements and talks to 51 distinct collaborators."
+        },
+        {
+            "id": "bc0c8a55d9e0cb41",
+            "rule": "SL102",
+            "file": "app/Jobs/ImportTemuOrders.php",
+            "fingerprint": "ImportTemuOrders",
+            "count": 1,
+            "message": "ImportTemuOrders spans 307 lines with 11 methods (5 public), 102 statements and talks to 25 distinct collaborators."
+        },
+        {
+            "id": "96e95b2ff636c2d8",
+            "rule": "SL102",
+            "file": "app/Jobs/SyncTemuProducts.php",
+            "fingerprint": "SyncTemuProducts",
+            "count": 1,
+            "message": "SyncTemuProducts spans 541 lines with 17 methods (5 public), 149 statements, 1 injected dependencies and talks to 38 distinct collaborators."
+        },
+        {
+            "id": "9dedbc190f1cb96d",
+            "rule": "SL102",
+            "file": "app/Jobs/SyncWooCommerceProducts.php",
+            "fingerprint": "SyncWooCommerceProducts",
+            "count": 1,
+            "message": "SyncWooCommerceProducts spans 371 lines with 13 methods (5 public), 102 statements, 1 injected dependencies and talks to 27 distinct collaborators."
+        },
+        {
+            "id": "22b1566b92120fc6",
+            "rule": "SL102",
+            "file": "app/Rules/ShopName.php",
+            "fingerprint": "ShopName",
+            "count": 1,
+            "message": "ShopName spans 378 lines with 3 methods (1 public), 5 statements and talks to 16 distinct collaborators."
+        },
+        {
+            "id": "6b5348f46466c49c",
+            "rule": "SL102",
+            "file": "app/Services/WooCommerce/WooCommerceClient.php",
+            "fingerprint": "WooCommerceClient",
+            "count": 1,
+            "message": "WooCommerceClient spans 606 lines with 30 methods (17 public), 144 statements, 1 injected dependencies and talks to 24 distinct collaborators."
+        },
+        {
+            "id": "727d766af99493a3",
+            "rule": "SL107",
+            "file": "app/Actions/Nalda/StartNaldaExport.php",
+            "fingerprint": "StartNaldaExport::handle:UniqueConstraintViolationException",
+            "count": 1,
+            "message": "StartNaldaExport::handle() catches UniqueConstraintViolationException and returns without recording the failure."
+        },
+        {
+            "id": "a563466e710558df",
+            "rule": "SL107",
+            "file": "app/Actions/Sync/ImportWooCommerceProducts.php",
+            "fingerprint": "ImportWooCommerceProducts::save:UniqueConstraintViolationException",
+            "count": 1,
+            "message": "ImportWooCommerceProducts::save() catches UniqueConstraintViolationException and returns without recording the failure."
+        },
+        {
+            "id": "a71cd66dbe352589",
+            "rule": "SL107",
+            "file": "app/Actions/Sync/StartSyncRun.php",
+            "fingerprint": "StartSyncRun::handle:UniqueConstraintViolationException",
+            "count": 1,
+            "message": "StartSyncRun::handle() catches UniqueConstraintViolationException and returns without recording the failure."
+        },
+        {
+            "id": "f40b7319e9f68669",
+            "rule": "SL107",
+            "file": "app/Actions/Temu/StartTemuSync.php",
+            "fingerprint": "StartTemuSync::handle:UniqueConstraintViolationException",
+            "count": 1,
+            "message": "StartTemuSync::handle() catches UniqueConstraintViolationException and returns without recording the failure."
+        },
+        {
+            "id": "e03ad7e8381c9a81",
+            "rule": "SL107",
+            "file": "app/Rules/StoreUrl.php",
+            "fingerprint": "StoreUrl::isPrivate:UnsafeDestinationException",
+            "count": 1,
+            "message": "StoreUrl::isPrivate() catches UnsafeDestinationException and returns without recording the failure."
+        },
+        {
+            "id": "a53922bc3a78b2ea",
+            "rule": "SL111",
+            "file": "app/Actions/Nalda/StartNaldaExport.php",
+            "fingerprint": "StartNaldaExport::handle~StartTemuSync::handle",
+            "count": 1,
+            "message": "StartNaldaExport::handle() differs from StartTemuSync::handle() at app/Actions/Temu/StartTemuSync.php:25 by 2 token(s) out of 217 -- 0.9% of the body."
+        },
+        {
+            "id": "63dcfdf1cb8fa321",
+            "rule": "SL111",
+            "file": "app/Http/Requests/Catalog/SaveBrandRequest.php",
+            "fingerprint": "SaveBrandRequest::freeSlug~SaveCategoryRequest::freeSlug",
+            "count": 1,
+            "message": "SaveBrandRequest::freeSlug() differs from SaveCategoryRequest::freeSlug() at app/Http/Requests/Catalog/SaveCategoryRequest.php:72 by 2 token(s) out of 250 -- 0.8% of the body."
+        },
+        {
+            "id": "b5e5c4c80d2e0319",
+            "rule": "SL111",
+            "file": "app/Jobs/QueueNaldaUploadAfterWebhooks.php",
+            "fingerprint": "QueueNaldaUploadAfterWebhooks::handle~QueueTemuSyncAfterWebhooks::handle",
+            "count": 1,
+            "message": "QueueNaldaUploadAfterWebhooks::handle() differs from QueueTemuSyncAfterWebhooks::handle() at app/Jobs/QueueTemuSyncAfterWebhooks.php:62 by 3 token(s) out of 208 -- 1.4% of the body."
+        },
+        {
+            "id": "c54a41e8ba365762",
+            "rule": "SL204",
+            "file": "app/Console/Commands/PruneWebhookDeliveries.php",
+            "fingerprint": "PruneWebhookDeliveries::handle:DB.table.where.limit.delete",
+            "count": 1,
+            "message": "PruneWebhookDeliveries::handle() writes to DB inside a loop (table()->where()->limit()->delete())."
+        },
+        {
+            "id": "c28540e68ae4d7c2",
+            "rule": "SL205",
+            "file": "app/Console/Commands/DispatchDueSyncs.php",
+            "fingerprint": "DispatchDueSyncs::importTemuOrders:TemuConnection::query->where->with->get->filter",
+            "count": 1,
+            "message": "DispatchDueSyncs::importTemuOrders() loads all the matching TemuConnection rows with TemuConnection::query()->where()->with()->get() and then filters them in PHP with ->filter()."
+        }
+    ]
+}
