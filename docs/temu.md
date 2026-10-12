@@ -157,8 +157,12 @@ The WooCommerce order is:
   accepted base price, so while a price change is under review the new price
   is used. WooCommerce reads REST line totals as before tax, so a shop whose
   prices include tax sends them net and WooCommerce adds the tax back;
-- given a **Temu** shipping line at 0, and a private note with the ship-by
-  time.
+- given a **Temu** shipping line at **Shipping paid by Temu** (5.50 by
+  default), the shipping Temu pays per order under _Sales proceeds_ in its
+  order details. Temu's order API does not return it, so it is a setting on
+  the Temu page. Like the base price it is taken to include tax, so the
+  order total is what Temu pays (6.20 + 5.50 = 11.70 for the first order);
+- given a private note with the ship-by time.
 
 Lines are matched by Temu's SKU id, then by SKU code. A line whose product left
 the catalog is sent by name only (no stock change) and the note says so; a line

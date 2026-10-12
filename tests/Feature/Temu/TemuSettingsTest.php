@@ -36,6 +36,7 @@ function temuSettings(array $overrides = []): array
         'currency' => 'chf',
         'discount_percent' => '12.5',
         'sync_after_sync' => '1',
+        'order_shipping' => '5.50',
         ...$overrides,
     ];
 }
@@ -569,10 +570,11 @@ test('order importing can be turned on, and imported orders are listed', functio
     WooCommerceConnection::factory()->verified()->for($shop)->create(['store_url' => 'https://toys.example']);
 
     $this->actingAs($user)
-        ->patch(route('shops.temu.update', $shop), temuSettings(['import_orders' => '1']))
+        ->patch(route('shops.temu.update', $shop), temuSettings(['import_orders' => '1', 'order_shipping' => '6']))
         ->assertSessionHasNoErrors();
 
-    expect($shop->temuConnection->fresh()->import_orders)->toBeTrue();
+    expect($shop->temuConnection->fresh()->import_orders)->toBeTrue()
+        ->and($shop->temuConnection->fresh()->order_shipping)->toBe('6.00');
 
     TemuOrder::factory()->for($shop)->create(['parent_order_sn' => 'PO-192-1', 'woocommerce_order_id' => 9001]);
     TemuOrder::factory()->for($shop)->create([

@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $discount_percent
  * @property bool $sync_after_sync
  * @property bool $import_orders
+ * @property string $order_shipping
  * @property int|null $mall_id
  * @property CarbonImmutable|null $token_expires_at
  * @property CarbonImmutable|null $verified_at
@@ -40,6 +41,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'discount_percent',
     'sync_after_sync',
     'import_orders',
+    'order_shipping',
     'mall_id',
     'token_expires_at',
     'verified_at',
@@ -160,6 +162,7 @@ class TemuConnection extends Model
             'discount_percent' => 'decimal:2',
             'sync_after_sync' => 'boolean',
             'import_orders' => 'boolean',
+            'order_shipping' => 'decimal:2',
             'mall_id' => 'integer',
             'token_expires_at' => 'datetime',
             'verified_at' => 'datetime',

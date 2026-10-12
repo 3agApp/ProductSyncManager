@@ -158,7 +158,8 @@ test('an unshipped temu order is created in woocommerce, billed to temu', functi
         ->and($payload['line_items'][0]['quantity'])->toBe(1)
         // 6.20 including 8.1% tax, which WooCommerce adds back.
         ->and($payload['line_items'][0]['total'])->toBe('5.7354')
-        ->and($payload['shipping_lines'])->toBe([['method_id' => 'temu', 'method_title' => 'Temu', 'total' => '0']]);
+        // The 5.50 Temu pays for shipping, also including tax.
+        ->and($payload['shipping_lines'])->toBe([['method_id' => 'temu', 'method_title' => 'Temu', 'total' => '5.0879']]);
 
     $note = collect($calls['woo'])->first(fn (array $call) => str_ends_with($call['url'], '/orders/9001/notes'));
     expect($note['data']['note'])->toContain(TEMU_ORDER_SN);

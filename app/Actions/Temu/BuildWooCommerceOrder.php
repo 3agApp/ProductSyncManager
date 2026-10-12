@@ -11,8 +11,8 @@ use RuntimeException;
 /**
  * Turns a Temu order into what WooCommerce's order API takes.
  *
- * Temu is the customer: it pays the shop its base price and owns the
- * relationship with the buyer. The order is billed to Temu without an email
+ * Temu is the customer: it pays the shop its base price plus a shipping
+ * amount per order, and owns the relationship with the buyer. The order is billed to Temu without an email
  * address, so WooCommerce sends the buyer nothing, and shipped to the buyer.
  */
 class BuildWooCommerceOrder
@@ -88,16 +88,29 @@ class BuildWooCommerceOrder
             ],
             'shipping' => $this->shipping($address, $country),
             'line_items' => array_map(fn (array $line) => $line['item'], $lines),
-            'shipping_lines' => [[
-                'method_id' => 'temu',
-                'method_title' => 'Temu',
-                'total' => '0',
-            ]],
+            'shipping_lines' => [$this->shippingLine($shop)],
             'meta_data' => array_map(
                 fn (string $key, string $value) => ['key' => $key, 'value' => $value],
                 array_keys($meta),
                 array_values($meta),
             ),
+        ];
+    }
+
+    /**
+     * Build the shipping line Temu pays for, at the amount set for the shop.
+     *
+     * Like the base price, it is taken to include tax, so the order total is
+     * exactly what Temu pays.
+     *
+     * @return array<string, string>
+     */
+    public function shippingLine(Shop $shop): array
+    {
+        return [
+            'method_id' => 'temu',
+            'method_title' => 'Temu',
+            'total' => $this->net($shop, (float) ($shop->temuConnection->order_shipping ?? 0)),
         ];
     }
 

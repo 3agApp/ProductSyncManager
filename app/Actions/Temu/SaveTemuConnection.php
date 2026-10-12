@@ -55,6 +55,7 @@ class SaveTemuConnection
         $connection->discount_percent = number_format((float) $data['discount_percent'], 2, '.', '');
         $connection->sync_after_sync = (bool) ($data['sync_after_sync'] ?? false);
         $connection->import_orders = (bool) ($data['import_orders'] ?? false);
+        $connection->order_shipping = number_format((float) $data['order_shipping'], 2, '.', '');
 
         $connection->save();
 
