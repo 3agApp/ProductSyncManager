@@ -5,6 +5,8 @@ namespace App\Actions\Temu;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\TemuProduct;
+use App\Support\MarketplaceOrderMeta as Meta;
+use App\Support\WooCommerceAmount;
 use Carbon\CarbonImmutable;
 use RuntimeException;
 
@@ -12,10 +14,12 @@ use RuntimeException;
  * Turns a Temu order into what WooCommerce's order API takes.
  *
  * Temu is the customer: it pays the shop its base price plus a shipping
- * amount per order, and owns the relationship with the buyer. The order is billed to Temu without an email
- * address, so WooCommerce sends the buyer nothing, and shipped to the buyer.
+ * amount per order, and owns the relationship with the buyer. The order is
+ * billed to Temu without an email address, so WooCommerce sends the buyer
+ * nothing, and shipped to the buyer. The buyer's relay email goes into the
+ * marketplace meta, where the WooCommerce plugin hands it to Planzer.
  */
-class BuildWooCommerceOrder
+class BuildTemuWooCommerceOrder
 {
     /**
      * Temu's region ids, for the regions this app's EU gateway serves.
@@ -66,11 +70,8 @@ class BuildWooCommerceOrder
         $lines = $this->lines($shop, is_array($order['orderList'] ?? null) ? $order['orderList'] : []);
         $shipBy = isset($parent['expectShipLatestTime']) ? CarbonImmutable::createFromTimestamp((int) $parent['expectShipLatestTime']) : null;
 
-        $meta = array_filter([
-            '_temu_parent_order_sn' => $sn,
-            '_temu_order_sns' => implode(',', array_column($lines, 'order_sn')),
-            '_temu_ship_by' => $shipBy?->toIso8601String(),
-        ], fn (?string $value) => $value !== null && $value !== '');
+        $placedAt = isset($parent['parentOrderTime']) ? CarbonImmutable::createFromTimestamp((int) $parent['parentOrderTime']) : null;
+        $email = trim((string) ($address['mail'] ?? ''));
 
         return [
             'status' => 'processing',
@@ -89,11 +90,14 @@ class BuildWooCommerceOrder
             'shipping' => $this->shipping($address, $country),
             'line_items' => array_map(fn (array $line) => $line['item'], $lines),
             'shipping_lines' => [$this->shippingLine($shop)],
-            'meta_data' => array_map(
-                fn (string $key, string $value) => ['key' => $key, 'value' => $value],
-                array_keys($meta),
-                array_values($meta),
-            ),
+            'meta_data' => Meta::list([
+                Meta::MARKETPLACE => 'temu',
+                Meta::ORDER_ID => $sn,
+                Meta::END_CUSTOMER_EMAIL => filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null,
+                Meta::SHIPPING_PAYOUT => number_format((float) ($shop->temuConnection->order_shipping ?? 0), 2, '.', ''),
+                Meta::SHIP_BY => $shipBy?->toIso8601String(),
+                Meta::PLACED_AT => $placedAt?->toIso8601String(),
+            ]),
         ];
     }
 
@@ -110,7 +114,7 @@ class BuildWooCommerceOrder
         return [
             'method_id' => 'temu',
             'method_title' => 'Temu',
-            'total' => $this->net($shop, (float) ($shop->temuConnection->order_shipping ?? 0)),
+            'total' => WooCommerceAmount::net($shop, (float) ($shop->temuConnection->order_shipping ?? 0)),
         ];
     }
 
@@ -167,13 +171,16 @@ class BuildWooCommerceOrder
                 throw new RuntimeException(__('No Temu price is known for :name.', ['name' => $line['goodsName'] ?? $line['skuId'] ?? '?']));
             }
 
-            $total = $this->net($shop, (float) $record->sent_price * $quantity);
+            $total = WooCommerceAmount::net($shop, (float) $record->sent_price * $quantity);
 
             $item = [
                 'quantity' => $quantity,
                 'subtotal' => $total,
                 'total' => $total,
-                'meta_data' => [['key' => '_temu_order_sn', 'value' => (string) ($line['orderSn'] ?? '')]],
+                'meta_data' => Meta::list([
+                    Meta::ITEM_MARKETPLACE_ID => (string) ($line['orderSn'] ?? ''),
+                    Meta::ITEM_CUSTOMER_PRICE => $record->sent_price,
+                ]),
             ];
 
             if ($product?->remote_id !== null) {
@@ -218,22 +225,6 @@ class BuildWooCommerceOrder
             ?? ($codes === [] ? null : $shop->products()->whereIn('sku', $codes)->first());
 
         return [$record, $product];
-    }
-
-    /**
-     * Take the tax out of a price that includes it.
-     *
-     * WooCommerce reads REST line totals as before tax and adds the tax
-     * itself, so a shop whose prices include tax sends the net amount and
-     * the order total comes out at the price Temu pays.
-     */
-    private function net(Shop $shop, float $gross): string
-    {
-        $net = $shop->prices_include_tax
-            ? $gross / (1 + (float) $shop->tax_rate / 100)
-            : $gross;
-
-        return number_format($net, 4, '.', '');
     }
 
     /**

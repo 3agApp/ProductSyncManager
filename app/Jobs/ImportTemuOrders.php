@@ -2,22 +2,22 @@
 
 namespace App\Jobs;
 
-use App\Actions\Temu\BuildWooCommerceOrder;
-use App\Enums\TemuOrderStatus;
+use App\Actions\Orders\CreateWooCommerceOrder;
+use App\Actions\Temu\BuildTemuWooCommerceOrder;
+use App\Enums\Marketplace;
+use App\Enums\MarketplaceOrderStatus;
+use App\Models\MarketplaceOrder;
 use App\Models\Shop;
 use App\Models\TemuConnection;
-use App\Models\TemuOrder;
 use App\Services\Temu\TemuClient;
 use App\Services\Temu\TemuException;
 use App\Services\WooCommerce\Exceptions\WooCommerceException;
 use App\Services\WooCommerce\Exceptions\WooCommerceRateLimitException;
-use App\Services\WooCommerce\Exceptions\WooCommerceRequestException;
 use App\Services\WooCommerce\WooCommerceClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Http\Client\ConnectionException;
 use RuntimeException;
 
 /**
@@ -74,7 +74,7 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
         return [60, 300];
     }
 
-    public function handle(BuildWooCommerceOrder $build): void
+    public function handle(BuildTemuWooCommerceOrder $build, CreateWooCommerceOrder $create): void
     {
         $shop = Shop::find($this->shopId);
         $connection = $shop?->temuConnection;
@@ -95,7 +95,7 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
             }
 
             $this->cancelImported($shop, $client);
-            $this->importPending($shop, $temu, $client, $build, $orders);
+            $this->importPending($shop, $temu, $client, $build, $create, $orders);
         } catch (TemuException $exception) {
             if ($exception->isRateLimited()) {
                 $this->release(60);
@@ -176,17 +176,18 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
     {
         $parent = $order['parentOrderMap'];
         $status = (int) ($parent['parentOrderStatus'] ?? 0);
-        $row = $shop->temuOrders()->where('parent_order_sn', $parent['parentOrderSn'])->first();
+        $row = $shop->marketplaceOrders()->forMarketplace(Marketplace::Temu)->where('external_order_id', $parent['parentOrderSn'])->first();
 
         if ($row === null) {
-            if (! in_array($status, [TemuOrder::TEMU_PENDING, TemuOrder::TEMU_UNSHIPPED], true)) {
+            if (! in_array($status, [MarketplaceOrder::TEMU_PENDING, MarketplaceOrder::TEMU_UNSHIPPED], true)) {
                 return;
             }
 
-            $shop->temuOrders()->create([
-                'parent_order_sn' => $parent['parentOrderSn'],
-                'temu_status' => $status,
-                'status' => TemuOrderStatus::Pending,
+            $shop->marketplaceOrders()->create([
+                'marketplace' => Marketplace::Temu,
+                'external_order_id' => $parent['parentOrderSn'],
+                'marketplace_status' => (string) $status,
+                'status' => MarketplaceOrderStatus::Pending,
                 'ordered_at' => $this->time($parent['parentOrderTime'] ?? null),
                 'ship_by_at' => $this->time($parent['expectShipLatestTime'] ?? null),
             ]);
@@ -194,11 +195,11 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $row->temu_status = $status;
+        $row->marketplace_status = (string) $status;
         $row->ship_by_at = $this->time($parent['expectShipLatestTime'] ?? null) ?? $row->ship_by_at;
 
-        if ($status === TemuOrder::TEMU_CANCELLED && in_array($row->status, [TemuOrderStatus::Pending, TemuOrderStatus::Failed], true)) {
-            $row->status = TemuOrderStatus::Cancelled;
+        if ($status === MarketplaceOrder::TEMU_CANCELLED && in_array($row->status, [MarketplaceOrderStatus::Pending, MarketplaceOrderStatus::Failed], true)) {
+            $row->status = MarketplaceOrderStatus::Cancelled;
             $row->message = null;
         }
 
@@ -213,15 +214,15 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
      */
     private function cancelImported(Shop $shop, WooCommerceClient $client): void
     {
-        $shop->temuOrders()
-            ->where('status', TemuOrderStatus::Imported->value)
-            ->where('temu_status', TemuOrder::TEMU_CANCELLED)
+        $shop->marketplaceOrders()->forMarketplace(Marketplace::Temu)
+            ->where('status', MarketplaceOrderStatus::Imported->value)
+            ->where('marketplace_status', (string) MarketplaceOrder::TEMU_CANCELLED)
             ->whereNotNull('woocommerce_order_id')
             ->get()
-            ->each(function (TemuOrder $row) use ($client) {
+            ->each(function (MarketplaceOrder $row) use ($client) {
                 try {
                     $client->updateOrder($row->woocommerce_order_id, ['status' => 'cancelled']);
-                    $client->addOrderNote($row->woocommerce_order_id, "The order was cancelled on Temu ({$row->parent_order_sn}).");
+                    $client->addOrderNote($row->woocommerce_order_id, "The order was cancelled on Temu ({$row->external_order_id}).");
                 } catch (WooCommerceRateLimitException $exception) {
                     throw $exception;
                 } catch (WooCommerceException $exception) {
@@ -230,7 +231,7 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
                     return;
                 }
 
-                $row->update(['status' => TemuOrderStatus::Cancelled, 'message' => null]);
+                $row->update(['status' => MarketplaceOrderStatus::Cancelled, 'message' => null]);
             });
     }
 
@@ -239,24 +240,24 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
      *
      * @param  array<string, array<string, mixed>>  $orders  Orders already read this run.
      */
-    private function importPending(Shop $shop, TemuClient $temu, WooCommerceClient $client, BuildWooCommerceOrder $build, array $orders): void
+    private function importPending(Shop $shop, TemuClient $temu, WooCommerceClient $client, BuildTemuWooCommerceOrder $build, CreateWooCommerceOrder $create, array $orders): void
     {
-        $rows = $shop->temuOrders()->where('status', TemuOrderStatus::Pending->value)->oldest('id')->get();
+        $rows = $shop->marketplaceOrders()->forMarketplace(Marketplace::Temu)->where('status', MarketplaceOrderStatus::Pending->value)->oldest('id')->get();
 
         foreach ($rows as $row) {
-            $order = $orders[$row->parent_order_sn]
-                ?? $temu->call('bg.order.detail.v2.get', ['parentOrderSn' => $row->parent_order_sn]);
+            $order = $orders[$row->external_order_id]
+                ?? $temu->call('bg.order.detail.v2.get', ['parentOrderSn' => $row->external_order_id]);
 
             $status = (int) ($order['parentOrderMap']['parentOrderStatus'] ?? 0);
-            $row->update(['temu_status' => $status]);
+            $row->update(['marketplace_status' => (string) $status]);
 
             match (true) {
-                $status === TemuOrder::TEMU_PENDING => null,
-                $status === TemuOrder::TEMU_CANCELLED => $row->update(['status' => TemuOrderStatus::Cancelled, 'message' => null]),
-                $status === TemuOrder::TEMU_UNSHIPPED => $this->import($shop, $row, $order, $temu, $client, $build),
+                $status === MarketplaceOrder::TEMU_PENDING => null,
+                $status === MarketplaceOrder::TEMU_CANCELLED => $row->update(['status' => MarketplaceOrderStatus::Cancelled, 'message' => null]),
+                $status === MarketplaceOrder::TEMU_UNSHIPPED => $this->import($shop, $row, $order, $temu, $client, $build, $create),
                 default => $row->update([
-                    'status' => TemuOrderStatus::Failed,
-                    'message' => __('Temu shows the order as :status, so it was not imported. Enter it in WooCommerce by hand if it is missing.', ['status' => TemuOrder::describeTemuStatus($status)]),
+                    'status' => MarketplaceOrderStatus::Failed,
+                    'message' => __('Temu shows the order as :status, so it was not imported. Enter it in WooCommerce by hand if it is missing.', ['status' => MarketplaceOrder::describeTemuStatus($status)]),
                 ]),
             };
         }
@@ -265,65 +266,23 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
     /**
      * Create one order in WooCommerce.
      *
-     * The row is claimed as creating before the request, so it is sent at
-     * most once. A request cut off before WooCommerce answered may still have
-     * created the order, so the row stays creating for someone to check
-     * rather than being sent again.
-     *
      * @param  array<string, mixed>  $order
      */
-    private function import(Shop $shop, TemuOrder $row, array $order, TemuClient $temu, WooCommerceClient $client, BuildWooCommerceOrder $build): void
+    private function import(Shop $shop, MarketplaceOrder $row, array $order, TemuClient $temu, WooCommerceClient $client, BuildTemuWooCommerceOrder $build, CreateWooCommerceOrder $create): void
     {
         try {
-            $address = $temu->call('bg.order.shippinginfo.v2.get', ['parentOrderSn' => $row->parent_order_sn]);
+            $address = $temu->call('bg.order.shippinginfo.v2.get', ['parentOrderSn' => $row->external_order_id]);
             $payload = $build->handle($shop, $order, $address);
         } catch (TemuException $exception) {
             // The order stays waiting and is tried again on the next check.
             throw $exception;
         } catch (RuntimeException $exception) {
-            $row->update(['status' => TemuOrderStatus::Failed, 'message' => $exception->getMessage()]);
+            $row->update(['status' => MarketplaceOrderStatus::Failed, 'message' => $exception->getMessage()]);
 
             return;
         }
 
-        $claimed = TemuOrder::whereKey($row->id)
-            ->where('status', TemuOrderStatus::Pending->value)
-            ->update(['status' => TemuOrderStatus::Creating->value, 'message' => null]);
-
-        if ($claimed === 0) {
-            return;
-        }
-
-        try {
-            $created = $client->createOrder($payload);
-        } catch (WooCommerceRateLimitException $exception) {
-            $row->update(['status' => TemuOrderStatus::Pending]);
-
-            throw $exception;
-        } catch (WooCommerceRequestException $exception) {
-            $row->update($exception->getPrevious() instanceof ConnectionException
-                ? ['status' => TemuOrderStatus::Creating, 'message' => __('WooCommerce did not answer. Check whether the order was created before importing it again.')]
-                : ['status' => TemuOrderStatus::Failed, 'message' => $exception->getMessage()]);
-
-            return;
-        } catch (WooCommerceException $exception) {
-            $row->update(['status' => TemuOrderStatus::Failed, 'message' => $exception->userMessage()]);
-
-            return;
-        }
-
-        $row->update([
-            'status' => TemuOrderStatus::Imported,
-            'woocommerce_order_id' => $created['id'],
-            'imported_at' => now(),
-            'message' => null,
-        ]);
-
-        try {
-            $client->addOrderNote($created['id'], $build->note($order, $payload));
-        } catch (WooCommerceException $exception) {
-            report($exception);
-        }
+        $create->handle($row, $client, $payload, $build->note($order, $payload));
     }
 
     /**

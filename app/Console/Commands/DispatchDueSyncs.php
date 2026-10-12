@@ -8,7 +8,10 @@ use App\Actions\Temu\StartTemuSync;
 use App\Enums\SyncRunStatus;
 use App\Enums\SyncTrigger;
 use App\Enums\TemuProductStatus;
+use App\Jobs\ExportNaldaOrderStatuses;
+use App\Jobs\ImportNaldaOrders;
 use App\Jobs\ImportTemuOrders;
+use App\Models\NaldaConnection;
 use App\Models\NaldaExport;
 use App\Models\ShopSyncSetting;
 use App\Models\SyncRun;
@@ -27,6 +30,16 @@ class DispatchDueSyncs extends Command
      * Minutes between checks for new Temu orders.
      */
     private const int TEMU_ORDER_MINUTES = 5;
+
+    /**
+     * Minutes between checks for new Nalda orders, and between status files.
+     *
+     * The status file goes five minutes after the import, so orders created
+     * by one have had a chance to be handled before the next file.
+     */
+    private const int NALDA_ORDER_MINUTES = 15;
+
+    private const int NALDA_STATUS_OFFSET = 5;
 
     /**
      * The name and signature of the console command.
@@ -50,6 +63,7 @@ class DispatchDueSyncs extends Command
         $this->reapStalledRuns();
         $this->checkTemuProcessing($startTemuSync);
         $this->importTemuOrders();
+        $this->naldaOrders();
 
         $due = ShopSyncSetting::query()
             ->where('is_enabled', true)
@@ -142,5 +156,31 @@ class DispatchDueSyncs extends Command
             ->get()
             ->filter(fn (TemuConnection $connection) => ImportTemuOrders::canImport($connection))
             ->each(fn (TemuConnection $connection) => ImportTemuOrders::dispatch($connection->shop_id));
+    }
+
+    /**
+     * Import Nalda orders and send their statuses, every quarter of an hour.
+     */
+    private function naldaOrders(): void
+    {
+        $minute = now()->minute % self::NALDA_ORDER_MINUTES;
+
+        if ($minute !== 0 && $minute !== self::NALDA_STATUS_OFFSET) {
+            return;
+        }
+
+        NaldaConnection::query()
+            ->where('import_orders', true)
+            ->with('shop.wooCommerceConnection')
+            ->get()
+            ->each(function (NaldaConnection $connection) use ($minute) {
+                if ($minute === 0 && ImportNaldaOrders::canImport($connection)) {
+                    ImportNaldaOrders::dispatch($connection->shop_id);
+                }
+
+                if ($minute === self::NALDA_STATUS_OFFSET && ExportNaldaOrderStatuses::canExport($connection)) {
+                    ExportNaldaOrderStatuses::dispatch($connection->shop_id);
+                }
+            });
     }
 }

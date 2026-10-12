@@ -33,6 +33,13 @@ class SaveNaldaConnection
             $connection->sftp_password = $password;
         }
 
+        // The API key is write-only like the password: blank keeps it.
+        $apiKey = trim((string) ($data['api_key'] ?? ''));
+
+        if ($apiKey !== '') {
+            $connection->api_key = $apiKey;
+        }
+
         // Any credential change invalidates the last successful test.
         if ($connection->isDirty(['sftp_username', 'sftp_password'])) {
             $connection->verified_at = null;
@@ -47,6 +54,7 @@ class SaveNaldaConnection
         $connection->delivery_time_days = (int) $data['delivery_time_days'];
         $connection->return_days = (int) $data['return_days'];
         $connection->upload_after_sync = (bool) ($data['upload_after_sync'] ?? false);
+        $connection->import_orders = (bool) ($data['import_orders'] ?? false);
 
         $connection->save();
 

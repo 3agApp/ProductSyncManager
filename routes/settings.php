@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Shops\MarketplaceOrderController;
 use App\Http\Controllers\Shops\NaldaController;
 use App\Http\Controllers\Shops\ShopController;
 use App\Http\Controllers\Shops\ShopInvitationController;
@@ -72,6 +73,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/shops/{shop}/nalda/test', [NaldaController::class, 'test'])
             ->middleware('throttle:10,1')
             ->name('shops.nalda.test');
+        Route::post('settings/shops/{shop}/nalda/api-test', [NaldaController::class, 'testApi'])
+            ->middleware('throttle:10,1')
+            ->name('shops.nalda.api-test');
         Route::post('settings/shops/{shop}/nalda/exports', [NaldaController::class, 'export'])
             ->middleware('throttle:20,1')
             ->name('shops.nalda.exports.store');
@@ -90,10 +94,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/shops/{shop}/temu/retries', [TemuController::class, 'retry'])
             ->middleware('throttle:20,1')
             ->name('shops.temu.retries.store');
-        Route::post('settings/shops/{shop}/temu/orders/{temuOrder}/retry', [TemuController::class, 'retryOrder'])
+        Route::post('settings/shops/{shop}/marketplace-orders/{marketplaceOrder}/retry', [MarketplaceOrderController::class, 'retry'])
             ->middleware('throttle:20,1')
             ->scopeBindings()
-            ->name('shops.temu.orders.retry');
+            ->name('shops.marketplace-orders.retry');
     });
 });
 

@@ -1,18 +1,18 @@
 <?php
 
+use App\Enums\MarketplaceOrderStatus;
 use App\Enums\ShopRole;
 use App\Enums\SyncRunStatus;
 use App\Enums\TemuDefaultBehavior;
 use App\Enums\TemuListing;
-use App\Enums\TemuOrderStatus;
 use App\Enums\TemuProductStatus;
 use App\Jobs\SyncTemuProducts;
 use App\Jobs\SyncWooCommerceProducts;
+use App\Models\MarketplaceOrder;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\SyncRun;
 use App\Models\TemuConnection;
-use App\Models\TemuOrder;
 use App\Models\TemuProduct;
 use App\Models\TemuSyncRun;
 use App\Models\User;
@@ -576,10 +576,10 @@ test('order importing can be turned on, and imported orders are listed', functio
     expect($shop->temuConnection->fresh()->import_orders)->toBeTrue()
         ->and($shop->temuConnection->fresh()->order_shipping)->toBe('6.00');
 
-    TemuOrder::factory()->for($shop)->create(['parent_order_sn' => 'PO-192-1', 'woocommerce_order_id' => 9001]);
-    TemuOrder::factory()->for($shop)->create([
-        'parent_order_sn' => 'PO-192-2',
-        'status' => TemuOrderStatus::Failed,
+    MarketplaceOrder::factory()->for($shop)->create(['external_order_id' => 'PO-192-1', 'woocommerce_order_id' => 9001]);
+    MarketplaceOrder::factory()->for($shop)->create([
+        'external_order_id' => 'PO-192-2',
+        'status' => MarketplaceOrderStatus::Failed,
         'woocommerce_order_id' => null,
         'message' => 'WooCommerce responded with HTTP 400',
     ]);
@@ -589,8 +589,8 @@ test('order importing can be turned on, and imported orders are listed', functio
         ->assertInertia(fn (Assert $page) => $page
             ->where('connection.importOrders', true)
             ->has('orders', 2)
-            ->where('orders.0.parentOrderSn', 'PO-192-2')
+            ->where('orders.0.externalOrderId', 'PO-192-2')
             ->where('orders.0.needsAttention', true)
-            ->where('orders.1.wooCommerceUrl', 'https://toys.example/wp-admin/post.php?post=9001&action=edit')
-            ->where('orders.1.temuStatus', 'To ship'));
+            ->where('orders.1.wooCommerceUrl', 'https://toys.example/wp-admin/admin.php?page=wc-orders&action=edit&id=9001')
+            ->where('orders.1.marketplaceStatus', 'To ship'));
 });

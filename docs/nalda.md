@@ -110,6 +110,56 @@ settings leaves what the shop has and the sync carries on.
 Files are uploaded to the SFTP root under the file name set on the Nalda page
 (`products.csv` by default), replacing the previous upload.
 
+## Orders
+
+Nalda orders are imported into WooCommerce, which fulfils them and owns the
+stock, and their delivery status goes back to Nalda. This replaces the old
+"WooCommerce Nalda Marketplace Sync" plugin and its upload through the 3AG
+license server. The **Product Sync Manager** WooCommerce plugin
+(`wordpress/woo-product-sync-manager`) has to be installed in the store: it
+shows the orders, keeps their delivery status, and stops WooCommerce writing
+to the buyer.
+
+1. Nalda settings → **Orders**: paste the API key from the Nalda Seller Portal
+   (Orders → Settings) and press **Test API key**. The key is encrypted and
+   never sent back to the browser.
+2. Turn off the old plugin's order import and status export, then turn on
+   **Import orders into WooCommerce** here.
+
+Every 15 minutes the scheduler reads the last 45 days of Nalda's order list
+(`POST /orders/items`, one row per article). The first check records the Nalda
+orders the store already has (`_wpsm_marketplace_order_id`, or the old
+plugin's `_nalda_order_id`), so none is created twice; `php artisan
+marketplace:adopt-woocommerce-orders <shop>` does the same by hand.
+
+A new order is created in WooCommerce once:
+
+- billed to **Nalda Marketplace AG** (Baar, `orders@nalda.com`, VAT number in
+  `_billing_vat_number`), shipped to the buyer;
+- each article at **what Nalda pays for it**: the buyer's price less Nalda's
+  commission, VAT included. Articles are matched by GTIN (leading zeros
+  ignored); one that matches nothing goes in by its Nalda title;
+- a **Nalda** shipping line at what Nalda pays for shipping: the order's `fee`
+  less Nalda's commission on it, from `GET /orders/{id}`. The order list does
+  not carry the fee, which the old plugin missed;
+- so the order total is Nalda's payout, VAT included. On order 469328 that is
+  31.45 + 5.41 = 36.86, as in the Seller Portal, where the old plugin entered
+  34.00 (no shipping, VAT added on top of the payout). Past orders were left
+  as they were;
+- in the WooCommerce status matching Nalda's delivery state, and **paid only
+  once Nalda pays it out** (`payoutStatus` `PAID_OUT`). Later checks mark the
+  order paid when that happens, and cancel it when Nalda cancels it.
+
+Every 15 minutes, five minutes after the import, the delivery details the
+WooCommerce plugin keeps are read back (orders changed since the last check)
+and the status file is uploaded to the shop's SFTP folder `order-status/`
+(`order_status_<date>.csv`: orderId, gtin, state, expectedDeliveryDate as
+dd.mm.yy, trackingCode). It covers the last 60 days. The plugin works the state
+out from the order: processing is IN_PREPARATION, a Planzer parcel number is
+IN_DELIVERY, completed is DELIVERED, cancelled CANCELLED, refunded RETURNED;
+staff can override it on the order. Without an expected date, the order date
+plus the delivery time from these settings is sent.
+
 ## Production requirements
 
 Uploads run on the queue worker, and share a lock with the shop's sync so a

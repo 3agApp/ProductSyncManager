@@ -379,6 +379,27 @@ class WooCommerceClient
     }
 
     /**
+     * Read one page of orders, newest first.
+     *
+     * @param  array<string, mixed>  $query  WooCommerce's order filters, e.g. modified_after or include.
+     * @return array{orders: array<int, array<string, mixed>>, pages: int|null}
+     *
+     * @throws WooCommerceException
+     */
+    public function orderPage(int $page, array $query = []): array
+    {
+        $response = $this->get('orders', [
+            ...$query,
+            'page' => $page,
+            'per_page' => 100,
+            'orderby' => 'id',
+            'order' => 'desc',
+        ]);
+
+        return ['orders' => $this->catalogItems($response), 'pages' => $this->intHeader($response, 'X-WP-TotalPages')];
+    }
+
+    /**
      * Create an order and return it as WooCommerce saved it.
      *
      * @param  array<string, mixed>  $data

@@ -28,6 +28,8 @@ class SaveNaldaConnectionRequest extends FormRequest
     {
         $this->merge([
             'upload_after_sync' => $this->boolean('upload_after_sync'),
+            'import_orders' => $this->boolean('import_orders'),
+            'api_key' => trim((string) $this->input('api_key')),
             'country' => strtoupper(trim((string) $this->input('country'))),
             'currency' => strtoupper(trim((string) $this->input('currency'))),
         ]);
@@ -57,6 +59,8 @@ class SaveNaldaConnectionRequest extends FormRequest
             'delivery_time_days' => ['required', 'integer', 'min:1', 'max:365'],
             'return_days' => ['required', 'integer', 'min:0', 'max:365'],
             'upload_after_sync' => ['required', 'boolean'],
+            'api_key' => ['nullable', 'string', 'max:255'],
+            'import_orders' => ['required', 'boolean'],
         ];
     }
 
@@ -80,6 +84,12 @@ class SaveNaldaConnectionRequest extends FormRequest
 
                 if ($username !== '' && $password === '' && ! $hasStoredPassword) {
                     $validator->errors()->add('sftp_password', __('Enter the SFTP password.'));
+                }
+
+                $hasApiKey = filled($this->input('api_key')) || $this->shop()->naldaConnection?->hasUsableApiKey() === true;
+
+                if ($this->boolean('import_orders') && ! $hasApiKey) {
+                    $validator->errors()->add('api_key', __('Enter the API key to import orders.'));
                 }
             },
         ];
@@ -113,6 +123,8 @@ class SaveNaldaConnectionRequest extends FormRequest
             'delivery_time_days' => 'delivery time',
             'return_days' => 'return period',
             'upload_after_sync' => 'upload after sync',
+            'api_key' => 'API key',
+            'import_orders' => 'import orders',
         ];
     }
 

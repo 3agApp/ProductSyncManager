@@ -5,7 +5,7 @@ namespace App\Enums;
 /**
  * Where a Temu order stands in its import into WooCommerce.
  */
-enum TemuOrderStatus: string
+enum MarketplaceOrderStatus: string
 {
     /** Seen on Temu, waiting to be imported. */
     case Pending = 'pending';

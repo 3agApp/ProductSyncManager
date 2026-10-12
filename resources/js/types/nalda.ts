@@ -45,6 +45,12 @@ export type NaldaConnection = {
     returnDays: number;
     uploadAfterSync: boolean;
     lastExportedAt: string | null;
+    /** Whether a seller API key is saved; the key itself never reaches the browser. */
+    hasApiKey: boolean;
+    /** Create Nalda orders in WooCommerce and send their statuses back. */
+    importOrders: boolean;
+    ordersCheckedAt: string | null;
+    statusesExportedAt: string | null;
 };
 
 export type NaldaExport = {

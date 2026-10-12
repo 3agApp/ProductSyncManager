@@ -51,6 +51,9 @@ return [
         'sftp_host' => env('NALDA_SFTP_HOST', 'sftp.nalda.com'),
         'sftp_port' => (int) env('NALDA_SFTP_PORT', 2022),
         'sftp_timeout' => (int) env('NALDA_SFTP_TIMEOUT', 20),
+        // The seller API orders are read from; the key is the shop's own.
+        'api_url' => env('NALDA_API_URL', 'https://sellers-api.nalda.com'),
+        'api_timeout' => (int) env('NALDA_API_TIMEOUT', 30),
     ],
 
     'temu' => [

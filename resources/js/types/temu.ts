@@ -48,28 +48,6 @@ export type TemuConnection = {
     lastSyncedAt: string | null;
 };
 
-export type TemuOrderStatus =
-    | 'pending'
-    | 'creating'
-    | 'imported'
-    | 'failed'
-    | 'cancelled';
-
-export type TemuOrder = {
-    id: number;
-    parentOrderSn: string;
-    status: TemuOrderStatus;
-    statusLabel: string;
-    /** Where the order stands on Temu. */
-    temuStatus: string;
-    needsAttention: boolean;
-    message: string | null;
-    orderedAt: string | null;
-    shipByAt: string | null;
-    wooCommerceOrderId: number | null;
-    wooCommerceUrl: string | null;
-};
-
 export type TemuSyncRun = {
     id: number;
     status: SyncRunStatus;

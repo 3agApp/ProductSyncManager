@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $key_last_four
  * @property string|null $secret_last_four
  * @property CarbonImmutable|null $verified_at
+ * @property CarbonImmutable|null $marketplace_orders_checked_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Shop $shop
@@ -36,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'key_last_four',
     'secret_last_four',
     'verified_at',
+    'marketplace_orders_checked_at',
 ])]
 #[Table('woocommerce_connections')]
 class WooCommerceConnection extends Model
@@ -119,6 +121,7 @@ class WooCommerceConnection extends Model
             'consumer_key' => 'encrypted',
             'consumer_secret' => 'encrypted',
             'verified_at' => 'datetime',
+            'marketplace_orders_checked_at' => 'datetime',
         ];
     }
 }

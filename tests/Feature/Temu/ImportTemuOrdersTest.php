@@ -1,12 +1,12 @@
 <?php
 
+use App\Enums\MarketplaceOrderStatus;
 use App\Enums\ShopRole;
-use App\Enums\TemuOrderStatus;
 use App\Jobs\ImportTemuOrders;
+use App\Models\MarketplaceOrder;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\TemuConnection;
-use App\Models\TemuOrder;
 use App\Models\TemuProduct;
 use App\Models\User;
 use App\Models\WooCommerceConnection;
@@ -164,11 +164,30 @@ test('an unshipped temu order is created in woocommerce, billed to temu', functi
     $note = collect($calls['woo'])->first(fn (array $call) => str_ends_with($call['url'], '/orders/9001/notes'));
     expect($note['data']['note'])->toContain(TEMU_ORDER_SN);
 
-    $row = $shop->temuOrders()->sole();
-    expect($row->status)->toBe(TemuOrderStatus::Imported)
+    $row = $shop->marketplaceOrders()->sole();
+    expect($row->status)->toBe(MarketplaceOrderStatus::Imported)
         ->and($row->woocommerce_order_id)->toBe(9001)
         ->and($row->ship_by_at->getTimestamp())->toBe(1791930600)
         ->and($shop->temuConnection->fresh()->orders_checked_at)->not->toBeNull();
+});
+
+test('a temu order carries the marketplace meta the woocommerce plugin reads', function () {
+    [$shop] = orderShop();
+    $calls = [];
+    fakeOrderApis([temuOrder()], $calls);
+
+    dispatch_sync(new ImportTemuOrders($shop->id));
+
+    $payload = wooOrderCreates($calls)[0]['data'];
+    $meta = collect($payload['meta_data'])->pluck('value', 'key');
+
+    expect($meta['_wpsm_marketplace'])->toBe('temu')
+        ->and($meta['_wpsm_marketplace_order_id'])->toBe(TEMU_ORDER_SN)
+        ->and($meta['_wpsm_end_customer_email'])->toBe('relay@temu.example')
+        ->and($meta['_wpsm_shipping_payout'])->toBe('5.50')
+        ->and($meta['_wpsm_ship_by'])->toBe('2026-10-13T22:30:00+00:00')
+        ->and($meta)->not->toHaveKey('_temu_parent_order_sn')
+        ->and(collect($payload['line_items'][0]['meta_data'])->pluck('value', 'key')['_wpsm_marketplace_item_id'])->toBe('192-13753660406390164');
 });
 
 test('an order is imported only once', function () {
@@ -180,7 +199,7 @@ test('an order is imported only once', function () {
     dispatch_sync(new ImportTemuOrders($shop->id));
 
     expect(wooOrderCreates($calls))->toHaveCount(1)
-        ->and($shop->temuOrders()->count())->toBe(1);
+        ->and($shop->marketplaceOrders()->count())->toBe(1);
 });
 
 test('a later check only asks temu for recently updated orders', function () {
@@ -205,7 +224,7 @@ test('a pending temu order waits until temu releases it', function () {
     dispatch_sync(new ImportTemuOrders($shop->id));
 
     expect(wooOrderCreates($calls))->toBe([])
-        ->and($shop->temuOrders()->sole()->status)->toBe(TemuOrderStatus::Pending);
+        ->and($shop->marketplaceOrders()->sole()->status)->toBe(MarketplaceOrderStatus::Pending);
 });
 
 test('orders handled before importing started are left alone', function () {
@@ -216,12 +235,12 @@ test('orders handled before importing started are left alone', function () {
     dispatch_sync(new ImportTemuOrders($shop->id));
 
     expect(wooOrderCreates($calls))->toBe([])
-        ->and($shop->temuOrders()->count())->toBe(0);
+        ->and($shop->marketplaceOrders()->count())->toBe(0);
 });
 
 test('an imported order cancelled on temu is cancelled in woocommerce', function () {
     [$shop] = orderShop();
-    TemuOrder::factory()->for($shop)->create(['parent_order_sn' => TEMU_ORDER_SN, 'woocommerce_order_id' => 9001]);
+    MarketplaceOrder::factory()->for($shop)->create(['external_order_id' => TEMU_ORDER_SN, 'woocommerce_order_id' => 9001]);
     $calls = [];
     fakeOrderApis([temuOrder(['parentOrderStatus' => 3])], $calls);
 
@@ -230,7 +249,7 @@ test('an imported order cancelled on temu is cancelled in woocommerce', function
     $update = collect($calls['woo'])->first(fn (array $call) => $call['method'] === 'PUT');
     expect($update['url'])->toEndWith('/orders/9001')
         ->and($update['data'])->toBe(['status' => 'cancelled'])
-        ->and($shop->temuOrders()->sole()->status)->toBe(TemuOrderStatus::Cancelled);
+        ->and($shop->marketplaceOrders()->sole()->status)->toBe(MarketplaceOrderStatus::Cancelled);
 });
 
 test('a line whose product left the catalog is sent by name', function () {
@@ -256,9 +275,9 @@ test('an order with an item temu has no price for fails', function () {
 
     dispatch_sync(new ImportTemuOrders($shop->id));
 
-    $row = $shop->temuOrders()->sole();
+    $row = $shop->marketplaceOrders()->sole();
     expect(wooOrderCreates($calls))->toBe([])
-        ->and($row->status)->toBe(TemuOrderStatus::Failed)
+        ->and($row->status)->toBe(MarketplaceOrderStatus::Failed)
         ->and($row->message)->toContain('No Temu price');
 });
 
@@ -269,8 +288,8 @@ test('an order woocommerce refuses fails and can be imported again', function ()
 
     dispatch_sync(new ImportTemuOrders($shop->id));
 
-    $row = $shop->temuOrders()->sole();
-    expect($row->status)->toBe(TemuOrderStatus::Failed)
+    $row = $shop->marketplaceOrders()->sole();
+    expect($row->status)->toBe(MarketplaceOrderStatus::Failed)
         ->and($row->message)->toContain('HTTP 400');
 
     $owner = User::factory()->create();
@@ -278,10 +297,10 @@ test('an order woocommerce refuses fails and can be imported again', function ()
     Queue::fake();
 
     $this->actingAs($owner)
-        ->post(route('shops.temu.orders.retry', ['shop' => $shop->slug, 'temuOrder' => $row->id]))
+        ->post(route('shops.marketplace-orders.retry', ['shop' => $shop->slug, 'marketplaceOrder' => $row->id]))
         ->assertRedirect();
 
-    expect($row->fresh()->status)->toBe(TemuOrderStatus::Pending);
+    expect($row->fresh()->status)->toBe(MarketplaceOrderStatus::Pending);
     Queue::assertPushed(ImportTemuOrders::class);
 });
 
@@ -291,13 +310,13 @@ test('an order whose import was cut off is never sent again by itself', function
     fakeOrderApis([temuOrder()], $calls, fn () => throw new ConnectionException('timed out'));
 
     dispatch_sync(new ImportTemuOrders($shop->id));
-    expect($shop->temuOrders()->sole()->status)->toBe(TemuOrderStatus::Creating);
+    expect($shop->marketplaceOrders()->sole()->status)->toBe(MarketplaceOrderStatus::Creating);
 
     fakeOrderApis([temuOrder()], $calls);
     dispatch_sync(new ImportTemuOrders($shop->id));
 
     expect(wooOrderCreates($calls))->toBe([])
-        ->and($shop->temuOrders()->sole()->status)->toBe(TemuOrderStatus::Creating);
+        ->and($shop->marketplaceOrders()->sole()->status)->toBe(MarketplaceOrderStatus::Creating);
 });
 
 test('only shops set up to import orders are checked', function () {
