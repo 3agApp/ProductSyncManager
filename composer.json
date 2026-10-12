@@ -23,6 +23,7 @@
     "require-dev": {
         "deployer/deployer": "^7.5",
         "fakerphp/faker": "^1.24",
+        "heyosseus/sloppy": "^1.6",
         "larastan/larastan": "^3.9",
         "laravel/boost": "^2.2",
         "laravel/pail": "^1.2.5",
