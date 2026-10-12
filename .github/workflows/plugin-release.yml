@@ -1,0 +1,103 @@
+name: plugin-release
+
+# Releases the WooCommerce plugin. A tag plugin-v<version> on a commit whose plugin
+# header says <version> publishes the zip, its checksum and update.json as a GitHub
+# release. Installed copies read releases/latest/download/update.json, so these are
+# the repository's only releases.
+#
+#   git tag -a plugin-v0.2.0 --cleanup=verbatim -F notes.md && git push origin plugin-v0.2.0
+#
+# The annotated tag's message is the release notes, which the plugin's "View details"
+# screen links to. --cleanup=verbatim keeps markdown headings, which git would
+# otherwise strip as comments.
+on:
+  push:
+    tags:
+      - 'plugin-v*'
+  # Dry run: builds and verifies the artefact without publishing anything.
+  workflow_dispatch:
+
+concurrency:
+  group: plugin-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/plugin.yml
+
+  publish:
+    name: Publish the release
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: wordpress/woo-product-sync-manager
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-tags: true
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-wordpress-plugin
+
+      - name: Check the tag matches the plugin version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            version="$( ./bin/check-version.sh "${{ github.ref_name }}" )"
+          else
+            version="$( ./bin/check-version.sh )"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build the plugin zip
+        run: ./bin/build-zip.sh
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v7
+        with:
+          name: woo-product-sync-manager-${{ steps.version.outputs.version }}
+          path: |
+            wordpress/woo-product-sync-manager/dist/*.zip
+            wordpress/woo-product-sync-manager/dist/*.sha256
+            wordpress/woo-product-sync-manager/dist/update.json
+          if-no-files-found: error
+
+      - name: Create the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          prerelease=""
+          case "$TAG" in
+            *-rc*|*-beta*|*-alpha*) prerelease="--prerelease" ;;
+          esac
+
+          # The annotated tag's message is the release notes. A thin release beats an
+          # invisible one, so a lightweight tag falls back to generated notes.
+          notes="--generate-notes"
+          git tag -l --format='%(contents)' "$TAG" > "$RUNNER_TEMP/notes.md"
+          if [ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.md")" ]; then
+            notes="--notes-file $RUNNER_TEMP/notes.md"
+          fi
+
+          # update.json must ride along: it is the only thing installed copies read.
+          gh release create "$TAG" \
+            dist/woo-product-sync-manager-"$VERSION".zip \
+            dist/woo-product-sync-manager-"$VERSION".zip.sha256 \
+            dist/update.json \
+            --repo "${{ github.repository }}" \
+            --title "Product Sync Manager for WooCommerce $VERSION" \
+            --verify-tag \
+            $notes \
+            $prerelease

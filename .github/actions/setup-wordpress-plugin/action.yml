@@ -1,0 +1,44 @@
+name: Set up the WordPress plugin
+description: >-
+  Install PHP and the plugin's Composer dependencies in wordpress/woo-product-sync-manager,
+  and optionally a WordPress install with WooCommerce for the PHPUnit suite.
+
+inputs:
+  php-version:
+    description: PHP version to run on.
+    required: false
+    default: '8.2'
+  install-wordpress:
+    description: Whether to provision WordPress, WooCommerce and the test database.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up PHP ${{ inputs.php-version }}
+      uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        # mysqli talks to the test database; WooCommerce wants gd, zip and intl.
+        extensions: mysqli, zip, gd, intl
+        coverage: none
+        tools: composer:v2
+
+    - name: Install the Composer dependencies
+      shell: bash
+      working-directory: wordpress/woo-product-sync-manager
+      run: composer install --prefer-dist --no-progress --no-interaction
+
+    - name: Provision WordPress, WooCommerce and the test database
+      if: inputs.install-wordpress == 'true'
+      shell: bash
+      working-directory: wordpress/woo-product-sync-manager
+      run: ./bin/install-wp-tests-ci.sh
+      env:
+        WP_ROOT: ${{ runner.temp }}/wordpress
+        DB_NAME: wpsm_tests
+        DB_USER: root
+        DB_PASS: root
+        DB_HOST: 127.0.0.1
+        DB_PORT: '3306'
