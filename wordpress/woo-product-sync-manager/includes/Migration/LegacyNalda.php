@@ -23,8 +23,13 @@ defined( 'ABSPATH' ) || exit;
  * is switched off.
  *
  * The copy runs in the background, through Action Scheduler, a hundred orders at a
- * time, and only touches orders that have not been copied yet. Running it again is
+ * time, and only copies orders that have not been copied yet. Running it again is
  * harmless.
+ *
+ * The old plugin's delivery states were set by hand or taken from Nalda, so some do
+ * not follow this plugin's rules: a cancelled order Nalda calls RETURNED, a completed
+ * one still IN_DELIVERY. Each of those is kept as a manual state, so the next save of
+ * an old order never reports something new to Nalda that nobody chose.
  */
 class LegacyNalda {
 
@@ -97,39 +102,49 @@ class LegacyNalda {
 	}
 
 	/**
-	 * Copy one batch, then queue the next or record that the site is done.
+	 * Copy or check one page of old orders, then queue the next or record that the
+	 * site is done.
 	 *
+	 * Orders copied by an earlier version are checked for a delivery state to keep,
+	 * which is all a site that migrated before that check existed still needs.
+	 *
+	 * @param int $page The page of old orders, from 1.
 	 * @return int How many orders were copied.
 	 */
-	public function run() {
+	public function run( $page = 1 ) {
 		$orders = wc_get_orders(
 			array(
 				'limit'      => self::BATCH,
+				'paged'      => max( 1, (int) $page ),
+				'orderby'    => 'ID',
+				'order'      => 'ASC',
 				'return'     => 'objects',
 				'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- A one-off background migration, a hundred orders at a time.
 					array(
 						'key'     => '_nalda_order_id',
 						'compare' => 'EXISTS',
 					),
-					array(
-						'key'     => Meta::MARKETPLACE,
-						'compare' => 'NOT EXISTS',
-					),
 				),
 			)
 		);
+		$copied = 0;
 
 		foreach ( $orders as $order ) {
-			$this->copy( $order );
+			if ( '' === (string) $order->get_meta( Meta::MARKETPLACE ) ) {
+				$this->copy( $order );
+				++$copied;
+			} elseif ( $this->keep_delivery_state( $order ) ) {
+				$this->save_quietly( $order );
+			}
 		}
 
 		if ( count( $orders ) === self::BATCH ) {
-			as_enqueue_async_action( self::HOOK, array(), 'woo-product-sync-manager' );
+			as_enqueue_async_action( self::HOOK, array( max( 1, (int) $page ) + 1 ), 'woo-product-sync-manager' );
 		} else {
 			update_option( self::VERSION_OPTION, WPSM_DB_VERSION, false );
 		}
 
-		return count( $orders );
+		return $copied;
 	}
 
 	/**
@@ -137,7 +152,8 @@ class LegacyNalda {
 	 *
 	 * The delivery state is copied as the old plugin last had it. Status would
 	 * otherwise work a new one out on this save, and report it to Nalda, for an order
-	 * nobody touched; it only takes over from the next real change.
+	 * nobody touched. Where its rules would give a different state, the old one is
+	 * kept as a manual state (see keep_delivery_state()).
 	 *
 	 * @param \WC_Order $order The order.
 	 * @return void
@@ -165,6 +181,45 @@ class LegacyNalda {
 			$item->save();
 		}
 
+		$this->keep_delivery_state( $order );
+		$this->save_quietly( $order );
+	}
+
+	/**
+	 * Mark the order's delivery state manual when the automatic rules would change it.
+	 *
+	 * @param \WC_Order $order The order, already copied.
+	 * @return bool Whether the order was marked.
+	 */
+	public function keep_delivery_state( \WC_Order $order ) {
+		$state = (string) $order->get_meta( Meta::DELIVERY_STATUS );
+
+		if ( '' === $state || 'yes' === $order->get_meta( Meta::DELIVERY_STATUS_MANUAL ) ) {
+			return false;
+		}
+
+		$tracking = (string) $order->get_meta( Meta::TRACKING_CODE );
+
+		if ( '' === $tracking ) {
+			$tracking = trim( (string) $order->get_meta( Status::PLANZER_TRACKING_CODE ) );
+		}
+
+		if ( Status::derive( $order->get_status(), $tracking, $state ) === $state ) {
+			return false;
+		}
+
+		$order->update_meta_data( Meta::DELIVERY_STATUS_MANUAL, 'yes' );
+
+		return true;
+	}
+
+	/**
+	 * Save without Status working out a new delivery state on the way.
+	 *
+	 * @param \WC_Order $order The order.
+	 * @return void
+	 */
+	private function save_quietly( \WC_Order $order ) {
 		Status::suspend();
 
 		try {

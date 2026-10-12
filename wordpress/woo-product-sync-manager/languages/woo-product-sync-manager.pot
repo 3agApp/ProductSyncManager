@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-12T08:16:07+00:00\n"
+"POT-Creation-Date: 2026-10-12T09:47:26+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: woo-product-sync-manager\n"
@@ -52,7 +52,7 @@ msgstr ""
 
 #: includes/Admin/OrderColumn.php:55
 #: includes/Admin/OrderColumn.php:60
-#: includes/Admin/OrderPanel.php:79
+#: includes/Admin/OrderPanel.php:109
 #: includes/Emails/AdminDetails.php:83
 msgid "Marketplace"
 msgstr ""
@@ -64,82 +64,82 @@ msgid "%1$s (%2$s)"
 msgstr ""
 
 #. translators: %s: marketplace name, for example "Nalda".
-#: includes/Admin/OrderPanel.php:108
+#: includes/Admin/OrderPanel.php:138
 #, php-format
 msgid "%s order"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:116
+#: includes/Admin/OrderPanel.php:146
 #: includes/Emails/AdminDetails.php:114
 msgid "Buyer email"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:128
+#: includes/Admin/OrderPanel.php:158
 #: includes/Emails/AdminDetails.php:88
 msgid "Buyer paid"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:136
+#: includes/Admin/OrderPanel.php:166
 #: includes/Emails/AdminDetails.php:92
 msgid "Commission"
 msgstr ""
 
 #. translators: %s: commission as a percentage, for example "15.0".
-#: includes/Admin/OrderPanel.php:139
+#: includes/Admin/OrderPanel.php:169
 #, php-format
 msgid "Commission (%s%%)"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:147
+#: includes/Admin/OrderPanel.php:177
 msgid "Shipping paid by the marketplace"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:150
+#: includes/Admin/OrderPanel.php:180
 #: includes/Emails/AdminDetails.php:95
 msgid "Your revenue"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:153
+#: includes/Admin/OrderPanel.php:183
 msgid "Payout"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:157
+#: includes/Admin/OrderPanel.php:187
 #: includes/Emails/AdminDetails.php:98
 msgid "Ship by"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:167
-#: templates/delivery-note.php:83
+#: includes/Admin/OrderPanel.php:197
+#: templates/delivery-note.php:94
 msgid "Delivery note"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:185
+#: includes/Admin/OrderPanel.php:215
 msgid "Delivery status sent to the marketplace"
 msgstr ""
 
 #. translators: %s: the delivery state worked out from the order, for example "In delivery".
-#: includes/Admin/OrderPanel.php:195
+#: includes/Admin/OrderPanel.php:225
 #, php-format
 msgid "Automatic (now: %s)"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:196
+#: includes/Admin/OrderPanel.php:226
 msgid "none"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:214
+#: includes/Admin/OrderPanel.php:244
 msgid "Expected delivery date"
 msgstr ""
 
-#: includes/Admin/OrderPanel.php:220
+#: includes/Admin/OrderPanel.php:250
 msgid "Tracking code"
 msgstr ""
 
-#: includes/Delivery/Note.php:69
+#: includes/Delivery/Note.php:87
 msgid "You are not allowed to print delivery notes."
 msgstr ""
 
-#: includes/Delivery/Note.php:75
+#: includes/Delivery/Note.php:93
 msgid "This order did not come from a marketplace."
 msgstr ""
 
@@ -195,61 +195,65 @@ msgid "release notes on GitHub"
 msgstr ""
 
 #. translators: %s: order number.
-#: templates/delivery-note.php:37
+#: templates/delivery-note.php:38
 #, php-format
 msgid "Delivery note %s"
 msgstr ""
 
-#: templates/delivery-note.php:71
+#: templates/delivery-note.php:76
+msgid "Language"
+msgstr ""
+
+#: templates/delivery-note.php:81
 msgid "Print"
 msgstr ""
 
 #. translators: %s: order number.
-#: templates/delivery-note.php:89
+#: templates/delivery-note.php:100
 #, php-format
 msgid "Order %s"
 msgstr ""
 
-#: templates/delivery-note.php:108
+#: templates/delivery-note.php:119
 msgid "Seller"
 msgstr ""
 
-#: templates/delivery-note.php:113
+#: templates/delivery-note.php:124
 msgid "Recipient"
 msgstr ""
 
 #. translators: %s: marketplace name, for example "Nalda".
-#: templates/delivery-note.php:132
+#: templates/delivery-note.php:143
 #, php-format
 msgid "via %s"
 msgstr ""
 
-#: templates/delivery-note.php:145
+#: templates/delivery-note.php:156
 msgid "No."
 msgstr ""
 
-#: templates/delivery-note.php:146
+#: templates/delivery-note.php:157
 msgid "Article no."
 msgstr ""
 
-#: templates/delivery-note.php:147
+#: templates/delivery-note.php:158
 msgid "Description"
 msgstr ""
 
-#: templates/delivery-note.php:148
+#: templates/delivery-note.php:159
 msgid "Quantity"
 msgstr ""
 
-#: templates/delivery-note.php:149
+#: templates/delivery-note.php:160
 msgid "Unit price"
 msgstr ""
 
-#: templates/delivery-note.php:150
-#: templates/delivery-note.php:169
+#: templates/delivery-note.php:161
+#: templates/delivery-note.php:180
 msgid "Total"
 msgstr ""
 
-#: templates/delivery-note.php:177
+#: templates/delivery-note.php:188
 msgid "Delivery type"
 msgstr ""
 

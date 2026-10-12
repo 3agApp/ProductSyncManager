@@ -14,6 +14,7 @@
  *     @type string                                          $logo_url       Shop logo, or empty.
  *     @type array[]                                         $lines          Lines: sku, name, quantity, unit, total.
  *     @type string[]                                        $shipping_types Shipping method names.
+ *     @type array[]                                         $languages      Language buttons: name, url, active.
  * }
  */
 
@@ -62,13 +63,23 @@ $wpsm_country     = WC()->countries->countries[ $wpsm_order->get_shipping_countr
 		.delivery td { padding: 8px; }
 		.delivery td:first-child { width: 140px; background: #f3f3f3; font-weight: bold; }
 		.box { display: inline-block; width: 12px; height: 12px; border: 1px solid #222; margin: 0 4px 0 12px; vertical-align: middle; }
-		.actions { text-align: right; margin-bottom: 12px; }
+		.actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+		.languages a { display: inline-block; margin-left: 4px; padding: 3px 10px; border: 1px solid #ccc; border-radius: 3px; color: #222; text-decoration: none; }
+		.languages a[aria-current] { background: #222; border-color: #222; color: #fff; }
 		@media print { .actions { display: none; } .note { padding: 0; } }
 	</style>
 </head>
 <body>
 <div class="note">
-	<p class="actions"><button type="button" onclick="window.print()"><?php esc_html_e( 'Print', 'woo-product-sync-manager' ); ?></button></p>
+	<div class="actions">
+		<p class="languages">
+			<?php esc_html_e( 'Language', 'woo-product-sync-manager' ); ?>:
+			<?php foreach ( $note['languages'] as $wpsm_language ) : ?>
+				<a href="<?php echo esc_url( $wpsm_language['url'] ); ?>"<?php echo $wpsm_language['active'] ? ' aria-current="true"' : ''; ?>><?php echo esc_html( $wpsm_language['name'] ); ?></a>
+			<?php endforeach; ?>
+		</p>
+		<button type="button" onclick="window.print()"><?php esc_html_e( 'Print', 'woo-product-sync-manager' ); ?></button>
+	</div>
 
 	<table class="head">
 		<tr>
