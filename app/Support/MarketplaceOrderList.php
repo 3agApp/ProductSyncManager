@@ -30,7 +30,7 @@ final class MarketplaceOrderList
 
         return $shop->marketplaceOrders()
             ->forMarketplace($marketplace)
-            ->orderByRaw('case when status in (?, ?) then 0 else 1 end', [MarketplaceOrderStatus::Creating->value, MarketplaceOrderStatus::Failed->value])
+            ->orderByRaw('case when status in (?, ?) or shipment_message is not null then 0 else 1 end', [MarketplaceOrderStatus::Creating->value, MarketplaceOrderStatus::Failed->value])
             ->latest('id')
             ->limit(self::LIMIT)
             ->get()
@@ -45,6 +45,9 @@ final class MarketplaceOrderList
                 'message' => $order->message,
                 'orderedAt' => $order->ordered_at?->toISOString(),
                 'shipByAt' => $order->ship_by_at?->toISOString(),
+                'shipByWarning' => $order->shipByWarning(),
+                'shipmentConfirmedAt' => $order->shipment_confirmed_at?->toISOString(),
+                'shipmentMessage' => $order->shipment_message,
                 'wooCommerceOrderId' => $order->woocommerce_order_id,
                 'wooCommerceUrl' => $order->woocommerce_order_id !== null && $storeUrl !== null
                     ? rtrim($storeUrl, '/').'/wp-admin/admin.php?page=wc-orders&action=edit&id='.$order->woocommerce_order_id

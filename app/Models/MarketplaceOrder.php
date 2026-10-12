@@ -32,6 +32,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $payout_status
  * @property string|null $delivery_status
  * @property string|null $tracking_code
+ * @property CarbonImmutable|null $shipment_confirmed_at
+ * @property string|null $shipment_message
  * @property CarbonImmutable|null $expected_delivery_on
  * @property array<int, string>|null $gtins
  * @property CarbonImmutable|null $ordered_at
@@ -54,6 +56,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'payout_status',
     'delivery_status',
     'tracking_code',
+    'shipment_confirmed_at',
+    'shipment_message',
     'expected_delivery_on',
     'gtins',
     'ordered_at',
@@ -75,6 +79,12 @@ class MarketplaceOrder extends Model
     /** Temu's parent order status: cancelled. */
     public const int TEMU_CANCELLED = 3;
 
+    /** Temu's parent order status: shipped. */
+    public const int TEMU_SHIPPED = 4;
+
+    /** Hours before Temu's ship-by deadline an unshipped order is flagged. */
+    public const int SHIP_BY_WARNING_HOURS = 24;
+
     /**
      * Get the shop that owns the order.
      *
@@ -93,6 +103,29 @@ class MarketplaceOrder extends Model
     public function scopeForMarketplace(Builder $query, Marketplace $marketplace): void
     {
         $query->where('marketplace', $marketplace->value);
+    }
+
+    /**
+     * How close an order Temu still waits on is to its ship-by deadline.
+     *
+     * @return 'overdue'|'soon'|null
+     */
+    public function shipByWarning(): ?string
+    {
+        $waiting = $this->marketplace === Marketplace::Temu
+            && $this->shipment_confirmed_at === null
+            && $this->status !== MarketplaceOrderStatus::Cancelled
+            && in_array((int) $this->marketplace_status, [self::TEMU_PENDING, self::TEMU_UNSHIPPED], true);
+
+        if (! $waiting || $this->ship_by_at === null) {
+            return null;
+        }
+
+        return match (true) {
+            $this->ship_by_at->isPast() => 'overdue',
+            $this->ship_by_at->lte(now()->addHours(self::SHIP_BY_WARNING_HOURS)) => 'soon',
+            default => null,
+        };
     }
 
     /**
@@ -142,6 +175,7 @@ class MarketplaceOrder extends Model
             'ship_by_at' => 'datetime',
             'imported_at' => 'datetime',
             'woocommerce_modified_at' => 'datetime',
+            'shipment_confirmed_at' => 'datetime',
         ];
     }
 }

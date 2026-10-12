@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Actions\Orders\CreateWooCommerceOrder;
+use App\Actions\Orders\RefreshMarketplaceOrderStatuses;
 use App\Actions\Temu\BuildTemuWooCommerceOrder;
+use App\Actions\Temu\ConfirmTemuShipments;
 use App\Enums\Marketplace;
 use App\Enums\MarketplaceOrderStatus;
 use App\Models\MarketplaceOrder;
@@ -27,7 +29,9 @@ use RuntimeException;
  * there lowers the stock, which reaches Temu through the usual product sync.
  * Orders updated on Temu since the last check are read, unshipped ones are
  * created in WooCommerce once, and imported ones Temu cancels are cancelled
- * there too, which puts their stock back.
+ * there too, which puts their stock back. When the shop confirms shipments,
+ * imported orders that have Planzer's parcel number in WooCommerce are then
+ * confirmed as shipped on Temu.
  */
 class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
 {
@@ -74,7 +78,7 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
         return [60, 300];
     }
 
-    public function handle(BuildTemuWooCommerceOrder $build, CreateWooCommerceOrder $create): void
+    public function handle(BuildTemuWooCommerceOrder $build, CreateWooCommerceOrder $create, RefreshMarketplaceOrderStatuses $refresh, ConfirmTemuShipments $confirm): void
     {
         $shop = Shop::find($this->shopId);
         $connection = $shop?->temuConnection;
@@ -96,6 +100,11 @@ class ImportTemuOrders implements ShouldBeUnique, ShouldQueue
 
             $this->cancelImported($shop, $client);
             $this->importPending($shop, $temu, $client, $build, $create, $orders);
+
+            if ($connection->confirm_shipments) {
+                $refresh->handle($shop);
+                $confirm->handle($shop, $temu, $client);
+            }
         } catch (TemuException $exception) {
             if ($exception->isRateLimited()) {
                 $this->release(60);

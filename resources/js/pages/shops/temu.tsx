@@ -601,6 +601,33 @@ export default function ShopTemu({
                                                     }
                                                 />
                                             </div>
+                                            <div className="flex items-start gap-3 pt-3">
+                                                <Checkbox
+                                                    id="confirm_shipments"
+                                                    name="confirm_shipments"
+                                                    value="1"
+                                                    defaultChecked={
+                                                        connection.confirmShipments
+                                                    }
+                                                    disabled={!importOrders}
+                                                    data-test="temu-confirm-shipments"
+                                                    className="mt-0.5"
+                                                />
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="confirm_shipments">
+                                                        Confirm shipments on
+                                                        Temu
+                                                    </Label>
+                                                    <p className="text-muted-foreground text-xs">
+                                                        Once Planzer&apos;s
+                                                        parcel number is on the
+                                                        WooCommerce order, tell
+                                                        Temu the order shipped
+                                                        with Planzer, as one
+                                                        parcel.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 

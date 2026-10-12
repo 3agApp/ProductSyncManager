@@ -20,6 +20,11 @@ export type MarketplaceOrder = {
     message: string | null;
     orderedAt: string | null;
     shipByAt: string | null;
+    /** An order Temu still waits on that is past, or close to, its ship-by time. */
+    shipByWarning: 'overdue' | 'soon' | null;
+    shipmentConfirmedAt: string | null;
+    /** Why Temu refused the shipment confirmation, until it is sent again. */
+    shipmentMessage: string | null;
     wooCommerceOrderId: number | null;
     wooCommerceUrl: string | null;
 };

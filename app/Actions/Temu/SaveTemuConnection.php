@@ -56,6 +56,8 @@ class SaveTemuConnection
         $connection->sync_after_sync = (bool) ($data['sync_after_sync'] ?? false);
         $connection->import_orders = (bool) ($data['import_orders'] ?? false);
         $connection->order_shipping = number_format((float) $data['order_shipping'], 2, '.', '');
+        // Only imported orders can be confirmed, so this follows the import switch.
+        $connection->confirm_shipments = $connection->import_orders && (bool) ($data['confirm_shipments'] ?? false);
 
         $connection->save();
 

@@ -26,6 +26,10 @@ class MarketplaceOrderController extends Controller
     {
         Gate::authorize('manageSync', $shop);
 
+        if ($marketplaceOrder->shipment_message !== null && ! $marketplaceOrder->status->needsAttention()) {
+            return $this->confirmAgain($shop, $marketplaceOrder);
+        }
+
         if (! $marketplaceOrder->status->needsAttention()) {
             Inertia::flash('toast', ['type' => 'error', 'message' => __('There is nothing to retry.')]);
 
@@ -42,6 +46,22 @@ class MarketplaceOrderController extends Controller
         };
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('The order will be imported again.')]);
+
+        return back();
+    }
+
+    /**
+     * Confirm a Temu shipment again after Temu refused it.
+     */
+    private function confirmAgain(Shop $shop, MarketplaceOrder $marketplaceOrder): RedirectResponse
+    {
+        $marketplaceOrder->update(['shipment_message' => null]);
+
+        if ($shop->temuConnection !== null && ImportTemuOrders::canImport($shop->temuConnection)) {
+            ImportTemuOrders::dispatch($shop->id);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('The shipment will be confirmed on Temu again.')]);
 
         return back();
     }

@@ -28,6 +28,7 @@ class SaveTemuConnectionRequest extends FormRequest
         $this->merge([
             'sync_after_sync' => $this->boolean('sync_after_sync'),
             'import_orders' => $this->boolean('import_orders'),
+            'confirm_shipments' => $this->boolean('confirm_shipments'),
             'app_key' => trim((string) $this->input('app_key')),
             'currency' => strtoupper(trim((string) $this->input('currency'))),
         ]);
@@ -53,6 +54,7 @@ class SaveTemuConnectionRequest extends FormRequest
             'sync_after_sync' => ['required', 'boolean'],
             'import_orders' => ['required', 'boolean'],
             'order_shipping' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:1000'],
+            'confirm_shipments' => ['required', 'boolean'],
         ];
     }
 
@@ -114,6 +116,7 @@ class SaveTemuConnectionRequest extends FormRequest
             'sync_after_sync' => 'sync after every WooCommerce sync',
             'import_orders' => 'import orders into WooCommerce',
             'order_shipping' => 'shipping paid by Temu',
+            'confirm_shipments' => 'confirm shipments on Temu',
         ];
     }
 
