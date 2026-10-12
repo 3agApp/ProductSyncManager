@@ -42,6 +42,8 @@ export type TemuConnection = {
     syncAfterSync: boolean;
     /** Create Temu orders in WooCommerce, which fulfils them. */
     importOrders: boolean;
+    /** What Temu pays for shipping one order, tax included. */
+    orderShipping: number;
     ordersCheckedAt: string | null;
     lastSyncedAt: string | null;
 };

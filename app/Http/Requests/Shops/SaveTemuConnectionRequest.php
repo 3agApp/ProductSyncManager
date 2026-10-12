@@ -52,6 +52,7 @@ class SaveTemuConnectionRequest extends FormRequest
             'discount_percent' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:90'],
             'sync_after_sync' => ['required', 'boolean'],
             'import_orders' => ['required', 'boolean'],
+            'order_shipping' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:1000'],
         ];
     }
 
@@ -112,6 +113,7 @@ class SaveTemuConnectionRequest extends FormRequest
             'discount_percent' => 'Temu discount',
             'sync_after_sync' => 'sync after every WooCommerce sync',
             'import_orders' => 'import orders into WooCommerce',
+            'order_shipping' => 'shipping paid by Temu',
         ];
     }
 

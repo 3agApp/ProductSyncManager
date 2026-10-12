@@ -595,6 +595,43 @@ export default function ShopTemu({
                                                 buyer gets no emails from the
                                                 shop.
                                             </p>
+                                            <div className="grid gap-2 pt-2">
+                                                <Label htmlFor="order_shipping">
+                                                    Shipping paid by Temu
+                                                </Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        id="order_shipping"
+                                                        name="order_shipping"
+                                                        type="number"
+                                                        min={0}
+                                                        max={1000}
+                                                        step="0.01"
+                                                        required
+                                                        className="w-24"
+                                                        data-test="temu-order-shipping"
+                                                        defaultValue={
+                                                            connection.orderShipping
+                                                        }
+                                                    />
+                                                    <span className="text-muted-foreground text-sm">
+                                                        {connection.currency}{' '}
+                                                        per order, tax included
+                                                    </span>
+                                                </div>
+                                                <p className="text-muted-foreground text-xs">
+                                                    Added to each order as its
+                                                    shipping, so the total is
+                                                    what Temu pays. Temu shows
+                                                    it under Sales proceeds in
+                                                    the order details.
+                                                </p>
+                                                <InputError
+                                                    message={
+                                                        errors.order_shipping
+                                                    }
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
