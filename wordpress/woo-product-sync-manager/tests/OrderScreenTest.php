@@ -88,6 +88,7 @@ class OrderScreenTest extends TestCase {
 
 		$this->assertStringContainsString( '402687', $html );
 		$this->assertStringContainsString( 'anna@example.com', $html );
+		$this->assertMatchesRegularExpression( '/wpsm-panel__row--stacked"><span>Buyer email<\/span><span><a href="mailto:anna@example.com"/', $html, 'Long values get a line of their own.' );
 		$this->assertStringContainsString( '99.80', $html );
 		$this->assertStringContainsString( '15.0%', $html );
 		$this->assertStringContainsString( 'Paid out', $html );

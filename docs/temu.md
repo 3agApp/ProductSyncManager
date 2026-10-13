@@ -152,8 +152,10 @@ The WooCommerce order is:
   plugin reads (`_wpsm_marketplace` = `temu`, the order number, the buyer's
   relay email, the ship-by time, the shipping payout; see
   [Marketplace orders](#marketplace-orders-in-woocommerce));
-- **billed to Temu** (name and company "Temu") **without an email address**,
-  so WooCommerce sends the buyer no emails;
+- **billed to Temu** **without an email address**, so WooCommerce sends the
+  buyer no emails. Swiss orders go to Whaleco Switzerland AG, Teichgässlein 9,
+  4058 Basel (UID CHE-245.617.681), which Temu's Swiss terms and imprint name
+  as the company running the Swiss store;
 - **shipped to the buyer**, from `bg.order.shippinginfo.v2.get`. The address is
   sent straight to WooCommerce and not stored here;
 - priced at the **base price** Temu pays the shop: the price last sent to Temu
