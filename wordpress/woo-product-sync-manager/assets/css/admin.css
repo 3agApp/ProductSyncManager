@@ -34,7 +34,22 @@
 }
 
 .wpsm-panel__row span:last-child {
+	min-width: 0;
 	text-align: right;
+	overflow-wrap: anywhere;
+}
+
+.wpsm-panel__row--stacked {
+	flex-direction: column;
+	gap: 0;
+}
+
+.wpsm-panel__row--stacked span:first-child {
+	color: #50575e;
+}
+
+.wpsm-panel__row--stacked span:last-child {
+	text-align: left;
 }
 
 .wpsm-panel label {

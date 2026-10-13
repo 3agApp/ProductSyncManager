@@ -29,6 +29,29 @@ class BuildTemuWooCommerceOrder
     ];
 
     /**
+     * Whaleco Switzerland AG, who Temu's Swiss orders are billed to.
+     *
+     * Temu's Swiss terms and imprint name it as the company that runs the
+     * Swiss store and pays its sellers. There is no email, so WooCommerce
+     * never writes to anyone about the order.
+     */
+    private const array SWISS_BILLING = [
+        'first_name' => 'Temu',
+        'last_name' => 'Marketplace',
+        'company' => 'Whaleco Switzerland AG',
+        'address_1' => 'Teichgässlein 9',
+        'city' => 'Basel',
+        'state' => 'BS',
+        'postcode' => '4058',
+        'country' => 'CH',
+    ];
+
+    /**
+     * Whaleco Switzerland AG's company number (UID).
+     */
+    private const string SWISS_UID = 'CHE-245.617.681';
+
+    /**
      * Country names Temu writes in an address, for regions not in REGIONS.
      */
     private const array COUNTRIES = [
@@ -82,11 +105,7 @@ class BuildTemuWooCommerceOrder
             'created_via' => 'temu',
             'customer_id' => 0,
             'currency' => $shop->currency,
-            'billing' => [
-                'first_name' => 'Temu',
-                'company' => 'Temu',
-                'country' => $country,
-            ],
+            'billing' => $country === 'CH' ? self::SWISS_BILLING : ['first_name' => 'Temu', 'company' => 'Temu', 'country' => $country],
             'shipping' => $this->shipping($address, $country),
             'line_items' => array_map(fn (array $line) => $line['item'], $lines),
             'shipping_lines' => [$this->shippingLine($shop)],
@@ -97,6 +116,7 @@ class BuildTemuWooCommerceOrder
                 Meta::SHIPPING_PAYOUT => number_format((float) ($shop->temuConnection->order_shipping ?? 0), 2, '.', ''),
                 Meta::SHIP_BY => $shipBy?->toIso8601String(),
                 Meta::PLACED_AT => $placedAt?->toIso8601String(),
+                '_billing_vat_number' => $country === 'CH' ? self::SWISS_UID : null,
             ]),
         ];
     }

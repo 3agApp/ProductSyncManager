@@ -132,7 +132,7 @@ class OrderPanel {
 
 		echo '<div class="wpsm-panel">';
 
-		$this->row(
+		$this->stacked_row(
 			sprintf(
 				/* translators: %s: marketplace name, for example "Nalda". */
 				__( '%s order', 'woo-product-sync-manager' ),
@@ -142,7 +142,7 @@ class OrderPanel {
 		);
 
 		if ( '' !== $marketplace_order->end_customer_email() ) {
-			$this->row(
+			$this->stacked_row(
 				__( 'Buyer email', 'woo-product-sync-manager' ),
 				sprintf(
 					'<a href="mailto:%1$s">%2$s</a>',
@@ -264,6 +264,24 @@ class OrderPanel {
 		printf(
 			'<p class="wpsm-panel__row"><span>%1$s</span><span>%2$s</span></p>',
 			$escape_label ? esc_html( $label ) : $label, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Callers pass escaped HTML when they turn escaping off.
+			$value // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Every caller escapes the value it builds.
+		);
+	}
+
+	/**
+	 * Print a label with its value on the line below.
+	 *
+	 * For long values with no spaces, such as Temu's order numbers and relay
+	 * addresses, which do not fit beside their label in the side box.
+	 *
+	 * @param string $label Label.
+	 * @param string $value Value, already escaped.
+	 * @return void
+	 */
+	private function stacked_row( $label, $value ) {
+		printf(
+			'<p class="wpsm-panel__row wpsm-panel__row--stacked"><span>%1$s</span><span>%2$s</span></p>',
+			esc_html( $label ),
 			$value // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Every caller escapes the value it builds.
 		);
 	}

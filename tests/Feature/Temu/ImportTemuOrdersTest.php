@@ -141,7 +141,8 @@ test('an unshipped temu order is created in woocommerce, billed to temu', functi
         ->and($payload['set_paid'])->toBeTrue()
         ->and($payload['payment_method_title'])->toBe('Temu')
         ->and($payload['transaction_id'])->toBe(TEMU_ORDER_SN)
-        ->and($payload['billing'])->toBe(['first_name' => 'Temu', 'company' => 'Temu', 'country' => 'CH'])
+        ->and($payload['billing'])->toMatchArray(['company' => 'Whaleco Switzerland AG', 'address_1' => 'Teichgässlein 9', 'postcode' => '4058', 'city' => 'Basel', 'country' => 'CH'])
+        ->and($payload['billing'])->not->toHaveKey('email')
         ->and($payload['shipping'])->toMatchArray([
             'first_name' => 'Anna',
             'last_name' => 'Muster',
@@ -186,6 +187,7 @@ test('a temu order carries the marketplace meta the woocommerce plugin reads', f
         ->and($meta['_wpsm_end_customer_email'])->toBe('relay@temu.example')
         ->and($meta['_wpsm_shipping_payout'])->toBe('5.50')
         ->and($meta['_wpsm_ship_by'])->toBe('2026-10-13T22:30:00+00:00')
+        ->and($meta['_billing_vat_number'])->toBe('CHE-245.617.681')
         ->and($meta)->not->toHaveKey('_temu_parent_order_sn')
         ->and(collect($payload['line_items'][0]['meta_data'])->pluck('value', 'key')['_wpsm_marketplace_item_id'])->toBe('192-13753660406390164');
 });
